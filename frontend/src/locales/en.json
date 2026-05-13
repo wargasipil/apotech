@@ -1,0 +1,139 @@
+{
+  "app": {
+    "name": "Apotech"
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "archive": "Archive",
+    "close": "Close",
+    "search": "Search",
+    "add": "Add",
+    "yes": "Yes",
+    "no": "No",
+    "active": "Active",
+    "inactive": "Inactive",
+    "actions": "Actions",
+    "showArchived": "Show archived",
+    "noResults": "No results"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "pos": "POS",
+    "inventory": "Inventory",
+    "medicines": "Medicines",
+    "suppliers": "Suppliers",
+    "batches": "Batches",
+    "movements": "Movements",
+    "analytics": "Analytics",
+    "users": "Users",
+    "customers": "Customers",
+    "prescriptions": "Prescriptions",
+    "signOut": "Sign out"
+  },
+  "auth": {
+    "signInTitle": "Apotech sign in",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "signedInAs": "Signed in as",
+    "pingApi": "Ping API",
+    "roles": {
+      "owner": "Owner",
+      "pharmacist": "Pharmacist",
+      "cashier": "Cashier",
+      "unknown": "Unknown"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "createTitle": "Create user",
+    "email": "Email",
+    "name": "Name",
+    "password": "Password",
+    "passwordHelp": "Min 8 characters",
+    "role": "Role"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "tabs": {
+      "medicines": "Medicines",
+      "suppliers": "Suppliers",
+      "batches": "Batches",
+      "movements": "Movements"
+    },
+    "medicines": {
+      "title": "Medicines",
+      "addTitle": "Add medicine",
+      "editTitle": "Edit medicine",
+      "sku": "SKU",
+      "name": "Name",
+      "manufacturer": "Manufacturer",
+      "unit": "Unit",
+      "unitPrice": "Unit price (IDR)",
+      "rx": "Prescription required",
+      "rxShort": "Rx",
+      "priceHistory": "Price history",
+      "priceHistoryEmpty": "No price changes recorded.",
+      "priceFrom": "From",
+      "priceTo": "To",
+      "priceCurrent": "(current)",
+      "pricePrice": "Price"
+    },
+    "suppliers": {
+      "title": "Suppliers",
+      "addTitle": "Add supplier",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "batches": {
+      "title": "Batches",
+      "addTitle": "Receive batch",
+      "medicine": "Medicine",
+      "supplier": "Supplier",
+      "supplierNone": "— none —",
+      "batchNumber": "Batch #",
+      "expiry": "Expiry date",
+      "received": "Received at",
+      "costPerUnit": "Cost / unit (IDR)",
+      "initialQty": "Initial quantity",
+      "qty": "Qty",
+      "cost": "Cost",
+      "receive": "Receive",
+      "expired": "expired",
+      "selectMedicine": "— select —"
+    },
+    "movements": {
+      "title": "Stock movements",
+      "recordTitle": "Record movement (adjustment / write-off)",
+      "filterByBatch": "Filter by batch:",
+      "filterAll": "— all —",
+      "when": "When",
+      "batch": "Batch",
+      "type": "Type",
+      "qty": "Qty (± int)",
+      "reason": "Reason",
+      "record": "Record",
+      "types": {
+        "purchase": "Purchase",
+        "sale": "Sale",
+        "adjustment": "Adjustment",
+        "writeOff": "Write-off",
+        "unspecified": "—"
+      }
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "tryAgain": "Try again"
+  }
+}

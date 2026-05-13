@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where go *)",
+      "Bash(where buf *)",
+      "Bash(where node *)",
+      "Bash(where npm *)",
+      "Bash(where docker *)",
+      "Bash(go version *)",
+      "Bash(buf --version)",
+      "Bash(npm --version)",
+      "Bash(cd /d \"d:\\\\research\\\\apotech\\\\backend\")",
+      "Bash(go mod *)",
+      "Bash(buf generate *)",
+      "Bash(go build *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(make tidy *)",
+      "Bash(make generate *)",
+      "Bash(echo \"be=$?\")",
+      "Bash(echo \"fe=$?\")",
+      "Bash(rm \"d:/research/apotech/backend/config.yaml\")",
+      "Bash(cp \"d:/research/apotech/config.example.yaml\" \"d:/research/apotech/config.yaml\")",
+      "Bash(go vet *)",
+      "Bash(go doc *)",
+      "Bash(go -C backend build ./...)",
+      "Bash(echo \"build=$?\")",
+      "Bash(echo \"tsc=$?\")",
+      "Bash(timeout 5 npx vite)"
+    ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
+  }
+}

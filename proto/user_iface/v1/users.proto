@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package user_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/user_iface/v1;userifacev1";
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  auth_iface.v1.Role role = 4;
+  bool active = 5;
+  int64 created_at = 6;
+}
+
+service UserService {
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc SetUserActive(SetUserActiveRequest) returns (SetUserActiveResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+}
+
+message ListUsersRequest {}
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string name = 2;
+  string password = 3;
+  auth_iface.v1.Role role = 4;
+}
+message CreateUserResponse {
+  User user = 1;
+}
+
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  auth_iface.v1.Role role = 2;
+}
+message UpdateUserRoleResponse {
+  User user = 1;
+}
+
+message SetUserActiveRequest {
+  string user_id = 1;
+  bool active = 2;
+}
+message SetUserActiveResponse {
+  User user = 1;
+}
+
+message ChangePasswordRequest {
+  string user_id = 1;
+  string old_password = 2;
+  string new_password = 3;
+}
+message ChangePasswordResponse {}

@@ -1,0 +1,23 @@
+# Local config (copy from config.example.yaml)
+config.yaml
+
+# Local docker volumes (postgres data, etc.)
+data/
+
+# Go
+/backend/bin/
+/backend/tmp/
+*.test
+*.out
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

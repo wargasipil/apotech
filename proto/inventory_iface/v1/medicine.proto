@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package inventory_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1";
+
+message Medicine {
+  string id = 1;
+  string sku = 2;
+  string name = 3;
+  string manufacturer = 4;
+  string unit = 5;
+  int64 unit_price = 6;
+  bool prescription_required = 7;
+  bool active = 8;
+  int64 created_at = 9;
+}
+
+message MedicinePrice {
+  string id = 1;
+  string medicine_id = 2;
+  int64 unit_price = 3;
+  int64 effective_from = 4;
+  int64 effective_to = 5;
+  string changed_by = 6;
+}
+
+service MedicineService {
+  rpc ListMedicines(ListMedicinesRequest) returns (ListMedicinesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetMedicine(GetMedicineRequest) returns (GetMedicineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateMedicine(CreateMedicineRequest) returns (CreateMedicineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UpdateMedicine(UpdateMedicineRequest) returns (UpdateMedicineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ArchiveMedicine(ArchiveMedicineRequest) returns (ArchiveMedicineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ListMedicinePrices(ListMedicinePricesRequest) returns (ListMedicinePricesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListMedicinesRequest {
+  bool include_inactive = 1;
+}
+message ListMedicinesResponse {
+  repeated Medicine medicines = 1;
+}
+
+message GetMedicineRequest { string id = 1; }
+message GetMedicineResponse { Medicine medicine = 1; }
+
+message CreateMedicineRequest {
+  string sku = 1;
+  string name = 2;
+  string manufacturer = 3;
+  string unit = 4;
+  int64 unit_price = 5;
+  bool prescription_required = 6;
+}
+message CreateMedicineResponse { Medicine medicine = 1; }
+
+message UpdateMedicineRequest {
+  string id = 1;
+  string name = 2;
+  string manufacturer = 3;
+  string unit = 4;
+  int64 unit_price = 5;
+  bool prescription_required = 6;
+}
+message UpdateMedicineResponse { Medicine medicine = 1; }
+
+message ArchiveMedicineRequest { string id = 1; }
+message ArchiveMedicineResponse { Medicine medicine = 1; }
+
+message ListMedicinePricesRequest { string medicine_id = 1; }
+message ListMedicinePricesResponse {
+  repeated MedicinePrice prices = 1;
+}

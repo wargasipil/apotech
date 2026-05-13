@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  user: apotech
+  password: apotech
+  name: apotech
+  sslmode: disable
+
+auth:
+  jwt_secret: change-me-to-a-long-random-string
+  token_ttl: 24h
+
+bootstrap:
+  owner_email: owner@apotech.local
+  owner_password: change-me-on-first-login

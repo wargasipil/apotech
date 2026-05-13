@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package auth_iface.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/apotech/backend/gen/auth_iface/v1;authifacev1";
+
+// Role is the fixed authorization tier of a caller.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_OWNER = 1;
+  ROLE_PHARMACIST = 2;
+  ROLE_CASHIER = 3;
+}
+
+// Method-level auth policy. Per rpc, declare ONE of:
+//   - public = true                              -> no auth at all (Login, Ping)
+//   - repeated allowed_roles = ROLE_xxx (1..n)   -> authn + caller.role must be in the set
+//   - (nothing)                                  -> authn only (default)
+extend google.protobuf.MethodOptions {
+  bool public = 50000;
+  repeated Role allowed_roles = 50001;
+}

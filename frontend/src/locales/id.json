@@ -1,0 +1,139 @@
+{
+  "app": {
+    "name": "Apotech"
+  },
+  "common": {
+    "loading": "Memuat…",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "create": "Buat",
+    "edit": "Ubah",
+    "delete": "Hapus",
+    "archive": "Arsipkan",
+    "close": "Tutup",
+    "search": "Cari",
+    "add": "Tambah",
+    "yes": "Ya",
+    "no": "Tidak",
+    "active": "Aktif",
+    "inactive": "Tidak aktif",
+    "actions": "Aksi",
+    "showArchived": "Tampilkan arsip",
+    "noResults": "Tidak ada hasil"
+  },
+  "nav": {
+    "dashboard": "Dasbor",
+    "pos": "Kasir",
+    "inventory": "Inventaris",
+    "medicines": "Obat",
+    "suppliers": "Pemasok",
+    "batches": "Batch",
+    "movements": "Mutasi stok",
+    "analytics": "Analitik",
+    "users": "Pengguna",
+    "customers": "Pelanggan",
+    "prescriptions": "Resep",
+    "signOut": "Keluar"
+  },
+  "auth": {
+    "signInTitle": "Masuk ke Apotech",
+    "email": "Email",
+    "password": "Kata sandi",
+    "signIn": "Masuk",
+    "invalidCredentials": "Email atau kata sandi salah"
+  },
+  "dashboard": {
+    "welcome": "Selamat datang",
+    "signedInAs": "Masuk sebagai",
+    "pingApi": "Ping API",
+    "roles": {
+      "owner": "Pemilik",
+      "pharmacist": "Apoteker",
+      "cashier": "Kasir",
+      "unknown": "Tidak diketahui"
+    }
+  },
+  "users": {
+    "title": "Pengguna",
+    "createTitle": "Buat pengguna",
+    "email": "Email",
+    "name": "Nama",
+    "password": "Kata sandi",
+    "passwordHelp": "Minimal 8 karakter",
+    "role": "Peran"
+  },
+  "inventory": {
+    "title": "Inventaris",
+    "tabs": {
+      "medicines": "Obat",
+      "suppliers": "Pemasok",
+      "batches": "Batch",
+      "movements": "Mutasi"
+    },
+    "medicines": {
+      "title": "Obat",
+      "addTitle": "Tambah obat",
+      "editTitle": "Ubah obat",
+      "sku": "SKU",
+      "name": "Nama",
+      "manufacturer": "Produsen",
+      "unit": "Satuan",
+      "unitPrice": "Harga satuan (IDR)",
+      "rx": "Perlu resep",
+      "rxShort": "Resep",
+      "priceHistory": "Riwayat harga",
+      "priceHistoryEmpty": "Belum ada perubahan harga.",
+      "priceFrom": "Dari",
+      "priceTo": "Sampai",
+      "priceCurrent": "(saat ini)",
+      "pricePrice": "Harga"
+    },
+    "suppliers": {
+      "title": "Pemasok",
+      "addTitle": "Tambah pemasok",
+      "name": "Nama",
+      "email": "Email",
+      "phone": "Telepon"
+    },
+    "batches": {
+      "title": "Batch",
+      "addTitle": "Terima batch",
+      "medicine": "Obat",
+      "supplier": "Pemasok",
+      "supplierNone": "— tidak ada —",
+      "batchNumber": "No. batch",
+      "expiry": "Tanggal kedaluwarsa",
+      "received": "Diterima pada",
+      "costPerUnit": "Harga modal / unit (IDR)",
+      "initialQty": "Jumlah awal",
+      "qty": "Qty",
+      "cost": "Modal",
+      "receive": "Terima",
+      "expired": "kedaluwarsa",
+      "selectMedicine": "— pilih —"
+    },
+    "movements": {
+      "title": "Mutasi stok",
+      "recordTitle": "Catat mutasi (penyesuaian / write-off)",
+      "filterByBatch": "Saring per batch:",
+      "filterAll": "— semua —",
+      "when": "Waktu",
+      "batch": "Batch",
+      "type": "Jenis",
+      "qty": "Qty (± int)",
+      "reason": "Alasan",
+      "record": "Catat",
+      "types": {
+        "purchase": "Pembelian",
+        "sale": "Penjualan",
+        "adjustment": "Penyesuaian",
+        "writeOff": "Write-off",
+        "unspecified": "—"
+      }
+    }
+  },
+  "errors": {
+    "generic": "Terjadi kesalahan.",
+    "tryAgain": "Coba lagi"
+  }
+}

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package inventory_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1";
+
+enum MovementType {
+  MOVEMENT_TYPE_UNSPECIFIED = 0;
+  MOVEMENT_TYPE_PURCHASE = 1;
+  MOVEMENT_TYPE_SALE = 2;
+  MOVEMENT_TYPE_ADJUSTMENT = 3;
+  MOVEMENT_TYPE_WRITE_OFF = 4;
+}
+
+message StockMovement {
+  string id = 1;
+  string batch_id = 2;
+  int32 qty = 3;
+  MovementType type = 4;
+  string reason = 5;
+  string user_id = 6;
+  int64 created_at = 7;
+}
+
+message StockLevel {
+  string batch_id = 1;
+  string medicine_id = 2;
+  string expiry_date = 3;
+  int64 current_quantity = 4;
+}
+
+service StockMovementService {
+  rpc ListMovements(ListMovementsRequest) returns (ListMovementsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc RecordMovement(RecordMovementRequest) returns (RecordMovementResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetStockLevels(GetStockLevelsRequest) returns (GetStockLevelsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+}
+
+message ListMovementsRequest {
+  string batch_id = 1;
+  MovementType type = 2;
+}
+message ListMovementsResponse {
+  repeated StockMovement movements = 1;
+}
+
+message RecordMovementRequest {
+  string batch_id = 1;
+  int32 qty = 2;
+  MovementType type = 3;
+  string reason = 4;
+}
+message RecordMovementResponse { StockMovement movement = 1; }
+
+message GetStockLevelsRequest {
+  string medicine_id = 1;
+}
+message GetStockLevelsResponse {
+  repeated StockLevel levels = 1;
+}

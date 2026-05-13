@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package inventory_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1";
+
+message Batch {
+  string id = 1;
+  string medicine_id = 2;
+  string supplier_id = 3;
+  string batch_number = 4;
+  string expiry_date = 5;
+  int64 cost_price = 6;
+  string received_at = 7;
+  int64 current_quantity = 8;
+  int64 created_at = 9;
+}
+
+service BatchService {
+  rpc ListBatches(ListBatchesRequest) returns (ListBatchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UpdateBatch(UpdateBatchRequest) returns (UpdateBatchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListBatchesRequest {
+  string medicine_id = 1;
+  bool only_in_stock = 2;
+}
+message ListBatchesResponse {
+  repeated Batch batches = 1;
+}
+
+message GetBatchRequest { string id = 1; }
+message GetBatchResponse { Batch batch = 1; }
+
+message CreateBatchRequest {
+  string medicine_id = 1;
+  string supplier_id = 2;
+  string batch_number = 3;
+  string expiry_date = 4;
+  int64 cost_price = 5;
+  string received_at = 6;
+  int64 initial_quantity = 7;
+}
+message CreateBatchResponse { Batch batch = 1; }
+
+message UpdateBatchRequest {
+  string id = 1;
+  string supplier_id = 2;
+  string batch_number = 3;
+  string expiry_date = 4;
+  int64 cost_price = 5;
+  string received_at = 6;
+}
+message UpdateBatchResponse { Batch batch = 1; }

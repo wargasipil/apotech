@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package health_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/health_iface/v1;healthifacev1";
+
+service HealthService {
+  rpc Ping(PingRequest) returns (PingResponse) {
+    option (auth_iface.v1.public) = true;
+  }
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string status = 1;
+  string db = 2;
+}

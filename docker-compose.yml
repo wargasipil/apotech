@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: apotech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apotech
+      POSTGRES_USER: apotech
+      POSTGRES_PASSWORD: apotech
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql
+
+
+
