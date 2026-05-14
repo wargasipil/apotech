@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package customer_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/customer_iface/v1;customerifacev1";
+
+message Customer {
+  string id = 1;
+  string name = 2;
+  string phone = 3;
+  string bpjs_no = 4;
+  string notes = 5;
+  bool active = 6;
+  int64 created_at = 7;
+}
+
+service CustomerService {
+  rpc ListCustomers(ListCustomersRequest) returns (ListCustomersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SearchCustomers(SearchCustomersRequest) returns (SearchCustomersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc UpdateCustomer(UpdateCustomerRequest) returns (UpdateCustomerResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ArchiveCustomer(ArchiveCustomerRequest) returns (ArchiveCustomerResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListCustomersRequest {
+  bool include_inactive = 1;
+}
+message ListCustomersResponse {
+  repeated Customer customers = 1;
+}
+
+message GetCustomerRequest { string id = 1; }
+message GetCustomerResponse { Customer customer = 1; }
+
+message SearchCustomersRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+message SearchCustomersResponse {
+  repeated Customer customers = 1;
+}
+
+message CreateCustomerRequest {
+  string name = 1;
+  string phone = 2;
+  string bpjs_no = 3;
+  string notes = 4;
+}
+message CreateCustomerResponse { Customer customer = 1; }
+
+message UpdateCustomerRequest {
+  string id = 1;
+  string name = 2;
+  string phone = 3;
+  string bpjs_no = 4;
+  string notes = 5;
+}
+message UpdateCustomerResponse { Customer customer = 1; }
+
+message ArchiveCustomerRequest { string id = 1; }
+message ArchiveCustomerResponse { Customer customer = 1; }

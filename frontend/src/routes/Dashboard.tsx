@@ -1,12 +1,11 @@
-import { Box, Button, Code, Stack, Text } from "@chakra-ui/react";
-import { useMutation } from "@tanstack/react-query";
+import { Box, Grid, Heading, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import PageHeader from "../components/PageHeader";
 import { Role } from "../gen/auth_iface/v1/policy_pb";
-import { healthClient } from "../lib/clients";
+import { formatMoney } from "../lib/format";
 import { useAuth } from "../lib/auth";
-import { toast } from "../lib/toaster";
+import { useTodaySnapshotQuery } from "../queries/sales";
 
 function roleKey(role: Role): string {
   switch (role) {
@@ -24,12 +23,7 @@ function roleKey(role: Role): string {
 export default function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
-
-  const ping = useMutation({
-    mutationFn: () => healthClient.ping({}),
-    onError: (err) => toast.fromError(err),
-    meta: { silentError: true },
-  });
+  const snapQ = useTodaySnapshotQuery();
 
   return (
     <Box>
@@ -42,23 +36,39 @@ export default function Dashboard() {
               )})`
             : undefined
         }
-        actions={
-          <Button colorPalette="blue" onClick={() => ping.mutate()} loading={ping.isPending}>
-            {t("dashboard.pingApi")}
-          </Button>
-        }
       />
-      <Stack gap={4} maxW="lg">
-        {ping.data && (
-          <Code as="pre" p={3} whiteSpace="pre-wrap" bg="bg.muted">
-            {JSON.stringify({ status: ping.data.status, db: ping.data.db }, null, 2)}
-          </Code>
-        )}
-        {!ping.data && (
-          <Text color="fg.muted" fontSize="sm">
-            Phase 2 inventory is live · POS phase next.
-          </Text>
-        )}
+
+      <Heading size="md" mb={3}>
+        {t("pos.dashboardTitle")}
+      </Heading>
+      <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4}>
+        <Tile
+          label={t("pos.dashboardRevenue")}
+          value={formatMoney(Number(snapQ.data?.revenue ?? 0n))}
+        />
+        <Tile
+          label={t("pos.dashboardSales")}
+          value={String(snapQ.data?.saleCount ?? 0n)}
+        />
+        <Tile
+          label={t("pos.dashboardItems")}
+          value={String(snapQ.data?.itemsSold ?? 0n)}
+        />
+      </Grid>
+    </Box>
+  );
+}
+
+function Tile({ label, value }: { label: string; value: string }) {
+  return (
+    <Box bg="bg.subtle" borderWidth="1px" borderRadius="lg" p={5}>
+      <Stack gap={1}>
+        <Text fontSize="sm" color="fg.muted">
+          {label}
+        </Text>
+        <Text fontSize="2xl" fontWeight="semibold" fontFamily="mono">
+          {value}
+        </Text>
       </Stack>
     </Box>
   );

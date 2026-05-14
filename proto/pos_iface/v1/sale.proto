@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package pos_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/pos_iface/v1;posifacev1";
+
+enum PaymentSource {
+  PAYMENT_SOURCE_UNSPECIFIED = 0;
+  PAYMENT_SOURCE_CASH = 1;
+  PAYMENT_SOURCE_BPJS = 2;
+  PAYMENT_SOURCE_INSURANCE_OTHER = 3;
+}
+
+enum SaleStatus {
+  SALE_STATUS_UNSPECIFIED = 0;
+  SALE_STATUS_DRAFT = 1;
+  SALE_STATUS_COMPLETED = 2;
+  SALE_STATUS_VOIDED = 3;
+}
+
+message Sale {
+  string id = 1;
+  string sale_no = 2;
+  string customer_id = 3;
+  string cashier_user_id = 4;
+  PaymentSource payment_source = 5;
+  string tax_invoice_no = 6;
+  int64 subtotal = 7;
+  int64 cart_discount = 8;
+  int64 total = 9;
+  int64 paid_amount = 10;
+  SaleStatus status = 11;
+  string branch_id = 12;
+  int64 created_at = 13;
+  int64 completed_at = 14;
+  repeated SaleItem items = 15;
+}
+
+message SaleItem {
+  string id = 1;
+  string sale_id = 2;
+  string medicine_id = 3;
+  string batch_id = 4;
+  int32 qty = 5;
+  int64 unit_price_snapshot = 6;
+  int64 line_discount = 7;
+  int64 line_total = 8;
+}
+
+service SaleService {
+  rpc StartSale(StartSaleRequest) returns (StartSaleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetSale(GetSaleRequest) returns (GetSaleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc ListSales(ListSalesRequest) returns (ListSalesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc AddItem(AddItemRequest) returns (AddItemResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SetItemQuantity(SetItemQuantityRequest) returns (SetItemQuantityResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc RemoveItem(RemoveItemRequest) returns (RemoveItemResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SetSaleCustomer(SetSaleCustomerRequest) returns (SetSaleCustomerResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CompleteSale(CompleteSaleRequest) returns (CompleteSaleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc VoidSale(VoidSaleRequest) returns (VoidSaleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetTodaySnapshot(GetTodaySnapshotRequest) returns (GetTodaySnapshotResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+}
+
+message StartSaleRequest {}
+message StartSaleResponse { Sale sale = 1; }
+
+message GetSaleRequest { string id = 1; }
+message GetSaleResponse { Sale sale = 1; }
+
+message ListSalesRequest {
+  int64 from_unix = 1;
+  int64 to_unix = 2;
+  SaleStatus status = 3;
+  int32 limit = 4;
+}
+message ListSalesResponse {
+  repeated Sale sales = 1;
+}
+
+message AddItemRequest {
+  string sale_id = 1;
+  string medicine_id = 2;
+  int32 qty = 3;
+}
+message AddItemResponse { Sale sale = 1; }
+
+message SetItemQuantityRequest {
+  string sale_id = 1;
+  string item_id = 2;
+  int32 qty = 3;
+}
+message SetItemQuantityResponse { Sale sale = 1; }
+
+message RemoveItemRequest {
+  string sale_id = 1;
+  string item_id = 2;
+}
+message RemoveItemResponse { Sale sale = 1; }
+
+message SetSaleCustomerRequest {
+  string sale_id = 1;
+  string customer_id = 2;
+}
+message SetSaleCustomerResponse { Sale sale = 1; }
+
+message CompleteSaleRequest {
+  string sale_id = 1;
+  PaymentSource payment_source = 2;
+  int64 paid_amount = 3;
+}
+message CompleteSaleResponse { Sale sale = 1; }
+
+message VoidSaleRequest {
+  string sale_id = 1;
+}
+message VoidSaleResponse { Sale sale = 1; }
+
+message GetTodaySnapshotRequest {}
+message GetTodaySnapshotResponse {
+  int64 revenue = 1;
+  int64 sale_count = 2;
+  int64 items_sold = 3;
+  string top_medicine_id = 4;
+  int64 top_medicine_qty = 5;
+}

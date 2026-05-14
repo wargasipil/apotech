@@ -18,7 +18,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./routes/Login";
 import Dashboard from "./routes/Dashboard";
 import Users from "./routes/Users";
+import Customers from "./routes/Customers";
 import Inventory from "./routes/Inventory";
+import Pos from "./routes/Pos";
 import Medicines from "./routes/inventory/Medicines";
 import Suppliers from "./routes/inventory/Suppliers";
 import Batches from "./routes/inventory/Batches";
@@ -33,11 +35,18 @@ const router = createBrowserRouter([
       { path: "login", element: <Login /> },
       {
         element: <ProtectedRoute />,
-        children: [{ index: true, element: <Dashboard /> }],
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: "pos", element: <Pos /> },
+        ],
       },
       {
         element: <ProtectedRoute requiredRole={Role.OWNER} />,
         children: [{ path: "users", element: <Users /> }],
+      },
+      {
+        element: <ProtectedRoute requiredRoles={[Role.OWNER, Role.PHARMACIST, Role.CASHIER]} />,
+        children: [{ path: "customers", element: <Customers /> }],
       },
       {
         element: <ProtectedRoute requiredRoles={[Role.OWNER, Role.PHARMACIST]} />,

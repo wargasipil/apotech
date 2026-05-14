@@ -14,12 +14,13 @@ import (
 )
 
 type Auth struct {
-	db     *gorm.DB
-	issuer *auth.Issuer
+	db      *gorm.DB
+	access  *auth.Issuer
+	refresh *auth.RefreshIssuer
 }
 
-func NewAuth(db *gorm.DB, issuer *auth.Issuer) *Auth {
-	return &Auth{db: db, issuer: issuer}
+func NewAuth(db *gorm.DB, access *auth.Issuer, refresh *auth.RefreshIssuer) *Auth {
+	return &Auth{db: db, access: access, refresh: refresh}
 }
 
 func (a *Auth) Login(
@@ -46,16 +47,56 @@ func (a *Auth) Login(
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
-	token, exp, err := a.issuer.Issue(user.ID, user.Role)
+	accessTok, accessExp, err := a.access.Issue(user.ID, user.Role)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	refreshTok, refreshExp, err := a.refresh.Mint(ctx, user.ID, nil, nil, req.Header().Get("User-Agent"))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(&userifacev1.LoginResponse{
-		Token:     token,
-		User:      toProto(&user),
-		ExpiresAt: exp.Unix(),
+		AccessToken:      accessTok,
+		RefreshToken:     refreshTok,
+		User:             toProto(&user),
+		AccessExpiresAt:  accessExp.Unix(),
+		RefreshExpiresAt: refreshExp.Unix(),
 	}), nil
+}
+
+func (a *Auth) Refresh(
+	ctx context.Context,
+	req *connect.Request[userifacev1.RefreshRequest],
+) (*connect.Response[userifacev1.RefreshResponse], error) {
+	newRaw, newExp, userID, role, err := a.refresh.Rotate(ctx, req.Msg.RefreshToken, req.Header().Get("User-Agent"))
+	if err != nil {
+		return nil, err
+	}
+
+	accessTok, accessExp, err := a.access.Issue(userID, role)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&userifacev1.RefreshResponse{
+		AccessToken:      accessTok,
+		RefreshToken:     newRaw,
+		AccessExpiresAt:  accessExp.Unix(),
+		RefreshExpiresAt: newExp.Unix(),
+	}), nil
+}
+
+func (a *Auth) Logout(
+	ctx context.Context,
+	req *connect.Request[userifacev1.LogoutRequest],
+) (*connect.Response[userifacev1.LogoutResponse], error) {
+	// Best-effort: unknown / already-revoked tokens succeed silently.
+	if err := a.refresh.Revoke(ctx, req.Msg.RefreshToken); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&userifacev1.LogoutResponse{}), nil
 }
 
 func (a *Auth) Me(

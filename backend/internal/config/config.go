@@ -22,8 +22,9 @@ type Database struct {
 }
 
 type Auth struct {
-	JWTSecret string        `yaml:"jwt_secret"`
-	TokenTTL  time.Duration `yaml:"token_ttl"`
+	JWTSecret       string        `yaml:"jwt_secret"`
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
 }
 
 type Bootstrap struct {

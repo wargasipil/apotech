@@ -8,9 +8,10 @@ import AppShell from "./components/AppShell";
 // this component. Login is rendered bare (no shell, no auth context required).
 export default function App() {
   const location = useLocation();
-  const isLogin = location.pathname.startsWith("/login");
+  const isBare =
+    location.pathname.startsWith("/login") || location.pathname.startsWith("/pos");
 
-  if (isLogin) {
+  if (isBare) {
     return (
       <Box minH="100vh" bg="bg">
         <Outlet />

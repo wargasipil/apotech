@@ -55,19 +55,29 @@ export class LoginRequest extends Message<LoginRequest> {
  */
 export class LoginResponse extends Message<LoginResponse> {
   /**
-   * @generated from field: string token = 1;
+   * @generated from field: string access_token = 1;
    */
-  token = "";
+  accessToken = "";
 
   /**
-   * @generated from field: user_iface.v1.User user = 2;
+   * @generated from field: string refresh_token = 2;
+   */
+  refreshToken = "";
+
+  /**
+   * @generated from field: user_iface.v1.User user = 3;
    */
   user?: User;
 
   /**
-   * @generated from field: int64 expires_at = 3;
+   * @generated from field: int64 access_expires_at = 4;
    */
-  expiresAt = protoInt64.zero;
+  accessExpiresAt = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 refresh_expires_at = 5;
+   */
+  refreshExpiresAt = protoInt64.zero;
 
   constructor(data?: PartialMessage<LoginResponse>) {
     super();
@@ -77,9 +87,11 @@ export class LoginResponse extends Message<LoginResponse> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "user_iface.v1.LoginResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "user", kind: "message", T: User },
-    { no: 3, name: "expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 1, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "user", kind: "message", T: User },
+    { no: 4, name: "access_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "refresh_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LoginResponse {
@@ -96,6 +108,166 @@ export class LoginResponse extends Message<LoginResponse> {
 
   static equals(a: LoginResponse | PlainMessage<LoginResponse> | undefined, b: LoginResponse | PlainMessage<LoginResponse> | undefined): boolean {
     return proto3.util.equals(LoginResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.RefreshRequest
+ */
+export class RefreshRequest extends Message<RefreshRequest> {
+  /**
+   * @generated from field: string refresh_token = 1;
+   */
+  refreshToken = "";
+
+  constructor(data?: PartialMessage<RefreshRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.RefreshRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RefreshRequest {
+    return new RefreshRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RefreshRequest {
+    return new RefreshRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RefreshRequest {
+    return new RefreshRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RefreshRequest | PlainMessage<RefreshRequest> | undefined, b: RefreshRequest | PlainMessage<RefreshRequest> | undefined): boolean {
+    return proto3.util.equals(RefreshRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.RefreshResponse
+ */
+export class RefreshResponse extends Message<RefreshResponse> {
+  /**
+   * @generated from field: string access_token = 1;
+   */
+  accessToken = "";
+
+  /**
+   * @generated from field: string refresh_token = 2;
+   */
+  refreshToken = "";
+
+  /**
+   * @generated from field: int64 access_expires_at = 3;
+   */
+  accessExpiresAt = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 refresh_expires_at = 4;
+   */
+  refreshExpiresAt = protoInt64.zero;
+
+  constructor(data?: PartialMessage<RefreshResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.RefreshResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "access_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "refresh_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RefreshResponse {
+    return new RefreshResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RefreshResponse {
+    return new RefreshResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RefreshResponse {
+    return new RefreshResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RefreshResponse | PlainMessage<RefreshResponse> | undefined, b: RefreshResponse | PlainMessage<RefreshResponse> | undefined): boolean {
+    return proto3.util.equals(RefreshResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.LogoutRequest
+ */
+export class LogoutRequest extends Message<LogoutRequest> {
+  /**
+   * @generated from field: string refresh_token = 1;
+   */
+  refreshToken = "";
+
+  constructor(data?: PartialMessage<LogoutRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.LogoutRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutRequest {
+    return new LogoutRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogoutRequest | PlainMessage<LogoutRequest> | undefined, b: LogoutRequest | PlainMessage<LogoutRequest> | undefined): boolean {
+    return proto3.util.equals(LogoutRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.LogoutResponse
+ */
+export class LogoutResponse extends Message<LogoutResponse> {
+  constructor(data?: PartialMessage<LogoutResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.LogoutResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutResponse {
+    return new LogoutResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LogoutResponse | PlainMessage<LogoutResponse> | undefined, b: LogoutResponse | PlainMessage<LogoutResponse> | undefined): boolean {
+    return proto3.util.equals(LogoutResponse, a, b);
   }
 }
 

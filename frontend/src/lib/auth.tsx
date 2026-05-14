@@ -10,13 +10,13 @@ import {
 
 import { User } from "../gen/user_iface/v1/users_pb";
 import { authClient } from "./clients";
-import { TOKEN_KEY } from "./transport";
+import { ACCESS_KEY, REFRESH_KEY } from "./transport";
 
 type AuthState = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -24,11 +24,11 @@ const AuthCtx = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(
-    () => localStorage.getItem(TOKEN_KEY) !== null,
+    () => localStorage.getItem(ACCESS_KEY) !== null,
   );
 
   useEffect(() => {
-    if (localStorage.getItem(TOKEN_KEY) === null) {
+    if (localStorage.getItem(ACCESS_KEY) === null) {
       setLoading(false);
       return;
     }
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        localStorage.removeItem(TOKEN_KEY);
+        // Transport already cleared tokens on refresh failure.
         setUser(null);
       })
       .finally(() => {
@@ -55,13 +55,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await authClient.login({ email, password });
-    if (!res.token) throw new Error("no token in response");
-    localStorage.setItem(TOKEN_KEY, res.token);
+    if (!res.accessToken || !res.refreshToken) {
+      throw new Error("no token in response");
+    }
+    localStorage.setItem(ACCESS_KEY, res.accessToken);
+    localStorage.setItem(REFRESH_KEY, res.refreshToken);
     setUser(res.user ?? null);
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY) ?? "";
+    if (refreshToken) {
+      try {
+        await authClient.logout({ refreshToken });
+      } catch {
+        // best-effort
+      }
+    }
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     setUser(null);
   }, []);
 

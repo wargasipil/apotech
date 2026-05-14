@@ -4,8 +4,29 @@ Living doc for Claude. Update this file whenever the stack, layout, or conventio
 
 ## Project overview
 - **What**: Management app for an apotek (pharmacy) store.
-- **Current phase**: Phase 2 — Inventory foundation: suppliers, medicines (with full price-version table), batches/expiry, stock-movement ledger. Sits behind the Phase 1 auth gate.
-- **Next phase**: POS / sales screen (cashier rings up sales, FEFO consumption rule fires, stock decrements via `RecordMovement(type=SALE)`).
+- **Current phase**: Phase 3 shipped (POS / Sales: customers, sales, FEFO consumption, split-view cashier UI, today's-snapshot dashboard). Receipt rendering is on-screen only; thermal printer lands in Phase 7. Line/cart discounts deferred to a follow-up.
+- **Next phase**: Phase 4 — Analytics.
+
+## Roadmap
+
+| # | Phase | Status |
+|---|---|---|
+| 0 | Skeleton (Go + ConnectRPC + Postgres + React/Chakra + Buf + goose + Makefile) | ✓ shipped |
+| 1 | Auth + user/role management (JWT, proto-declared role guards) | ✓ shipped |
+| 2 | Inventory foundation (suppliers, medicines + price-version table, batches, stock ledger) | ✓ shipped |
+| — | Frontend foundation refactor (TanStack Query + RHF + Zod + i18n + Chakra `defaultSystem`) | ✓ shipped |
+| — | Refresh tokens (rotation + reuse detection; access 1h, refresh 30d) | ✓ shipped |
+| 3 | POS / Sales (customers, sales, FEFO consumption, split-view cashier UI, on-screen receipt) | ✓ shipped |
+| 4 | Analytics (sales / inventory / margin via Recharts; live Postgres queries) | 🚧 next |
+| 5 | Purchasing (purchase orders, supplier ledger, formal receive flow) | 📋 |
+| 6 | Prescriptions (Rx validation tied to a Sale, customer-linked) | 📋 |
+| 7 | Indonesia integrations (ESC/POS thermal, e-Faktur, BPJS Kesehatan) | 📋 |
+| 8 | Multi-branch (promote `branch_id` from placeholder to first-class) | 📋 |
+| 9 | Production hardening (password reset, rate limit, audit log, backups, deploy) | 📋 |
+
+**Recommended sequence**: 3 → 7-printer → 4 → 5 → 6 → 7-eFaktur → 7-BPJS → 8 → 9.
+
+Each phase's full scope, schema, RPC list, and verification plan lives in the per-user plan file (`~/.claude/plans/…`) when it becomes the active task; only this high-level table lives here. **Update this table at the start of every phase (move 🚧 pointer) and at the end (flip status to ✓ shipped).**
 
 ## Stack
 | Area | Choice |
@@ -36,8 +57,10 @@ apotech/
 ├── proto/
 │   ├── auth_iface/v1/      # Role enum + MethodOptions extensions (no services)
 │   ├── health_iface/v1/    # HealthService
-│   ├── user_iface/v1/      # User + UserService + AuthService (login/me)
-│   └── inventory_iface/v1/ # Supplier, Medicine (+ MedicinePrice), Batch, StockMovement
+│   ├── user_iface/v1/      # User + UserService + AuthService (login/refresh/logout/me)
+│   ├── inventory_iface/v1/ # Supplier, Medicine (+ MedicinePrice), Batch, StockMovement
+│   ├── customer_iface/v1/  # Customer + CustomerService
+│   └── pos_iface/v1/       # Sale, SaleItem, PaymentSource + SaleService (FEFO consumption)
 ├── buf.yaml                # buf v2 module config (root)
 ├── buf.gen.yaml            # buf v2 codegen config (root)
 ├── backend/                # Go service
@@ -158,7 +181,9 @@ make web             # Vite dev server on :5173
 
 ## Auth model
 - **Roles**: protobuf enum `auth_iface.v1.Role` — `ROLE_OWNER`, `ROLE_PHARMACIST`, `ROLE_CASHIER`. The DB stores the stripped string `"OWNER"|"PHARMACIST"|"CASHIER"` in `users.role` (see `roleEnumToString` in [backend/internal/auth/policy.go](backend/internal/auth/policy.go) and `roleFromProto`/`roleToProto` in [backend/internal/service/users.go](backend/internal/service/users.go)). Keeps rows human-readable in psql.
-- **Login**: `AuthService.Login` returns a JWT (HS256, signed with `cfg.Auth.JWTSecret`). Client puts it in `Authorization: Bearer <jwt>`.
+- **Login**: `AuthService.Login` returns an **access JWT** (HS256, signed with `cfg.Auth.JWTSecret`, default TTL `1h`) and an **opaque refresh token** (random 256-bit hex string). The client stores access in `localStorage["apotech_access_token"]` and refresh in `localStorage["apotech_refresh_token"]`. The access token is sent in `Authorization: Bearer <jwt>` on every request.
+- **Refresh tokens**: random 256-bit opaque strings, stored **hashed** (SHA-256) in the `refresh_tokens` table. Every `AuthService.Refresh` call rotates: the presented token is marked `revoked_at = now()` and a new child token is issued with the same `family_id` and `parent_id` linking back. If a **revoked-but-not-expired** token is ever replayed, **the entire family is revoked** — visible signal of theft; the legitimate user gets logged out and re-prompts. `AuthService.Logout` revokes the family proactively. Default refresh TTL: `30d` (`auth.refresh_token_ttl` in `config.yaml`).
+- **Frontend silent refresh**: `lib/transport.ts` has an interceptor that, on `Unauthenticated` from any RPC, calls `AuthService.Refresh` once (singleton in-flight promise so concurrent requests don't double-refresh), swaps both tokens in localStorage, and retries the original request. `AuthService.Refresh` itself is exempt to avoid infinite recursion.
 - **Policy is declared in proto, not Go.** Each rpc carries one of:
   - `option (auth_iface.v1.public) = true;` — no auth (Login, Ping)
   - `option (auth_iface.v1.allowed_roles) = ROLE_xxx;` (repeated for multi-role) — authn + role-in-set
@@ -168,8 +193,20 @@ make web             # Vite dev server on :5173
 - **Handlers must NOT call role-check helpers.** They use `auth.MustPrincipal(ctx)` only for row-level decisions (e.g. `ChangePassword` self-vs-other). Adding a role check inside a handler is a code smell — the policy belongs in the proto.
 - **Default policy**: a new RPC with no annotation is authenticated-only. To open it up you must explicitly mark `public = true`. Safe failure mode for forgotten annotations.
 - **Bootstrap owner**: on every boot, `Users.EnsureBootstrapOwner` upserts the user described by `cfg.Bootstrap.owner_email/owner_password`. Empty email → skip. Changing the password in `config.yaml` rotates it on next restart.
-- **Frontend token**: stored in `localStorage["apotech_token"]`. Only `AuthProvider` ([lib/auth.tsx](frontend/src/lib/auth.tsx)) touches it; everything else uses `useAuth()`. The Connect transport interceptor ([lib/transport.ts](frontend/src/lib/transport.ts)) reads it fresh on each request, so logout takes effect without recreating the transport.
+- **Frontend tokens**: stored in `localStorage["apotech_access_token"]` and `localStorage["apotech_refresh_token"]`. Only `AuthProvider` ([lib/auth.tsx](frontend/src/lib/auth.tsx)) and the transport interceptor ([lib/transport.ts](frontend/src/lib/transport.ts)) touch them; everything else uses `useAuth()`. `logout()` is async — calls `AuthService.Logout` first (best-effort), then clears both keys.
 - **Route protection**: `<ProtectedRoute>` (with optional `requiredRole`) wraps router children. UI gating only — the backend `auth.NewInterceptor` is the real enforcement.
+
+## Sales model (Phase 3)
+- **Customers**: light table (`name`, `phone`, `bpjs_no`, `notes`, `active`). Sales may attach a customer or stay anonymous. CASHIER+PHARMACIST+OWNER can list/get/search/create; only OWNER+PHARMACIST can update/archive. `bpjs_no` column reserved for the BPJS integration phase.
+- **Sale state machine**: `DRAFT → COMPLETED` or `DRAFT → VOIDED`. `ON_HOLD` is intentionally not modeled. Only DRAFT sales accept item/customer mutations.
+- **Sale numbering**: human-friendly per-year format `INV-2026-0001`. A `sale_no_counters(year, last_seq)` row is incremented inside `CompleteSale`'s tx; the resulting `sale_no` is unique. UUID `id` is the primary key; `sale_no` is for human reference.
+- **Money snapshots**: `sale_items.unit_price_snapshot` captures the price at the moment the line was added (via `AddItem`). Historical reporting therefore survives `medicines.unit_price` edits made after the sale. `line_discount` and `cart_discount` columns are placeholders for the upcoming discount-service slice; currently always 0.
+- **FEFO consumption rule** lives inside `CompleteSale` (see [service/sales.go](backend/internal/service/sales.go)). For each cart line: load batches for that medicine ordered by `expiry_date ASC`, compute current per-batch stock from `stock_movements`, allocate greedily. If a line spans multiple batches, the placeholder `sale_items` row is deleted and one new row per consumed batch is inserted — each with its `batch_id` pinned and `stock_movements(type=SALE, qty=-N, sale_item_id=<that row>)` linked. This keeps the audit chain bidirectional: every SALE movement has a sale_item, every sale_item has a batch.
+- **Insufficient stock**: if any line can't be fully allocated, the whole `CompleteSale` tx rolls back with `FailedPrecondition`. The user retries after adjusting qty or restocking.
+- **`branch_id` placeholders**: added (nullable) to `sales`, `sale_items`, and `stock_movements` — all reserved for the multi-branch phase.
+- **Today's snapshot**: `SaleService.GetTodaySnapshot` aggregates revenue / sale count / items sold / top medicine for COMPLETED sales since `00:00 server-local`. The Dashboard page calls it and renders three tiles. Polls on each visit (`staleTime: 30s`).
+- **POS UI**: route `/pos`, available to CASHIER + PHARMACIST + OWNER. Opts out of `AppShell` — full-screen via the bare layout branch in [App.tsx](frontend/src/App.tsx). Split view: medicine search (~60%, auto-focused, barcode-scanner friendly — SKU-exact-match-on-Enter auto-adds), cart panel (~40%, qty inline-editable, payment radio, change calc). Keyboard shortcuts: **F2** search · **F4** customer · **F8** complete · **Esc** clear. Cart state lives in the backend `sales` row (DRAFT); the UI fetches/mutates via TanStack Query (no separate cart store).
+- **Receipt**: on-screen Chakra Dialog after CompleteSale. ESC/POS thermal printer wiring deferred to Phase 7.
 
 ## Inventory model
 - **Money**: `unit_price` (medicines) and `cost_price` (batches) are `BIGINT` storing the **minor currency unit**. For IDR (no subdivision) that's whole rupiah. Never floats. Frontend formats with `Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' })`.
@@ -181,18 +218,19 @@ make web             # Vite dev server on :5173
 ## Known gaps (not yet implemented)
 - No rate limiting / brute-force protection on `Login`.
 - No password reset / forgot-password flow.
-- No refresh tokens — clients must re-login when the JWT expires (`cfg.Auth.token_ttl`).
 - No audit log of admin actions (role changes, deactivations, price changes other than the dedicated `medicine_prices` history).
-- No FEFO consumption rule (deferred to POS phase).
+- No discounts in POS (line and cart discounts are schema-ready but the `DiscountService` proto + UI controls are deferred).
+- No returns / refunds flow.
 - No stocktake / reconciliation workflow.
-- No barcode scanning.
+- No barcode scanning hardware wiring (POS search input is scanner-friendly via SKU-exact-Enter, but no HID/serial layer).
+- No ESC/POS thermal-printer rendering (Phase 7).
+- Admin "force logout user" RPC (data model supports it via `refresh_tokens.user_id`; ship later).
 
 ## Out of scope (for the current phase)
 Do not invent these without an explicit user request:
-- POS / sales screen (next phase — plugs into `GetStockLevels` + `RecordMovement(type=SALE)`)
+- Discount controls in POS (line + cart discounts)
 - Prescription handling
-- Reports / dashboards
-- Multi-tenant / multi-branch
+- Multi-tenant / multi-branch (branch_id columns are placeholders only)
 - Production deployment, CI, Dockerfiles for app code
 
 ## Update policy
@@ -202,3 +240,5 @@ Update this file when any of the following changes:
 - A convention is introduced or changed.
 - A new service/proto package is added.
 - The "current phase" or scope changes.
+
+**Roadmap section is mandatory.** This file is the only place a fresh agent looking at the repo will learn what comes next. Keep the Roadmap table current: move the 🚧 pointer at the start of each phase; flip its row to ✓ shipped at the end. Per-phase implementation detail (schemas, RPC lists, file lists) lives in the per-user plan file, not here.

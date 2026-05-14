@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { LoginRequest, LoginResponse, MeRequest, MeResponse } from "./auth_pb.js";
+import { LoginRequest, LoginResponse, LogoutRequest, LogoutResponse, MeRequest, MeResponse, RefreshRequest, RefreshResponse } from "./auth_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -19,6 +19,24 @@ export const AuthService = {
       name: "Login",
       I: LoginRequest,
       O: LoginResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc user_iface.v1.AuthService.Refresh
+     */
+    refresh: {
+      name: "Refresh",
+      I: RefreshRequest,
+      O: RefreshResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc user_iface.v1.AuthService.Logout
+     */
+    logout: {
+      name: "Logout",
+      I: LogoutRequest,
+      O: LogoutResponse,
       kind: MethodKind.Unary,
     },
     /**

@@ -8,6 +8,7 @@ import {
   Package,
   Pill,
   ShoppingCart,
+  UserRound,
   Users as UsersIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,11 @@ function buildItems(t: (k: string) => string): NavItem[] {
       label: t("nav.inventory"),
       icon: Package,
       roles: [Role.OWNER, Role.PHARMACIST],
+    },
+    {
+      to: "/customers",
+      label: t("nav.customers"),
+      icon: UserRound,
     },
     {
       to: "/analytics",

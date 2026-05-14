@@ -11,7 +11,8 @@ database:
 
 auth:
   jwt_secret: change-me-to-a-long-random-string
-  token_ttl: 24h
+  access_token_ttl: 1h
+  refresh_token_ttl: 720h   # 30 days
 
 bootstrap:
   owner_email: owner@apotech.local
