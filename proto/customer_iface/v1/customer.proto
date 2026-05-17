@@ -14,6 +14,8 @@ message Customer {
   string notes = 5;
   bool active = 6;
   int64 created_at = 7;
+  string npwp = 8;      // 15-digit Indonesian tax ID, free-text formatted
+  string address = 9;
 }
 
 service CustomerService {
@@ -70,6 +72,8 @@ message CreateCustomerRequest {
   string phone = 2;
   string bpjs_no = 3;
   string notes = 4;
+  string npwp = 5;
+  string address = 6;
 }
 message CreateCustomerResponse { Customer customer = 1; }
 
@@ -79,6 +83,8 @@ message UpdateCustomerRequest {
   string phone = 3;
   string bpjs_no = 4;
   string notes = 5;
+  string npwp = 6;
+  string address = 7;
 }
 message UpdateCustomerResponse { Customer customer = 1; }
 

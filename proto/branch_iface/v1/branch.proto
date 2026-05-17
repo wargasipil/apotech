@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package branch_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/branch_iface/v1;branchifacev1";
+
+message Branch {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  string address = 4;
+  string phone = 5;
+  bool active = 6;
+  int64 created_at = 7;
+}
+
+// UserBranchMembership lists branches a user has access to. `is_default` marks
+// the branch the UI selects on login.
+message UserBranchMembership {
+  string user_id = 1;
+  string branch_id = 2;
+  bool is_default = 3;
+}
+
+service BranchService {
+  rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ArchiveBranch(ArchiveBranchRequest) returns (ArchiveBranchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+
+  // GrantBranchAccess / RevokeBranchAccess manage the user_branches join.
+  rpc GrantBranchAccess(GrantBranchAccessRequest) returns (GrantBranchAccessResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc RevokeBranchAccess(RevokeBranchAccessRequest) returns (RevokeBranchAccessResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ListUserBranches(ListUserBranchesRequest) returns (ListUserBranchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SetDefaultBranch(SetDefaultBranchRequest) returns (SetDefaultBranchResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+}
+
+message ListBranchesRequest { bool include_inactive = 1; }
+message ListBranchesResponse { repeated Branch branches = 1; }
+
+message CreateBranchRequest {
+  string code = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+}
+message CreateBranchResponse { Branch branch = 1; }
+
+message UpdateBranchRequest {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+}
+message UpdateBranchResponse { Branch branch = 1; }
+
+message ArchiveBranchRequest { string id = 1; }
+message ArchiveBranchResponse { Branch branch = 1; }
+
+message GrantBranchAccessRequest {
+  string user_id = 1;
+  string branch_id = 2;
+  bool is_default = 3;
+}
+message GrantBranchAccessResponse { UserBranchMembership membership = 1; }
+
+message RevokeBranchAccessRequest {
+  string user_id = 1;
+  string branch_id = 2;
+}
+message RevokeBranchAccessResponse {}
+
+message ListUserBranchesRequest {
+  // Empty user_id = self.
+  string user_id = 1;
+}
+message ListUserBranchesResponse {
+  repeated UserBranchMembership memberships = 1;
+  repeated Branch branches = 2;        // hydrated for convenience
+}
+
+message SetDefaultBranchRequest {
+  // user_id empty = self.
+  string user_id = 1;
+  string branch_id = 2;
+}
+message SetDefaultBranchResponse { UserBranchMembership membership = 1; }

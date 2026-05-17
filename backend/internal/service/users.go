@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -15,6 +19,8 @@ import (
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/model"
 )
+
+const passwordResetTTL = 24 * time.Hour
 
 const (
 	roleOwner      = "OWNER"
@@ -252,4 +258,101 @@ func roleToProto(s string) authifacev1.Role {
 	default:
 		return authifacev1.Role_ROLE_UNSPECIFIED
 	}
+}
+
+// ---------- Password reset ----------
+
+func (u *Users) IssuePasswordResetToken(
+	ctx context.Context,
+	req *connect.Request[userifacev1.IssuePasswordResetTokenRequest],
+) (*connect.Response[userifacev1.IssuePasswordResetTokenResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Msg.UserId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id required"))
+	}
+	var target model.User
+	if err := u.db.WithContext(ctx).Where("id = ?", req.Msg.UserId).First(&target).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	raw, hash, err := generateResetToken()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	exp := time.Now().Add(passwordResetTTL)
+	row := model.PasswordResetToken{
+		UserID:    target.ID,
+		TokenHash: hash,
+		IssuedBy:  caller.UserID,
+		ExpiresAt: exp,
+	}
+	if err := u.db.WithContext(ctx).Create(&row).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&userifacev1.IssuePasswordResetTokenResponse{
+		Token:     raw,
+		ExpiresAt: exp.Unix(),
+	}), nil
+}
+
+func (u *Users) RedeemPasswordResetToken(
+	ctx context.Context,
+	req *connect.Request[userifacev1.RedeemPasswordResetTokenRequest],
+) (*connect.Response[userifacev1.RedeemPasswordResetTokenResponse], error) {
+	if strings.TrimSpace(req.Msg.Token) == "" || len(req.Msg.NewPassword) < 8 {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("token and new_password (min 8 chars) required"))
+	}
+	hash := hashResetToken(req.Msg.Token)
+	err := u.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var row model.PasswordResetToken
+		if err := tx.Where("token_hash = ?", hash).First(&row).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return connect.NewError(connect.CodeUnauthenticated, errors.New("invalid token"))
+			}
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if row.UsedAt != nil {
+			return connect.NewError(connect.CodeUnauthenticated, errors.New("token already used"))
+		}
+		if time.Now().After(row.ExpiresAt) {
+			return connect.NewError(connect.CodeUnauthenticated, errors.New("token expired"))
+		}
+		newHash, err := auth.HashPassword(req.Msg.NewPassword)
+		if err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		now := time.Now()
+		if err := tx.Model(&model.User{}).Where("id = ?", row.UserID).
+			Update("password_hash", newHash).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if err := tx.Model(&row).Update("used_at", now).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	return connect.NewResponse(&userifacev1.RedeemPasswordResetTokenResponse{}), nil
+}
+
+func generateResetToken() (raw, hash string, err error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", err
+	}
+	raw = hex.EncodeToString(b)
+	return raw, hashResetToken(raw), nil
+}
+
+func hashResetToken(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
 }

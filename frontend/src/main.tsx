@@ -25,6 +25,19 @@ import Medicines from "./routes/inventory/Medicines";
 import Suppliers from "./routes/inventory/Suppliers";
 import Batches from "./routes/inventory/Batches";
 import Movements from "./routes/inventory/Movements";
+import Analytics from "./routes/Analytics";
+import SalesAnalytics from "./routes/analytics/Sales";
+import InventoryAnalytics from "./routes/analytics/Inventory";
+import MarginsAnalytics from "./routes/analytics/Margins";
+import Prescriptions from "./routes/Prescriptions";
+import Purchasing from "./routes/purchasing/Purchasing";
+import Tax from "./routes/Tax";
+import Bpjs from "./routes/Bpjs";
+import Branches from "./routes/Branches";
+import PurchaseOrdersList from "./routes/purchasing/PurchaseOrdersList";
+import SuppliersLedger from "./routes/purchasing/SuppliersLedger";
+import NewPurchaseOrder from "./routes/purchasing/NewPurchaseOrder";
+import PurchaseOrderDetail from "./routes/purchasing/PurchaseOrderDetail";
 import { Role } from "./gen/auth_iface/v1/policy_pb";
 
 const router = createBrowserRouter([
@@ -60,6 +73,37 @@ const router = createBrowserRouter([
               { path: "suppliers", element: <Suppliers /> },
               { path: "batches", element: <Batches /> },
               { path: "movements", element: <Movements /> },
+            ],
+          },
+          {
+            path: "analytics",
+            element: <Analytics />,
+            children: [
+              { index: true, element: <Navigate to="sales" replace /> },
+              { path: "sales", element: <SalesAnalytics /> },
+              { path: "inventory", element: <InventoryAnalytics /> },
+              { path: "margins", element: <MarginsAnalytics /> },
+            ],
+          },
+          {
+            path: "purchasing",
+            element: <Purchasing />,
+            children: [
+              { index: true, element: <Navigate to="all" replace /> },
+              { path: "all", element: <PurchaseOrdersList /> },
+              { path: "outstanding", element: <PurchaseOrdersList onlyOutstanding /> },
+              { path: "suppliers", element: <SuppliersLedger /> },
+              { path: "new", element: <NewPurchaseOrder /> },
+              { path: ":id", element: <PurchaseOrderDetail /> },
+            ],
+          },
+          { path: "prescriptions", element: <Prescriptions /> },
+          { path: "bpjs", element: <Bpjs /> },
+          {
+            element: <ProtectedRoute requiredRole={Role.OWNER} />,
+            children: [
+              { path: "tax", element: <Tax /> },
+              { path: "branches", element: <Branches /> },
             ],
           },
         ],

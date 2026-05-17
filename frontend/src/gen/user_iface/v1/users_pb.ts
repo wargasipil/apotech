@@ -474,3 +474,161 @@ export class ChangePasswordResponse extends Message<ChangePasswordResponse> {
   }
 }
 
+/**
+ * @generated from message user_iface.v1.IssuePasswordResetTokenRequest
+ */
+export class IssuePasswordResetTokenRequest extends Message<IssuePasswordResetTokenRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  constructor(data?: PartialMessage<IssuePasswordResetTokenRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.IssuePasswordResetTokenRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): IssuePasswordResetTokenRequest {
+    return new IssuePasswordResetTokenRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): IssuePasswordResetTokenRequest {
+    return new IssuePasswordResetTokenRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): IssuePasswordResetTokenRequest {
+    return new IssuePasswordResetTokenRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: IssuePasswordResetTokenRequest | PlainMessage<IssuePasswordResetTokenRequest> | undefined, b: IssuePasswordResetTokenRequest | PlainMessage<IssuePasswordResetTokenRequest> | undefined): boolean {
+    return proto3.util.equals(IssuePasswordResetTokenRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.IssuePasswordResetTokenResponse
+ */
+export class IssuePasswordResetTokenResponse extends Message<IssuePasswordResetTokenResponse> {
+  /**
+   * raw token — show once, hand off OOB
+   *
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  /**
+   * unix sec
+   *
+   * @generated from field: int64 expires_at = 2;
+   */
+  expiresAt = protoInt64.zero;
+
+  constructor(data?: PartialMessage<IssuePasswordResetTokenResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.IssuePasswordResetTokenResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): IssuePasswordResetTokenResponse {
+    return new IssuePasswordResetTokenResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): IssuePasswordResetTokenResponse {
+    return new IssuePasswordResetTokenResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): IssuePasswordResetTokenResponse {
+    return new IssuePasswordResetTokenResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: IssuePasswordResetTokenResponse | PlainMessage<IssuePasswordResetTokenResponse> | undefined, b: IssuePasswordResetTokenResponse | PlainMessage<IssuePasswordResetTokenResponse> | undefined): boolean {
+    return proto3.util.equals(IssuePasswordResetTokenResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.RedeemPasswordResetTokenRequest
+ */
+export class RedeemPasswordResetTokenRequest extends Message<RedeemPasswordResetTokenRequest> {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  /**
+   * @generated from field: string new_password = 2;
+   */
+  newPassword = "";
+
+  constructor(data?: PartialMessage<RedeemPasswordResetTokenRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.RedeemPasswordResetTokenRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "new_password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RedeemPasswordResetTokenRequest {
+    return new RedeemPasswordResetTokenRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RedeemPasswordResetTokenRequest {
+    return new RedeemPasswordResetTokenRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RedeemPasswordResetTokenRequest {
+    return new RedeemPasswordResetTokenRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RedeemPasswordResetTokenRequest | PlainMessage<RedeemPasswordResetTokenRequest> | undefined, b: RedeemPasswordResetTokenRequest | PlainMessage<RedeemPasswordResetTokenRequest> | undefined): boolean {
+    return proto3.util.equals(RedeemPasswordResetTokenRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.RedeemPasswordResetTokenResponse
+ */
+export class RedeemPasswordResetTokenResponse extends Message<RedeemPasswordResetTokenResponse> {
+  constructor(data?: PartialMessage<RedeemPasswordResetTokenResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.RedeemPasswordResetTokenResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RedeemPasswordResetTokenResponse {
+    return new RedeemPasswordResetTokenResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RedeemPasswordResetTokenResponse {
+    return new RedeemPasswordResetTokenResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RedeemPasswordResetTokenResponse {
+    return new RedeemPasswordResetTokenResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RedeemPasswordResetTokenResponse | PlainMessage<RedeemPasswordResetTokenResponse> | undefined, b: RedeemPasswordResetTokenResponse | PlainMessage<RedeemPasswordResetTokenResponse> | undefined): boolean {
+    return proto3.util.equals(RedeemPasswordResetTokenResponse, a, b);
+  }
+}
+

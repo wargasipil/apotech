@@ -1,0 +1,148 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic:
+            - img
+          - paragraph: Apotech
+        - generic:
+          - link:
+            - /url: /
+            - generic:
+              - img
+              - paragraph: Dashboard
+          - link:
+            - /url: /pos
+            - generic:
+              - img
+              - paragraph: POS
+          - link:
+            - /url: /inventory
+            - generic:
+              - img
+              - paragraph: Inventory
+          - link:
+            - /url: /purchasing
+            - generic:
+              - img
+              - paragraph: Purchasing
+          - link:
+            - /url: /customers
+            - generic:
+              - img
+              - paragraph: Customers
+          - link:
+            - /url: /prescriptions
+            - generic:
+              - img
+              - paragraph: Prescriptions
+          - link:
+            - /url: /analytics
+            - generic:
+              - img
+              - paragraph: Analytics
+          - link:
+            - /url: /tax
+            - generic:
+              - img
+              - paragraph: Tax
+          - link:
+            - /url: /bpjs
+            - generic:
+              - img
+              - paragraph: BPJS
+          - link:
+            - /url: /branches
+            - generic:
+              - img
+              - paragraph: Branches
+          - link:
+            - /url: /users
+            - generic:
+              - img
+              - paragraph: Users
+        - generic:
+          - generic:
+            - paragraph: Owner
+            - paragraph: owner@apotech.local
+          - button:
+            - img
+            - paragraph: Sign out
+          - button:
+            - img
+      - generic:
+        - banner:
+          - generic:
+            - generic:
+              - button:
+                - generic:
+                  - img
+                  - paragraph: ID
+              - button:
+                - img
+              - button:
+                - generic: O
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Customers
+              - generic:
+                - generic:
+                  - heading [level=2]: Customers
+                - generic:
+                  - button:
+                    - img
+                    - text: Add
+            - generic:
+              - generic:
+                - checkbox
+                - generic: Show archived
+            - table:
+              - rowgroup:
+                - row:
+                  - columnheader: Name
+                  - columnheader: Phone
+                  - columnheader: BPJS number
+                  - columnheader: Active
+                  - columnheader: Actions
+              - rowgroup:
+                - row:
+                  - cell:
+                    - paragraph: No results
+    - generic:
+      - generic:
+        - img
+      - button:
+        - img
+  - dialog [ref=e183]:
+    - generic [ref=e185]:
+      - heading "Add customer" [level=2] [ref=e186]
+      - button "close" [ref=e187] [cursor=pointer]:
+        - img [ref=e188]
+    - generic [ref=e194]:
+      - group [ref=e195]:
+        - generic [ref=e196]:
+          - text: Name
+          - generic [ref=e197]: "*"
+        - textbox "Name" [active] [ref=e198]
+      - group [ref=e199]:
+        - generic [ref=e200]: Phone
+        - textbox "Phone" [ref=e201]
+      - group [ref=e202]:
+        - generic [ref=e203]: BPJS number
+        - textbox "BPJS number" [ref=e204]
+      - group [ref=e205]:
+        - generic [ref=e206]: NPWP (tax ID)
+        - textbox "NPWP (tax ID)" [ref=e207]
+      - group [ref=e208]:
+        - generic [ref=e209]: Address
+        - textbox "Address" [ref=e210]
+      - group [ref=e211]:
+        - generic [ref=e212]: Notes
+        - textbox "Notes" [ref=e213]
+    - generic [ref=e216]:
+      - button "Cancel" [ref=e217] [cursor=pointer]
+      - button "Save" [ref=e218] [cursor=pointer]

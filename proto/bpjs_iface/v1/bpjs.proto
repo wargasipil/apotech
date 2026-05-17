@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package bpjs_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/bpjs_iface/v1;bpjsifacev1";
+
+// BPJS Kesehatan claim tracking. The real BPJS API integration is OUT OF SCOPE
+// (requires merchant credentials + Apotek-Vendor certification). This service
+// records claims locally; the SubmitClaim RPC is a stub that flips status from
+// DRAFT to SUBMITTED without actually calling BPJS. A future round can swap
+// the stub for a real HTTP client without changing this proto.
+message BpjsClaim {
+  string id = 1;
+  string sale_id = 2;
+  string customer_id = 3;
+  string bpjs_no = 4;
+  string status = 5;       // DRAFT | SUBMITTED | APPROVED | REJECTED | PAID
+  int64  amount = 6;
+  string external_ref = 7;
+  string note = 8;
+  int64  submitted_at = 9;
+  int64  resolved_at = 10;
+  int64  created_at = 11;
+}
+
+service BpjsClaimService {
+  rpc ListClaims(ListClaimsRequest) returns (ListClaimsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetClaim(GetClaimRequest) returns (GetClaimResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc CreateClaim(CreateClaimRequest) returns (CreateClaimResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  // SubmitClaim transitions DRAFT -> SUBMITTED. Today this is a no-op stub;
+  // wire a real BPJS HTTP client here when credentials are available.
+  rpc SubmitClaim(SubmitClaimRequest) returns (SubmitClaimResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  // ResolveClaim is the manual ack the user uses while the live API is absent:
+  // mark APPROVED / REJECTED / PAID with a note.
+  rpc ResolveClaim(ResolveClaimRequest) returns (ResolveClaimResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListClaimsRequest {
+  string status = 1;
+  string customer_id = 2;
+  int32 limit = 3;
+}
+message ListClaimsResponse {
+  repeated BpjsClaim claims = 1;
+}
+
+message GetClaimRequest { string id = 1; }
+message GetClaimResponse { BpjsClaim claim = 1; }
+
+message CreateClaimRequest {
+  string sale_id = 1;
+  string note = 2;
+}
+message CreateClaimResponse { BpjsClaim claim = 1; }
+
+message SubmitClaimRequest { string id = 1; }
+message SubmitClaimResponse { BpjsClaim claim = 1; }
+
+message ResolveClaimRequest {
+  string id = 1;
+  string status = 2;          // APPROVED | REJECTED | PAID
+  string external_ref = 3;    // optional
+  string note = 4;
+}
+message ResolveClaimResponse { BpjsClaim claim = 1; }

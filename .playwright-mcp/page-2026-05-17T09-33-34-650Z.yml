@@ -1,0 +1,103 @@
+- generic [ref=e2]:
+  - generic [ref=e128]:
+    - complementary [ref=e129]:
+      - generic [ref=e130]:
+        - img [ref=e132]
+        - paragraph [ref=e135]: Apotech
+      - generic [ref=e136]:
+        - link "Dashboard" [ref=e137] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e138]:
+            - img [ref=e139]
+            - paragraph [ref=e144]: Dashboard
+        - link "POS" [ref=e145] [cursor=pointer]:
+          - /url: /pos
+          - generic [ref=e146]:
+            - img [ref=e147]
+            - paragraph [ref=e151]: POS
+        - link "Inventory" [ref=e152] [cursor=pointer]:
+          - /url: /inventory
+          - generic [ref=e153]:
+            - img [ref=e154]
+            - paragraph [ref=e158]: Inventory
+        - link "Purchasing" [ref=e159] [cursor=pointer]:
+          - /url: /purchasing
+          - generic [ref=e160]:
+            - img [ref=e161]
+            - paragraph [ref=e166]: Purchasing
+        - link "Customers" [ref=e167] [cursor=pointer]:
+          - /url: /customers
+          - generic [ref=e168]:
+            - img [ref=e169]
+            - paragraph [ref=e172]: Customers
+        - link "Prescriptions" [ref=e173] [cursor=pointer]:
+          - /url: /prescriptions
+          - generic [ref=e174]:
+            - img [ref=e175]
+            - paragraph [ref=e178]: Prescriptions
+        - link "Analytics" [ref=e179] [cursor=pointer]:
+          - /url: /analytics
+          - generic [ref=e180]:
+            - img [ref=e181]
+            - paragraph [ref=e183]: Analytics
+        - link "Tax" [ref=e184] [cursor=pointer]:
+          - /url: /tax
+          - generic [ref=e185]:
+            - img [ref=e186]
+            - paragraph [ref=e190]: Tax
+        - link "BPJS" [ref=e191] [cursor=pointer]:
+          - /url: /bpjs
+          - generic [ref=e192]:
+            - img [ref=e193]
+            - paragraph [ref=e196]: BPJS
+        - link "Branches" [ref=e197] [cursor=pointer]:
+          - /url: /branches
+          - generic [ref=e198]:
+            - img [ref=e199]
+            - paragraph [ref=e203]: Branches
+        - link "Users" [ref=e204] [cursor=pointer]:
+          - /url: /users
+          - generic [ref=e205]:
+            - img [ref=e206]
+            - paragraph [ref=e211]: Users
+      - generic [ref=e212]:
+        - generic [ref=e213]:
+          - paragraph [ref=e214]: Owner
+          - paragraph [ref=e215]: owner@apotech.local
+        - button "Sign out" [ref=e216] [cursor=pointer]:
+          - img [ref=e217]
+          - paragraph [ref=e220]: Sign out
+        - button "toggle sidebar" [ref=e221] [cursor=pointer]:
+          - img [ref=e222]
+    - generic [ref=e225]:
+      - banner [ref=e226]:
+        - generic [ref=e228]:
+          - button "language" [ref=e229] [cursor=pointer]:
+            - generic [ref=e230]:
+              - img [ref=e231]
+              - paragraph [ref=e235]: ID
+          - button "toggle theme" [ref=e236] [cursor=pointer]:
+            - img [ref=e237]
+          - button "user menu" [ref=e239] [cursor=pointer]:
+            - generic [ref=e240]: O
+      - main [ref=e241]:
+        - generic [ref=e242]:
+          - generic [ref=e245]:
+            - heading "Welcome, Owner" [level=2] [ref=e246]
+            - paragraph [ref=e247]: Signed in as owner@apotech.local (Owner)
+          - heading "Today" [level=2] [ref=e248]
+          - generic [ref=e249]:
+            - generic [ref=e251]:
+              - paragraph [ref=e252]: Revenue today
+              - paragraph [ref=e253]: IDR 12,322
+            - generic [ref=e255]:
+              - paragraph [ref=e256]: Sales today
+              - paragraph [ref=e257]: "1"
+            - generic [ref=e259]:
+              - paragraph [ref=e260]: Items sold today
+              - paragraph [ref=e261]: "1"
+  - region "Notifications, top-end (alt+T)"
+  - generic [ref=e29]:
+    - img [ref=e31]
+    - button "Open Tanstack query devtools" [ref=e79] [cursor=pointer]:
+      - img [ref=e80]

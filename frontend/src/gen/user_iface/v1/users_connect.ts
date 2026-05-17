@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, ListUsersRequest, ListUsersResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
+import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, IssuePasswordResetTokenRequest, IssuePasswordResetTokenResponse, ListUsersRequest, ListUsersResponse, RedeemPasswordResetTokenRequest, RedeemPasswordResetTokenResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,28 @@ export const UserService = {
       name: "ChangePassword",
       I: ChangePasswordRequest,
       O: ChangePasswordResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Owner mints a one-shot reset token that the user can redeem to set a new
+     * password without knowing the old one. The raw token is returned to the
+     * owner (display in UI), who hands it to the user out-of-band. No SMTP wired.
+     *
+     * @generated from rpc user_iface.v1.UserService.IssuePasswordResetToken
+     */
+    issuePasswordResetToken: {
+      name: "IssuePasswordResetToken",
+      I: IssuePasswordResetTokenRequest,
+      O: IssuePasswordResetTokenResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc user_iface.v1.UserService.RedeemPasswordResetToken
+     */
+    redeemPasswordResetToken: {
+      name: "RedeemPasswordResetToken",
+      I: RedeemPasswordResetTokenRequest,
+      O: RedeemPasswordResetTokenResponse,
       kind: MethodKind.Unary,
     },
   }

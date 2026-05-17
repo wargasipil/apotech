@@ -1,14 +1,14 @@
 import {
+  Portal,
+  Stack,
   Toast,
   Toaster as ChakraToaster,
-  Stack,
   createToaster,
 } from "@chakra-ui/react";
 import { ConnectError } from "@connectrpc/connect";
 
 export const toaster = createToaster({
   placement: "top-end",
-  overlap: true,
   pauseOnPageIdle: true,
 });
 
@@ -39,17 +39,19 @@ export const toast = {
 
 export function AppToaster() {
   return (
-    <ChakraToaster toaster={toaster}>
-      {(t) => (
-        <Toast.Root>
-          <Toast.Indicator />
-          <Stack gap={0} flex="1" maxW="100%">
-            {t.title && <Toast.Title>{t.title}</Toast.Title>}
-            {t.description && <Toast.Description>{t.description}</Toast.Description>}
-          </Stack>
-          <Toast.CloseTrigger />
-        </Toast.Root>
-      )}
-    </ChakraToaster>
+    <Portal>
+      <ChakraToaster toaster={toaster} insetInline={{ mdDown: "4" }}>
+        {(t) => (
+          <Toast.Root width={{ md: "sm" }}>
+            <Toast.Indicator />
+            <Stack gap="1" flex="1" maxWidth="100%">
+              {t.title && <Toast.Title>{t.title}</Toast.Title>}
+              {t.description && <Toast.Description>{t.description}</Toast.Description>}
+            </Stack>
+            <Toast.CloseTrigger />
+          </Toast.Root>
+        )}
+      </ChakraToaster>
+    </Portal>
   );
 }

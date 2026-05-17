@@ -8,8 +8,9 @@ import (
 )
 
 type Principal struct {
-	UserID string
-	Role   string
+	UserID   string
+	Role     string
+	BranchID string // current branch, parsed from the X-Branch-Id request header
 }
 
 type ctxKey struct{}

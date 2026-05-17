@@ -45,6 +45,18 @@ export class Customer extends Message<Customer> {
    */
   createdAt = protoInt64.zero;
 
+  /**
+   * 15-digit Indonesian tax ID, free-text formatted
+   *
+   * @generated from field: string npwp = 8;
+   */
+  npwp = "";
+
+  /**
+   * @generated from field: string address = 9;
+   */
+  address = "";
+
   constructor(data?: PartialMessage<Customer>) {
     super();
     proto3.util.initPartial(data, this);
@@ -60,6 +72,8 @@ export class Customer extends Message<Customer> {
     { no: 5, name: "notes", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 7, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "npwp", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Customer {
@@ -331,6 +345,16 @@ export class CreateCustomerRequest extends Message<CreateCustomerRequest> {
    */
   notes = "";
 
+  /**
+   * @generated from field: string npwp = 5;
+   */
+  npwp = "";
+
+  /**
+   * @generated from field: string address = 6;
+   */
+  address = "";
+
   constructor(data?: PartialMessage<CreateCustomerRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -343,6 +367,8 @@ export class CreateCustomerRequest extends Message<CreateCustomerRequest> {
     { no: 2, name: "phone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "bpjs_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "notes", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "npwp", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateCustomerRequest {
@@ -428,6 +454,16 @@ export class UpdateCustomerRequest extends Message<UpdateCustomerRequest> {
    */
   notes = "";
 
+  /**
+   * @generated from field: string npwp = 6;
+   */
+  npwp = "";
+
+  /**
+   * @generated from field: string address = 7;
+   */
+  address = "";
+
   constructor(data?: PartialMessage<UpdateCustomerRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -441,6 +477,8 @@ export class UpdateCustomerRequest extends Message<UpdateCustomerRequest> {
     { no: 3, name: "phone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "bpjs_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "notes", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "npwp", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateCustomerRequest {

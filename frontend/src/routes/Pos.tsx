@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  Badge,
   Box,
   Button,
   Dialog,
@@ -19,7 +20,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { LogOut, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { FileText, LogOut, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -30,11 +31,15 @@ import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toaster";
 import { useAuth } from "../lib/auth";
 import { useMedicinesQuery } from "../queries/medicines";
+import { usePrescriptionsQuery } from "../queries/prescriptions";
 import { useStockLevelsQuery } from "../queries/stock";
 import { useCustomerSearchQuery } from "../queries/customers";
 import {
   useAddItemMutation,
+  useAttachPrescriptionMutation,
   useCompleteSaleMutation,
+  useDetachPrescriptionMutation,
+  usePrintReceiptMutation,
   useRemoveItemMutation,
   useSetItemQuantityMutation,
   useSetSaleCustomerMutation,
@@ -53,12 +58,15 @@ export default function Pos() {
   const setQty = useSetItemQuantityMutation();
   const removeItem = useRemoveItemMutation();
   const setSaleCustomer = useSetSaleCustomerMutation();
+  const attachRx = useAttachPrescriptionMutation();
+  const detachRx = useDetachPrescriptionMutation();
   const completeSale = useCompleteSaleMutation();
   const voidSale = useVoidSaleMutation();
 
   const [sale, setSale] = useState<Sale | null>(null);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
+  const [rxOpen, setRxOpen] = useState(false);
   const [paymentSource, setPaymentSource] = useState<PaymentSource>(
     PaymentSource.CASH,
   );
@@ -164,6 +172,9 @@ export default function Pos() {
       } else if (e.key === "F4") {
         e.preventDefault();
         setCustomerOpen(true);
+      } else if (e.key === "F5") {
+        e.preventDefault();
+        setRxOpen(true);
       } else if (e.key === "F8") {
         e.preventDefault();
         void doComplete();
@@ -228,6 +239,27 @@ export default function Pos() {
       if (res.sale) setSale(res.sale);
     } catch {
       /* */
+    }
+  };
+
+  const onAttachRx = async (prescriptionId: string) => {
+    if (!sale) return;
+    try {
+      const res = await attachRx.mutateAsync({ saleId: sale.id, prescriptionId });
+      if (res.sale) setSale(res.sale);
+      setRxOpen(false);
+    } catch {
+      /* toast handled globally */
+    }
+  };
+
+  const onDetachRx = async () => {
+    if (!sale) return;
+    try {
+      const res = await detachRx.mutateAsync({ saleId: sale.id });
+      if (res.sale) setSale(res.sale);
+    } catch {
+      /* toast handled globally */
     }
   };
 
@@ -341,10 +373,17 @@ export default function Pos() {
                   onMouseEnter={() => setHighlight(i)}
                   onClick={() => !out && onAdd(m)}
                 >
-                  <Stack gap={0}>
-                    <Text fontSize="sm" fontWeight="medium">
-                      {m.name}
-                    </Text>
+                  <Stack gap={0} flex="1">
+                    <HStack gap={2}>
+                      <Text fontSize="sm" fontWeight="medium">
+                        {m.name}
+                      </Text>
+                      {m.prescriptionRequired && (
+                        <Badge size="xs" colorPalette="red">
+                          {t("inventory.medicines.rxShort")}
+                        </Badge>
+                      )}
+                    </HStack>
                     <Text fontSize="xs" color="fg.muted">
                       {m.sku} · {stock} {t("pos.stock")}
                     </Text>
@@ -376,6 +415,11 @@ export default function Pos() {
               sale={sale}
               onAttach={() => setCustomerOpen(true)}
               onClear={onClearCustomer}
+            />
+            <PrescriptionBar
+              sale={sale}
+              onAttach={() => setRxOpen(true)}
+              onDetach={onDetachRx}
             />
           </Box>
 
@@ -524,6 +568,13 @@ export default function Pos() {
         onPick={onAttachCustomer}
       />
 
+      <PrescriptionPickerDialog
+        open={rxOpen}
+        customerId={sale?.customerId ?? ""}
+        onClose={() => setRxOpen(false)}
+        onPick={onAttachRx}
+      />
+
       <ReceiptDialog sale={completedSale} onClose={onCloseReceipt} />
     </Flex>
   );
@@ -556,6 +607,110 @@ function CustomerBar({
         </Button>
       )}
     </Flex>
+  );
+}
+
+function PrescriptionBar({
+  sale,
+  onAttach,
+  onDetach,
+}: {
+  sale: Sale | null;
+  onAttach: () => void;
+  onDetach: () => void;
+}) {
+  const { t } = useTranslation();
+  const hasRx = !!sale?.prescriptionId;
+  return (
+    <Flex mt={1} align="center" gap={2}>
+      <FileText size={14} />
+      <Text fontSize="xs" color="fg.muted" flex="1">
+        {hasRx ? t("prescriptions.attached") : t("prescriptions.title")}
+      </Text>
+      {hasRx ? (
+        <Button size="xs" variant="ghost" onClick={onDetach}>
+          {t("prescriptions.detach")}
+        </Button>
+      ) : (
+        <Button size="xs" variant="ghost" onClick={onAttach}>
+          {t("prescriptions.attach")}
+        </Button>
+      )}
+    </Flex>
+  );
+}
+
+function PrescriptionPickerDialog({
+  open,
+  customerId,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  customerId: string;
+  onClose: () => void;
+  onPick: (prescriptionId: string) => void;
+}) {
+  const { t } = useTranslation();
+  // List ACTIVE Rx; filter to current customer when one is set.
+  const rxQ = usePrescriptionsQuery({ status: "ACTIVE", customerId });
+
+  if (!open) return null;
+  return (
+    <Dialog.Root open={open} onOpenChange={(d) => !d.open && onClose()}>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>{t("prescriptions.attach")}</Dialog.Title>
+              <Dialog.CloseTrigger asChild>
+                <IconButton aria-label="close" variant="ghost" size="sm">
+                  <X size={16} />
+                </IconButton>
+              </Dialog.CloseTrigger>
+            </Dialog.Header>
+            <Dialog.Body>
+              <Stack gap={1} maxH="400px" overflowY="auto">
+                {(rxQ.data ?? []).map((rx) => (
+                  <Flex
+                    key={rx.id}
+                    px={3}
+                    py={2}
+                    borderRadius="md"
+                    borderWidth="1px"
+                    _hover={{ bg: "bg.muted" }}
+                    cursor="pointer"
+                    justify="space-between"
+                    align="center"
+                    onClick={() => onPick(rx.id)}
+                  >
+                    <Stack gap={0}>
+                      <HStack gap={2}>
+                        <Text fontFamily="mono" fontSize="sm">{rx.rxNo}</Text>
+                        <Badge size="xs" colorPalette="green">
+                          {t("prescriptions.states.active")}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="xs" color="fg.muted">
+                        {rx.issuerName} · {rx.issuedAt} → {rx.expiresAt} · {rx.items.length}{" "}
+                        {t("prescriptions.items").toLowerCase()}
+                      </Text>
+                    </Stack>
+                    <Plus size={14} />
+                  </Flex>
+                ))}
+                {(rxQ.data?.length ?? 0) === 0 && (
+                  <Text color="fg.muted" fontSize="sm" textAlign="center" py={6}>
+                    {t("common.noResults")}
+                  </Text>
+                )}
+              </Stack>
+            </Dialog.Body>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
   );
 }
 
@@ -634,7 +789,16 @@ function CustomerPickerDialog({
 function ReceiptDialog({ sale, onClose }: { sale: Sale | null; onClose: () => void }) {
   const { t } = useTranslation();
   const { data: medicines } = useMedicinesQuery();
+  const printMut = usePrintReceiptMutation();
   if (!sale) return null;
+  const onPrint = async () => {
+    try {
+      await printMut.mutateAsync(sale.id);
+      toast.success(t("pos.printSent"));
+    } catch {
+      /* toast handled globally */
+    }
+  };
   const medById = new Map((medicines ?? []).map((m) => [m.id, m]));
   return (
     <Dialog.Root open={!!sale} onOpenChange={(d) => !d.open && onClose()}>
@@ -687,6 +851,9 @@ function ReceiptDialog({ sale, onClose }: { sale: Sale | null; onClose: () => vo
               </Stack>
             </Dialog.Body>
             <Dialog.Footer>
+              <Button variant="outline" onClick={onPrint} loading={printMut.isPending}>
+                {t("pos.print")}
+              </Button>
               <Button colorPalette="blue" onClick={onClose}>
                 {t("pos.newSale")}
               </Button>

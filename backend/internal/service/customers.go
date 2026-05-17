@@ -85,11 +85,13 @@ func (c *Customers) CreateCustomer(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
 	}
 	row := model.Customer{
-		Name:   name,
-		Phone:  strings.TrimSpace(req.Msg.Phone),
-		BPJSNo: strings.TrimSpace(req.Msg.BpjsNo),
-		Notes:  strings.TrimSpace(req.Msg.Notes),
-		Active: true,
+		Name:    name,
+		Phone:   strings.TrimSpace(req.Msg.Phone),
+		BPJSNo:  strings.TrimSpace(req.Msg.BpjsNo),
+		NPWP:    strings.TrimSpace(req.Msg.Npwp),
+		Address: strings.TrimSpace(req.Msg.Address),
+		Notes:   strings.TrimSpace(req.Msg.Notes),
+		Active:  true,
 	}
 	if err := c.db.WithContext(ctx).Create(&row).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("create customer: %w", err))
@@ -113,6 +115,8 @@ func (c *Customers) UpdateCustomer(
 		"name":    name,
 		"phone":   strings.TrimSpace(req.Msg.Phone),
 		"bpjs_no": strings.TrimSpace(req.Msg.BpjsNo),
+		"npwp":    strings.TrimSpace(req.Msg.Npwp),
+		"address": strings.TrimSpace(req.Msg.Address),
 		"notes":   strings.TrimSpace(req.Msg.Notes),
 	}
 	if err := c.db.WithContext(ctx).Model(cust).Updates(updates).Error; err != nil {
@@ -161,6 +165,8 @@ func customerToProto(c *model.Customer) *customerifacev1.Customer {
 		Name:      c.Name,
 		Phone:     c.Phone,
 		BpjsNo:    c.BPJSNo,
+		Npwp:      c.NPWP,
+		Address:   c.Address,
 		Notes:     c.Notes,
 		Active:    c.Active,
 		CreatedAt: c.CreatedAt.Unix(),

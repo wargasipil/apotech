@@ -46,6 +46,12 @@ const (
 	// UserServiceChangePasswordProcedure is the fully-qualified name of the UserService's
 	// ChangePassword RPC.
 	UserServiceChangePasswordProcedure = "/user_iface.v1.UserService/ChangePassword"
+	// UserServiceIssuePasswordResetTokenProcedure is the fully-qualified name of the UserService's
+	// IssuePasswordResetToken RPC.
+	UserServiceIssuePasswordResetTokenProcedure = "/user_iface.v1.UserService/IssuePasswordResetToken"
+	// UserServiceRedeemPasswordResetTokenProcedure is the fully-qualified name of the UserService's
+	// RedeemPasswordResetToken RPC.
+	UserServiceRedeemPasswordResetTokenProcedure = "/user_iface.v1.UserService/RedeemPasswordResetToken"
 )
 
 // UserServiceClient is a client for the user_iface.v1.UserService service.
@@ -55,6 +61,11 @@ type UserServiceClient interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// Owner mints a one-shot reset token that the user can redeem to set a new
+	// password without knowing the old one. The raw token is returned to the
+	// owner (display in UI), who hands it to the user out-of-band. No SMTP wired.
+	IssuePasswordResetToken(context.Context, *connect.Request[v1.IssuePasswordResetTokenRequest]) (*connect.Response[v1.IssuePasswordResetTokenResponse], error)
+	RedeemPasswordResetToken(context.Context, *connect.Request[v1.RedeemPasswordResetTokenRequest]) (*connect.Response[v1.RedeemPasswordResetTokenResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the user_iface.v1.UserService service. By default,
@@ -98,16 +109,30 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 			connect.WithClientOptions(opts...),
 		),
+		issuePasswordResetToken: connect.NewClient[v1.IssuePasswordResetTokenRequest, v1.IssuePasswordResetTokenResponse](
+			httpClient,
+			baseURL+UserServiceIssuePasswordResetTokenProcedure,
+			connect.WithSchema(userServiceMethods.ByName("IssuePasswordResetToken")),
+			connect.WithClientOptions(opts...),
+		),
+		redeemPasswordResetToken: connect.NewClient[v1.RedeemPasswordResetTokenRequest, v1.RedeemPasswordResetTokenResponse](
+			httpClient,
+			baseURL+UserServiceRedeemPasswordResetTokenProcedure,
+			connect.WithSchema(userServiceMethods.ByName("RedeemPasswordResetToken")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	listUsers      *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
-	createUser     *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
-	updateUserRole *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
-	setUserActive  *connect.Client[v1.SetUserActiveRequest, v1.SetUserActiveResponse]
-	changePassword *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	listUsers                *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	createUser               *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	updateUserRole           *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
+	setUserActive            *connect.Client[v1.SetUserActiveRequest, v1.SetUserActiveResponse]
+	changePassword           *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	issuePasswordResetToken  *connect.Client[v1.IssuePasswordResetTokenRequest, v1.IssuePasswordResetTokenResponse]
+	redeemPasswordResetToken *connect.Client[v1.RedeemPasswordResetTokenRequest, v1.RedeemPasswordResetTokenResponse]
 }
 
 // ListUsers calls user_iface.v1.UserService.ListUsers.
@@ -135,6 +160,16 @@ func (c *userServiceClient) ChangePassword(ctx context.Context, req *connect.Req
 	return c.changePassword.CallUnary(ctx, req)
 }
 
+// IssuePasswordResetToken calls user_iface.v1.UserService.IssuePasswordResetToken.
+func (c *userServiceClient) IssuePasswordResetToken(ctx context.Context, req *connect.Request[v1.IssuePasswordResetTokenRequest]) (*connect.Response[v1.IssuePasswordResetTokenResponse], error) {
+	return c.issuePasswordResetToken.CallUnary(ctx, req)
+}
+
+// RedeemPasswordResetToken calls user_iface.v1.UserService.RedeemPasswordResetToken.
+func (c *userServiceClient) RedeemPasswordResetToken(ctx context.Context, req *connect.Request[v1.RedeemPasswordResetTokenRequest]) (*connect.Response[v1.RedeemPasswordResetTokenResponse], error) {
+	return c.redeemPasswordResetToken.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the user_iface.v1.UserService service.
 type UserServiceHandler interface {
 	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
@@ -142,6 +177,11 @@ type UserServiceHandler interface {
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// Owner mints a one-shot reset token that the user can redeem to set a new
+	// password without knowing the old one. The raw token is returned to the
+	// owner (display in UI), who hands it to the user out-of-band. No SMTP wired.
+	IssuePasswordResetToken(context.Context, *connect.Request[v1.IssuePasswordResetTokenRequest]) (*connect.Response[v1.IssuePasswordResetTokenResponse], error)
+	RedeemPasswordResetToken(context.Context, *connect.Request[v1.RedeemPasswordResetTokenRequest]) (*connect.Response[v1.RedeemPasswordResetTokenResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -181,6 +221,18 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("ChangePassword")),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceIssuePasswordResetTokenHandler := connect.NewUnaryHandler(
+		UserServiceIssuePasswordResetTokenProcedure,
+		svc.IssuePasswordResetToken,
+		connect.WithSchema(userServiceMethods.ByName("IssuePasswordResetToken")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceRedeemPasswordResetTokenHandler := connect.NewUnaryHandler(
+		UserServiceRedeemPasswordResetTokenProcedure,
+		svc.RedeemPasswordResetToken,
+		connect.WithSchema(userServiceMethods.ByName("RedeemPasswordResetToken")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/user_iface.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceListUsersProcedure:
@@ -193,6 +245,10 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceSetUserActiveHandler.ServeHTTP(w, r)
 		case UserServiceChangePasswordProcedure:
 			userServiceChangePasswordHandler.ServeHTTP(w, r)
+		case UserServiceIssuePasswordResetTokenProcedure:
+			userServiceIssuePasswordResetTokenHandler.ServeHTTP(w, r)
+		case UserServiceRedeemPasswordResetTokenProcedure:
+			userServiceRedeemPasswordResetTokenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -220,4 +276,12 @@ func (UnimplementedUserServiceHandler) SetUserActive(context.Context, *connect.R
 
 func (UnimplementedUserServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.ChangePassword is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) IssuePasswordResetToken(context.Context, *connect.Request[v1.IssuePasswordResetTokenRequest]) (*connect.Response[v1.IssuePasswordResetTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.IssuePasswordResetToken is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) RedeemPasswordResetToken(context.Context, *connect.Request[v1.RedeemPasswordResetTokenRequest]) (*connect.Response[v1.RedeemPasswordResetTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.RedeemPasswordResetToken is not implemented"))
 }

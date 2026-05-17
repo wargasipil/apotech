@@ -4,7 +4,9 @@ import type { PartialMessage } from "@bufbuild/protobuf";
 import { saleClient } from "../lib/clients";
 import type {
   AddItemRequest,
+  AttachPrescriptionRequest,
   CompleteSaleRequest,
+  DetachPrescriptionRequest,
   ListSalesRequest,
   RemoveItemRequest,
   SetItemQuantityRequest,
@@ -67,6 +69,28 @@ export function useSetSaleCustomerMutation() {
   });
 }
 
+export function useAttachPrescriptionMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: PartialMessage<AttachPrescriptionRequest>) =>
+      saleClient.attachPrescription(req),
+    onSuccess: (res) => {
+      if (res.sale?.id) qc.setQueryData(saleKeys.detail(res.sale.id), res.sale);
+    },
+  });
+}
+
+export function useDetachPrescriptionMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: PartialMessage<DetachPrescriptionRequest>) =>
+      saleClient.detachPrescription(req),
+    onSuccess: (res) => {
+      if (res.sale?.id) qc.setQueryData(saleKeys.detail(res.sale.id), res.sale);
+    },
+  });
+}
+
 export function useCompleteSaleMutation() {
   const qc = useQueryClient();
   return useMutation({
@@ -84,6 +108,12 @@ export function useVoidSaleMutation() {
   return useMutation({
     mutationFn: (req: PartialMessage<VoidSaleRequest>) => saleClient.voidSale(req),
     onSuccess: () => qc.invalidateQueries({ queryKey: saleKeys.all }),
+  });
+}
+
+export function usePrintReceiptMutation() {
+  return useMutation({
+    mutationFn: (saleId: string) => saleClient.printReceipt({ saleId }),
   });
 }
 

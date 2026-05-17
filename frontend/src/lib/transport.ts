@@ -6,6 +6,7 @@ import { AuthService } from "../gen/user_iface/v1/auth_connect";
 
 export const ACCESS_KEY = "apotech_access_token";
 export const REFRESH_KEY = "apotech_refresh_token";
+export const BRANCH_KEY = "apotech_branch_id";
 
 // Dedicated transport without the auth interceptor: used to call Refresh so
 // we don't recurse on 401.
@@ -51,6 +52,10 @@ const authInterceptor: Interceptor = (next) => async (req) => {
   const token = localStorage.getItem(ACCESS_KEY);
   if (token) {
     req.header.set("Authorization", `Bearer ${token}`);
+  }
+  const branchId = localStorage.getItem(BRANCH_KEY);
+  if (branchId) {
+    req.header.set("X-Branch-Id", branchId);
   }
   try {
     return await next(req);

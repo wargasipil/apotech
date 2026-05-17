@@ -17,3 +17,19 @@ auth:
 bootstrap:
   owner_email: owner@apotech.local
   owner_password: change-me-on-first-login
+
+# Optional: ESC/POS thermal printer. Leave `enabled: false` to disable Print
+# in the POS receipt dialog. Backend opens a raw TCP connection to `address`
+# and writes ESC/POS bytes; most network thermal printers listen on port 9100.
+printer:
+  enabled: false
+  address: 192.168.1.100:9100
+  width: 32                # 32 for 58mm paper, 48 for 80mm paper
+  timeout: 5s
+  open_drawer: false       # send cash-drawer kick command after print
+  header:
+    - "APOTECH PHARMACY"
+    - "Jl. Example No. 123"
+    - "Bandung"
+  footer:
+    - "Thank you!"

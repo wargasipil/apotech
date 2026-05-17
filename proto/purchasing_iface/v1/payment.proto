@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package purchasing_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/purchasing_iface/v1;purchasingifacev1";
+
+message SupplierBalance {
+  string supplier_id = 1;
+  string supplier_name = 2;
+  int64 ordered_total = 3;      // SUM of ordered_total for non-VOIDED POs
+  int64 paid_total = 4;
+  int64 outstanding = 5;
+  int32 open_po_count = 6;
+}
+
+service PurchasePaymentService {
+  rpc PayPurchase(PayPurchaseRequest) returns (PayPurchaseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetSupplierBalances(GetSupplierBalancesRequest) returns (GetSupplierBalancesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message PayPurchaseRequest {
+  string purchase_order_id = 1;
+  int64 amount = 2;
+  string note = 3;
+}
+message PayPurchaseResponse {
+  // PurchaseOrder (the same shape as in order.proto) — referenced loosely via id
+  // and the caller refreshes via GetPurchaseOrder. Returning the new paid_amount
+  // here saves a roundtrip.
+  string purchase_order_id = 1;
+  int64 paid_amount = 2;
+  int64 outstanding = 3;
+}
+
+message GetSupplierBalancesRequest {
+  bool only_outstanding = 1;
+}
+message GetSupplierBalancesResponse {
+  repeated SupplierBalance balances = 1;
+}

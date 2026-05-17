@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package prescription_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/prescription_iface/v1;prescriptionifacev1";
+
+// Status is computed by the server (not stored except for ACTIVE/VOIDED):
+//   ACTIVE    — issued, not voided, not expired, at least one item still has remaining qty
+//   DISPENSED — every item is fully dispensed (dispensed_qty == prescribed_qty)
+//   EXPIRED   — now > expires_at, not voided, not fully dispensed
+//   VOIDED    — explicitly voided by a pharmacist/owner
+// Clients should treat status as read-only.
+message Prescription {
+  string id = 1;
+  string rx_no = 2;                 // RX-YYYY-NNNN, server-assigned
+  string customer_id = 3;
+  string issuer_name = 4;           // free-text doctor name
+  string issued_at = 5;             // YYYY-MM-DD
+  string expires_at = 6;            // YYYY-MM-DD
+  string note = 7;
+  string status = 8;                // ACTIVE | DISPENSED | EXPIRED | VOIDED
+  string created_by = 9;
+  string branch_id = 10;
+  int64 created_at = 11;
+  repeated PrescriptionItem items = 12;
+}
+
+message PrescriptionItem {
+  string id = 1;
+  string prescription_id = 2;
+  string medicine_id = 3;
+  int32 prescribed_qty = 4;
+  int32 dispensed_qty = 5;
+  string dosage_instructions = 6;
+  string note = 7;
+}
+
+message PrescriptionItemInput {
+  string medicine_id = 1;
+  int32 prescribed_qty = 2;
+  string dosage_instructions = 3;
+  string note = 4;
+}
+
+service PrescriptionService {
+  rpc ListPrescriptions(ListPrescriptionsRequest) returns (ListPrescriptionsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc GetPrescription(GetPrescriptionRequest) returns (GetPrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreatePrescription(CreatePrescriptionRequest) returns (CreatePrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UpdatePrescription(UpdatePrescriptionRequest) returns (UpdatePrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc VoidPrescription(VoidPrescriptionRequest) returns (VoidPrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListPrescriptionsRequest {
+  string customer_id = 1;          // filter (optional)
+  string status = 2;               // filter (optional) — ACTIVE | DISPENSED | EXPIRED | VOIDED
+  int32 limit = 3;
+}
+message ListPrescriptionsResponse {
+  repeated Prescription prescriptions = 1;
+}
+
+message GetPrescriptionRequest { string id = 1; }
+message GetPrescriptionResponse { Prescription prescription = 1; }
+
+message CreatePrescriptionRequest {
+  string customer_id = 1;
+  string issuer_name = 2;
+  string issued_at = 3;            // YYYY-MM-DD
+  string expires_at = 4;            // YYYY-MM-DD (defaults to issued_at + 90d server-side if empty)
+  string note = 5;
+  repeated PrescriptionItemInput items = 6;
+}
+message CreatePrescriptionResponse { Prescription prescription = 1; }
+
+message UpdatePrescriptionRequest {
+  string id = 1;
+  string issuer_name = 2;
+  string issued_at = 3;
+  string expires_at = 4;
+  string note = 5;
+  // Full replace of lines. Allowed only when no item has been dispensed yet.
+  repeated PrescriptionItemInput items = 6;
+}
+message UpdatePrescriptionResponse { Prescription prescription = 1; }
+
+message VoidPrescriptionRequest { string id = 1; }
+message VoidPrescriptionResponse { Prescription prescription = 1; }

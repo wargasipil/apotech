@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddItemRequest, AddItemResponse, CompleteSaleRequest, CompleteSaleResponse, GetSaleRequest, GetSaleResponse, GetTodaySnapshotRequest, GetTodaySnapshotResponse, ListSalesRequest, ListSalesResponse, RemoveItemRequest, RemoveItemResponse, SetItemQuantityRequest, SetItemQuantityResponse, SetSaleCustomerRequest, SetSaleCustomerResponse, StartSaleRequest, StartSaleResponse, VoidSaleRequest, VoidSaleResponse } from "./sale_pb.js";
+import { AddItemRequest, AddItemResponse, AttachPrescriptionRequest, AttachPrescriptionResponse, CompleteSaleRequest, CompleteSaleResponse, DetachPrescriptionRequest, DetachPrescriptionResponse, GetSaleRequest, GetSaleResponse, GetTodaySnapshotRequest, GetTodaySnapshotResponse, ListSalesRequest, ListSalesResponse, PrintReceiptRequest, PrintReceiptResponse, RemoveItemRequest, RemoveItemResponse, SetItemQuantityRequest, SetItemQuantityResponse, SetSaleCustomerRequest, SetSaleCustomerResponse, StartSaleRequest, StartSaleResponse, VoidSaleRequest, VoidSaleResponse } from "./sale_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -76,6 +76,24 @@ export const SaleService = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc pos_iface.v1.SaleService.AttachPrescription
+     */
+    attachPrescription: {
+      name: "AttachPrescription",
+      I: AttachPrescriptionRequest,
+      O: AttachPrescriptionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc pos_iface.v1.SaleService.DetachPrescription
+     */
+    detachPrescription: {
+      name: "DetachPrescription",
+      I: DetachPrescriptionRequest,
+      O: DetachPrescriptionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc pos_iface.v1.SaleService.CompleteSale
      */
     completeSale: {
@@ -100,6 +118,15 @@ export const SaleService = {
       name: "GetTodaySnapshot",
       I: GetTodaySnapshotRequest,
       O: GetTodaySnapshotResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc pos_iface.v1.SaleService.PrintReceipt
+     */
+    printReceipt: {
+      name: "PrintReceipt",
+      I: PrintReceiptRequest,
+      O: PrintReceiptResponse,
       kind: MethodKind.Unary,
     },
   }

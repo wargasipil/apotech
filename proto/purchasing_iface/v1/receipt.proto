@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package purchasing_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/purchasing_iface/v1;purchasingifacev1";
+
+message PurchaseReceipt {
+  string id = 1;
+  string receipt_no = 2;
+  string purchase_order_id = 3;
+  string received_at = 4;          // YYYY-MM-DD
+  string received_by = 5;
+  string note = 6;
+  int64 created_at = 7;
+  repeated PurchaseReceiptItem items = 8;
+}
+
+message PurchaseReceiptItem {
+  string id = 1;
+  string purchase_receipt_id = 2;
+  string purchase_order_item_id = 3;
+  string medicine_id = 4;
+  int32 qty = 5;
+  int64 unit_cost_price = 6;
+  string batch_number = 7;
+  string expiry_date = 8;          // YYYY-MM-DD
+  string batch_id = 9;             // populated after batch row is created
+}
+
+message ReceiveLineInput {
+  string purchase_order_item_id = 1;
+  int32 qty = 2;
+  int64 unit_cost_price = 3;       // overrideable
+  string batch_number = 4;
+  string expiry_date = 5;          // YYYY-MM-DD (required)
+}
+
+service PurchaseReceiptService {
+  rpc CreateReceipt(CreateReceiptRequest) returns (CreateReceiptResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ListReceipts(ListReceiptsRequest) returns (ListReceiptsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetReceipt(GetReceiptRequest) returns (GetReceiptResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message CreateReceiptRequest {
+  string purchase_order_id = 1;
+  string received_at = 2;          // YYYY-MM-DD (defaults to today if empty)
+  string note = 3;
+  repeated ReceiveLineInput lines = 4;
+}
+message CreateReceiptResponse {
+  PurchaseReceipt receipt = 1;
+}
+
+message ListReceiptsRequest {
+  string purchase_order_id = 1;
+}
+message ListReceiptsResponse {
+  repeated PurchaseReceipt receipts = 1;
+}
+
+message GetReceiptRequest { string id = 1; }
+message GetReceiptResponse { PurchaseReceipt receipt = 1; }

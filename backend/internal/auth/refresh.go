@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/apotech/backend/internal/model"
@@ -40,8 +41,11 @@ func generateRaw() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// Mint creates a brand-new refresh token (new family if parent is nil, else
+// Mint creates a brand-new refresh token (new family if familyID is nil, else
 // a child in the same family). Returns the raw token and its expiry.
+//
+// For the family root, the row's id == family_id, so we generate the UUID
+// in Go and set both fields explicitly. Single insert; no temp values.
 func (r *RefreshIssuer) Mint(
 	ctx context.Context,
 	userID string,
@@ -64,35 +68,14 @@ func (r *RefreshIssuer) Mint(
 	}
 	if familyID != nil {
 		row.FamilyID = *familyID
+	} else {
+		id := uuid.NewString()
+		row.ID = id
+		row.FamilyID = id
 	}
-	// If no family yet, let the DB default-insert generate one for `id`, then
-	// set family_id = id so the family root references itself. We do this in
-	// two steps inside a tx for atomicity.
-	tx := r.DB.WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return "", time.Time{}, tx.Error
-	}
-	if familyID == nil {
-		// Insert with a placeholder family_id (gen_random_uuid() default would
-		// give us a fresh uuid, but we want family_id == id for the root).
-		// Easiest: generate an id ourselves so we can set family_id at the
-		// same time.
-		row.FamilyID = "" // tmp; we'll assign after we know the id
-	}
-	// GORM with no explicit ID lets Postgres generate one. We need the id
-	// to use as family_id when this is the root. Use Returning via Create.
-	if err := tx.Create(row).Error; err != nil {
-		tx.Rollback()
+
+	if err := r.DB.WithContext(ctx).Create(row).Error; err != nil {
 		return "", time.Time{}, fmt.Errorf("create refresh: %w", err)
-	}
-	if familyID == nil {
-		if err := tx.Model(row).Update("family_id", row.ID).Error; err != nil {
-			tx.Rollback()
-			return "", time.Time{}, fmt.Errorf("set family_id: %w", err)
-		}
-	}
-	if err := tx.Commit().Error; err != nil {
-		return "", time.Time{}, err
 	}
 	return raw, exp, nil
 }

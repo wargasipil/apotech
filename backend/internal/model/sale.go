@@ -15,6 +15,11 @@ type Sale struct {
 	PaidAmount     int64      `gorm:"not null;default:0;column:paid_amount"`
 	Status         string     `gorm:"not null;default:'DRAFT'"`
 	BranchID       *string    `gorm:"type:uuid;column:branch_id"`
+	PrescriptionID *string    `gorm:"type:uuid;column:prescription_id"`
+	TaxInvoiceCode *string    `gorm:"column:tax_invoice_code"`
+	TaxInvoiceDPP  int64      `gorm:"not null;default:0;column:tax_invoice_dpp"`
+	TaxInvoicePPN  int64      `gorm:"not null;default:0;column:tax_invoice_ppn"`
+	TaxInvoiceIssuedAt *time.Time `gorm:"column:tax_invoice_issued_at"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	CompletedAt    *time.Time `gorm:"column:completed_at"`

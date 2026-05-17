@@ -1,0 +1,140 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Inventory" [ref=e154] [cursor=pointer]:
+            - /url: /inventory
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - paragraph [ref=e160]: Inventory
+          - link "Purchasing" [ref=e161] [cursor=pointer]:
+            - /url: /purchasing
+            - generic [ref=e162]:
+              - img [ref=e163]
+              - paragraph [ref=e168]: Purchasing
+          - link "Customers" [ref=e27] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e32]: Customers
+          - link "Prescriptions" [ref=e169] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e170]:
+              - img [ref=e171]
+              - paragraph [ref=e174]: Prescriptions
+          - link "Analytics" [ref=e175] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e176]:
+              - img [ref=e177]
+              - paragraph [ref=e179]: Analytics
+          - link "Tax" [ref=e180] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e181]:
+              - img [ref=e182]
+              - paragraph [ref=e186]: Tax
+          - link "BPJS" [ref=e187] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e188]:
+              - img [ref=e189]
+              - paragraph [ref=e192]: BPJS
+          - link "Branches" [ref=e193] [cursor=pointer]:
+            - /url: /branches
+            - generic [ref=e194]:
+              - img [ref=e195]
+              - paragraph [ref=e199]: Branches
+          - link "Users" [ref=e200] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - paragraph [ref=e207]: Users
+        - generic [ref=e33]:
+          - generic [ref=e208]:
+            - paragraph [ref=e209]: Owner
+            - paragraph [ref=e210]: owner@apotech.local
+          - button "Sign out" [ref=e211] [cursor=pointer]:
+            - img [ref=e212]
+            - paragraph [ref=e215]: Sign out
+          - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e41]:
+            - button "language" [ref=e42] [cursor=pointer]:
+              - generic [ref=e43]:
+                - img [ref=e44]
+                - paragraph [ref=e48]: ID
+            - button "toggle theme" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+            - button "user menu" [ref=e216] [cursor=pointer]:
+              - generic [ref=e217]: O
+        - main [ref=e52]:
+          - generic [ref=e218]:
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - paragraph [ref=e222]: Analytics
+                  - img [ref=e223]
+                - paragraph [ref=e226]: Sales
+              - heading "Analytics" [level=2] [ref=e229]
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - link "Sales" [ref=e232] [cursor=pointer]:
+                  - /url: /analytics/sales
+                - link "Inventory" [ref=e233] [cursor=pointer]:
+                  - /url: /analytics/inventory
+                - link "Margins" [ref=e234] [cursor=pointer]:
+                  - /url: /analytics/margins
+              - generic [ref=e235]:
+                - generic [ref=e236]:
+                  - heading "Sales" [level=2] [ref=e237]
+                  - generic [ref=e239]:
+                    - combobox [ref=e240]:
+                      - option "Today"
+                      - option "7 days" [selected]
+                      - option "30 days"
+                      - option "90 days"
+                      - option "Year to date"
+                      - option "Custom"
+                    - generic:
+                      - img
+                - heading "Revenue trend" [level=2] [ref=e243]
+                - generic [ref=e269]:
+                  - generic [ref=e271]:
+                    - heading "Top sellers" [level=2] [ref=e272]
+                    - generic [ref=e273]:
+                      - generic [ref=e274]:
+                        - combobox [ref=e275]:
+                          - option "Revenue" [selected]
+                          - option "Qty sold"
+                        - generic:
+                          - img
+                      - button "Export CSV" [ref=e276] [cursor=pointer]:
+                        - img [ref=e277]
+                        - text: Export CSV
+                  - heading "Payment mix" [level=2] [ref=e310]
+                - heading "Sales by hour of day" [level=2] [ref=e328]
+                - generic [ref=e539]:
+                  - heading "Sales by cashier" [level=2] [ref=e540]
+                  - button "Export CSV" [ref=e541] [cursor=pointer]:
+                    - img [ref=e542]
+                    - text: Export CSV
+    - region "Notifications, top-end (alt+T)"
+    - generic [ref=e55]:
+      - img [ref=e57]
+      - button "Open Tanstack query devtools" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+  - generic [ref=e556]: asdasdasd

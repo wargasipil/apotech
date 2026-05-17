@@ -31,6 +31,8 @@ type Customer struct {
 	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
 	Active        bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Npwp          string                 `protobuf:"bytes,8,opt,name=npwp,proto3" json:"npwp,omitempty"` // 15-digit Indonesian tax ID, free-text formatted
+	Address       string                 `protobuf:"bytes,9,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -112,6 +114,20 @@ func (x *Customer) GetCreatedAt() int64 {
 		return x.CreatedAt
 	}
 	return 0
+}
+
+func (x *Customer) GetNpwp() string {
+	if x != nil {
+		return x.Npwp
+	}
+	return ""
+}
+
+func (x *Customer) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
 }
 
 type ListCustomersRequest struct {
@@ -392,6 +408,8 @@ type CreateCustomerRequest struct {
 	Phone         string                 `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,omitempty"`
 	BpjsNo        string                 `protobuf:"bytes,3,opt,name=bpjs_no,json=bpjsNo,proto3" json:"bpjs_no,omitempty"`
 	Notes         string                 `protobuf:"bytes,4,opt,name=notes,proto3" json:"notes,omitempty"`
+	Npwp          string                 `protobuf:"bytes,5,opt,name=npwp,proto3" json:"npwp,omitempty"`
+	Address       string                 `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -454,6 +472,20 @@ func (x *CreateCustomerRequest) GetNotes() string {
 	return ""
 }
 
+func (x *CreateCustomerRequest) GetNpwp() string {
+	if x != nil {
+		return x.Npwp
+	}
+	return ""
+}
+
+func (x *CreateCustomerRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
 type CreateCustomerResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Customer      *Customer              `protobuf:"bytes,1,opt,name=customer,proto3" json:"customer,omitempty"`
@@ -505,6 +537,8 @@ type UpdateCustomerRequest struct {
 	Phone         string                 `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
 	BpjsNo        string                 `protobuf:"bytes,4,opt,name=bpjs_no,json=bpjsNo,proto3" json:"bpjs_no,omitempty"`
 	Notes         string                 `protobuf:"bytes,5,opt,name=notes,proto3" json:"notes,omitempty"`
+	Npwp          string                 `protobuf:"bytes,6,opt,name=npwp,proto3" json:"npwp,omitempty"`
+	Address       string                 `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -570,6 +604,20 @@ func (x *UpdateCustomerRequest) GetBpjsNo() string {
 func (x *UpdateCustomerRequest) GetNotes() string {
 	if x != nil {
 		return x.Notes
+	}
+	return ""
+}
+
+func (x *UpdateCustomerRequest) GetNpwp() string {
+	if x != nil {
+		return x.Npwp
+	}
+	return ""
+}
+
+func (x *UpdateCustomerRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
 	}
 	return ""
 }
@@ -710,7 +758,7 @@ var File_customer_iface_v1_customer_proto protoreflect.FileDescriptor
 
 const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\n" +
-	" customer_iface/v1/customer.proto\x12\x11customer_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xaa\x01\n" +
+	" customer_iface/v1/customer.proto\x12\x11customer_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xd8\x01\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -719,7 +767,9 @@ const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\x05notes\x18\x05 \x01(\tR\x05notes\x12\x16\n" +
 	"\x06active\x18\x06 \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\a \x01(\x03R\tcreatedAt\"A\n" +
+	"created_at\x18\a \x01(\x03R\tcreatedAt\x12\x12\n" +
+	"\x04npwp\x18\b \x01(\tR\x04npwp\x12\x18\n" +
+	"\aaddress\x18\t \x01(\tR\aaddress\"A\n" +
 	"\x14ListCustomersRequest\x12)\n" +
 	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\"R\n" +
 	"\x15ListCustomersResponse\x129\n" +
@@ -732,20 +782,24 @@ const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"T\n" +
 	"\x17SearchCustomersResponse\x129\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\"p\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\"\x9e\x01\n" +
 	"\x15CreateCustomerRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x17\n" +
 	"\abpjs_no\x18\x03 \x01(\tR\x06bpjsNo\x12\x14\n" +
-	"\x05notes\x18\x04 \x01(\tR\x05notes\"Q\n" +
+	"\x05notes\x18\x04 \x01(\tR\x05notes\x12\x12\n" +
+	"\x04npwp\x18\x05 \x01(\tR\x04npwp\x12\x18\n" +
+	"\aaddress\x18\x06 \x01(\tR\aaddress\"Q\n" +
 	"\x16CreateCustomerResponse\x127\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1b.customer_iface.v1.CustomerR\bcustomer\"\x80\x01\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1b.customer_iface.v1.CustomerR\bcustomer\"\xae\x01\n" +
 	"\x15UpdateCustomerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05phone\x18\x03 \x01(\tR\x05phone\x12\x17\n" +
 	"\abpjs_no\x18\x04 \x01(\tR\x06bpjsNo\x12\x14\n" +
-	"\x05notes\x18\x05 \x01(\tR\x05notes\"Q\n" +
+	"\x05notes\x18\x05 \x01(\tR\x05notes\x12\x12\n" +
+	"\x04npwp\x18\x06 \x01(\tR\x04npwp\x12\x18\n" +
+	"\aaddress\x18\a \x01(\tR\aaddress\"Q\n" +
 	"\x16UpdateCustomerResponse\x127\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1b.customer_iface.v1.CustomerR\bcustomer\"(\n" +
 	"\x16ArchiveCustomerRequest\x12\x0e\n" +

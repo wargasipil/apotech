@@ -36,6 +36,7 @@ message Sale {
   int64 created_at = 13;
   int64 completed_at = 14;
   repeated SaleItem items = 15;
+  string prescription_id = 16;
 }
 
 message SaleItem {
@@ -85,6 +86,16 @@ service SaleService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  rpc AttachPrescription(AttachPrescriptionRequest) returns (AttachPrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc DetachPrescription(DetachPrescriptionRequest) returns (DetachPrescriptionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
   rpc CompleteSale(CompleteSaleRequest) returns (CompleteSaleResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
@@ -96,6 +107,11 @@ service SaleService {
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
   rpc GetTodaySnapshot(GetTodaySnapshotRequest) returns (GetTodaySnapshotResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc PrintReceipt(PrintReceiptRequest) returns (PrintReceiptResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
@@ -144,6 +160,17 @@ message SetSaleCustomerRequest {
 }
 message SetSaleCustomerResponse { Sale sale = 1; }
 
+message AttachPrescriptionRequest {
+  string sale_id = 1;
+  string prescription_id = 2;
+}
+message AttachPrescriptionResponse { Sale sale = 1; }
+
+message DetachPrescriptionRequest {
+  string sale_id = 1;
+}
+message DetachPrescriptionResponse { Sale sale = 1; }
+
 message CompleteSaleRequest {
   string sale_id = 1;
   PaymentSource payment_source = 2;
@@ -163,4 +190,13 @@ message GetTodaySnapshotResponse {
   int64 items_sold = 3;
   string top_medicine_id = 4;
   int64 top_medicine_qty = 5;
+}
+
+message PrintReceiptRequest {
+  string sale_id = 1;
+}
+message PrintReceiptResponse {
+  // Echoes the rendered byte length so the client can confirm something
+  // actually went out the wire (mostly for debugging).
+  int32 bytes_sent = 1;
 }

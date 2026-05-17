@@ -149,6 +149,11 @@ export class Sale extends Message<Sale> {
    */
   items: SaleItem[] = [];
 
+  /**
+   * @generated from field: string prescription_id = 16;
+   */
+  prescriptionId = "";
+
   constructor(data?: PartialMessage<Sale>) {
     super();
     proto3.util.initPartial(data, this);
@@ -172,6 +177,7 @@ export class Sale extends Message<Sale> {
     { no: 13, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 14, name: "completed_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 15, name: "items", kind: "message", T: SaleItem, repeated: true },
+    { no: 16, name: "prescription_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Sale {
@@ -837,6 +843,160 @@ export class SetSaleCustomerResponse extends Message<SetSaleCustomerResponse> {
 }
 
 /**
+ * @generated from message pos_iface.v1.AttachPrescriptionRequest
+ */
+export class AttachPrescriptionRequest extends Message<AttachPrescriptionRequest> {
+  /**
+   * @generated from field: string sale_id = 1;
+   */
+  saleId = "";
+
+  /**
+   * @generated from field: string prescription_id = 2;
+   */
+  prescriptionId = "";
+
+  constructor(data?: PartialMessage<AttachPrescriptionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.AttachPrescriptionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "prescription_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttachPrescriptionRequest {
+    return new AttachPrescriptionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttachPrescriptionRequest {
+    return new AttachPrescriptionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttachPrescriptionRequest {
+    return new AttachPrescriptionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AttachPrescriptionRequest | PlainMessage<AttachPrescriptionRequest> | undefined, b: AttachPrescriptionRequest | PlainMessage<AttachPrescriptionRequest> | undefined): boolean {
+    return proto3.util.equals(AttachPrescriptionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.AttachPrescriptionResponse
+ */
+export class AttachPrescriptionResponse extends Message<AttachPrescriptionResponse> {
+  /**
+   * @generated from field: pos_iface.v1.Sale sale = 1;
+   */
+  sale?: Sale;
+
+  constructor(data?: PartialMessage<AttachPrescriptionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.AttachPrescriptionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale", kind: "message", T: Sale },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AttachPrescriptionResponse {
+    return new AttachPrescriptionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AttachPrescriptionResponse {
+    return new AttachPrescriptionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AttachPrescriptionResponse {
+    return new AttachPrescriptionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AttachPrescriptionResponse | PlainMessage<AttachPrescriptionResponse> | undefined, b: AttachPrescriptionResponse | PlainMessage<AttachPrescriptionResponse> | undefined): boolean {
+    return proto3.util.equals(AttachPrescriptionResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.DetachPrescriptionRequest
+ */
+export class DetachPrescriptionRequest extends Message<DetachPrescriptionRequest> {
+  /**
+   * @generated from field: string sale_id = 1;
+   */
+  saleId = "";
+
+  constructor(data?: PartialMessage<DetachPrescriptionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.DetachPrescriptionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DetachPrescriptionRequest {
+    return new DetachPrescriptionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DetachPrescriptionRequest {
+    return new DetachPrescriptionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DetachPrescriptionRequest {
+    return new DetachPrescriptionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DetachPrescriptionRequest | PlainMessage<DetachPrescriptionRequest> | undefined, b: DetachPrescriptionRequest | PlainMessage<DetachPrescriptionRequest> | undefined): boolean {
+    return proto3.util.equals(DetachPrescriptionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.DetachPrescriptionResponse
+ */
+export class DetachPrescriptionResponse extends Message<DetachPrescriptionResponse> {
+  /**
+   * @generated from field: pos_iface.v1.Sale sale = 1;
+   */
+  sale?: Sale;
+
+  constructor(data?: PartialMessage<DetachPrescriptionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.DetachPrescriptionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale", kind: "message", T: Sale },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DetachPrescriptionResponse {
+    return new DetachPrescriptionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DetachPrescriptionResponse {
+    return new DetachPrescriptionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DetachPrescriptionResponse {
+    return new DetachPrescriptionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DetachPrescriptionResponse | PlainMessage<DetachPrescriptionResponse> | undefined, b: DetachPrescriptionResponse | PlainMessage<DetachPrescriptionResponse> | undefined): boolean {
+    return proto3.util.equals(DetachPrescriptionResponse, a, b);
+  }
+}
+
+/**
  * @generated from message pos_iface.v1.CompleteSaleRequest
  */
 export class CompleteSaleRequest extends Message<CompleteSaleRequest> {
@@ -1085,6 +1245,83 @@ export class GetTodaySnapshotResponse extends Message<GetTodaySnapshotResponse> 
 
   static equals(a: GetTodaySnapshotResponse | PlainMessage<GetTodaySnapshotResponse> | undefined, b: GetTodaySnapshotResponse | PlainMessage<GetTodaySnapshotResponse> | undefined): boolean {
     return proto3.util.equals(GetTodaySnapshotResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.PrintReceiptRequest
+ */
+export class PrintReceiptRequest extends Message<PrintReceiptRequest> {
+  /**
+   * @generated from field: string sale_id = 1;
+   */
+  saleId = "";
+
+  constructor(data?: PartialMessage<PrintReceiptRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.PrintReceiptRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrintReceiptRequest {
+    return new PrintReceiptRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PrintReceiptRequest {
+    return new PrintReceiptRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PrintReceiptRequest {
+    return new PrintReceiptRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PrintReceiptRequest | PlainMessage<PrintReceiptRequest> | undefined, b: PrintReceiptRequest | PlainMessage<PrintReceiptRequest> | undefined): boolean {
+    return proto3.util.equals(PrintReceiptRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.PrintReceiptResponse
+ */
+export class PrintReceiptResponse extends Message<PrintReceiptResponse> {
+  /**
+   * Echoes the rendered byte length so the client can confirm something
+   * actually went out the wire (mostly for debugging).
+   *
+   * @generated from field: int32 bytes_sent = 1;
+   */
+  bytesSent = 0;
+
+  constructor(data?: PartialMessage<PrintReceiptResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.PrintReceiptResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "bytes_sent", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PrintReceiptResponse {
+    return new PrintReceiptResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PrintReceiptResponse {
+    return new PrintReceiptResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PrintReceiptResponse {
+    return new PrintReceiptResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PrintReceiptResponse | PlainMessage<PrintReceiptResponse> | undefined, b: PrintReceiptResponse | PlainMessage<PrintReceiptResponse> | undefined): boolean {
+    return proto3.util.equals(PrintReceiptResponse, a, b);
   }
 }
 

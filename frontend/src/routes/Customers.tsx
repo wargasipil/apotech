@@ -31,6 +31,8 @@ const Schema = z.object({
   name: z.string().min(1),
   phone: z.string(),
   bpjsNo: z.string(),
+  npwp: z.string(),
+  address: z.string(),
   notes: z.string(),
 });
 type FormValues = z.infer<typeof Schema>;
@@ -142,6 +144,8 @@ function CustomerForm({ form }: { form: ReturnType<typeof useForm<FormValues>> }
       <FormField control={form.control} name="name" label={t("customers.name")} required autoFocus />
       <FormField control={form.control} name="phone" label={t("customers.phone")} />
       <FormField control={form.control} name="bpjsNo" label={t("customers.bpjsNo")} />
+      <FormField control={form.control} name="npwp" label={t("customers.npwp")} />
+      <FormField control={form.control} name="address" label={t("customers.address")} />
       <FormField control={form.control} name="notes" label={t("customers.notes")} />
     </Stack>
   );
@@ -152,7 +156,7 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const create = useCreateCustomerMutation();
   const form = useForm<FormValues>({
     resolver: zodResolver(Schema),
-    defaultValues: { name: "", phone: "", bpjsNo: "", notes: "" },
+    defaultValues: { name: "", phone: "", bpjsNo: "", npwp: "", address: "", notes: "" },
   });
 
   const submit = form.handleSubmit(async (values) => {
@@ -199,6 +203,8 @@ function EditDrawer({ customer, onClose }: { customer: Customer | null; onClose:
           name: customer.name,
           phone: customer.phone,
           bpjsNo: customer.bpjsNo,
+          npwp: customer.npwp,
+          address: customer.address,
           notes: customer.notes,
         }
       : undefined,

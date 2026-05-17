@@ -4,8 +4,8 @@ Living doc for Claude. Update this file whenever the stack, layout, or conventio
 
 ## Project overview
 - **What**: Management app for an apotek (pharmacy) store.
-- **Current phase**: Phase 3 shipped (POS / Sales: customers, sales, FEFO consumption, split-view cashier UI, today's-snapshot dashboard). Receipt rendering is on-screen only; thermal printer lands in Phase 7. Line/cart discounts deferred to a follow-up.
-- **Next phase**: Phase 4 — Analytics.
+- **Current phase**: Phases 7–9 shipped. The app is feature-complete vs the original roadmap: Indonesia integrations (ESC/POS printer ✓, e-Faktur tax invoice ✓, BPJS claim tracking ✓ stub), multi-branch ✓, production hardening ✓ (Login rate limit, audit log, owner-issued password reset, slog structured logs, `make backup`, `DEPLOYMENT.md`).
+- **Next phase**: open to user direction — the roadmap is closed. Live-API integrations (real BPJS HTTP client, real DJP e-Faktur web service) are the most obvious unfinished items; both require external credentials.
 
 ## Roadmap
 
@@ -17,12 +17,12 @@ Living doc for Claude. Update this file whenever the stack, layout, or conventio
 | — | Frontend foundation refactor (TanStack Query + RHF + Zod + i18n + Chakra `defaultSystem`) | ✓ shipped |
 | — | Refresh tokens (rotation + reuse detection; access 1h, refresh 30d) | ✓ shipped |
 | 3 | POS / Sales (customers, sales, FEFO consumption, split-view cashier UI, on-screen receipt) | ✓ shipped |
-| 4 | Analytics (sales / inventory / margin via Recharts; live Postgres queries) | 🚧 next |
-| 5 | Purchasing (purchase orders, supplier ledger, formal receive flow) | 📋 |
-| 6 | Prescriptions (Rx validation tied to a Sale, customer-linked) | 📋 |
-| 7 | Indonesia integrations (ESC/POS thermal, e-Faktur, BPJS Kesehatan) | 📋 |
-| 8 | Multi-branch (promote `branch_id` from placeholder to first-class) | 📋 |
-| 9 | Production hardening (password reset, rate limit, audit log, backups, deploy) | 📋 |
+| 4 | Analytics (sales / inventory / margin via Recharts; live Postgres queries) | ✓ shipped |
+| 5 | Purchasing (purchase orders, supplier ledger, formal receive flow) | ✓ shipped |
+| 6 | Prescriptions (Rx validation tied to a Sale, customer-linked) | ✓ shipped |
+| 7 | Indonesia integrations (ESC/POS thermal ✓, e-Faktur ✓, BPJS Kesehatan ✓ stub) | ✓ shipped |
+| 8 | Multi-branch (promote `branch_id` from placeholder to first-class) | ✓ shipped |
+| 9 | Production hardening (rate limit, audit log, password reset, slog, backups, runbook) | ✓ shipped |
 
 **Recommended sequence**: 3 → 7-printer → 4 → 5 → 6 → 7-eFaktur → 7-BPJS → 8 → 9.
 
@@ -47,7 +47,7 @@ Each phase's full scope, schema, RPC list, and verification plan lives in the pe
 | Frontend i18n | `react-i18next` (id, en) — no hard-coded user strings |
 | Frontend icons | Lucide (`lucide-react`) |
 | Frontend toaster | Chakra v3 `createToaster` (global instance + `AppToaster` mount) |
-| Charts | Recharts (Phase 4 — not yet installed) |
+| Charts | Recharts v2 (`recharts`) |
 | Auth | JWT HS256 (`github.com/golang-jwt/jwt/v5`); bcrypt password hashing (`golang.org/x/crypto/bcrypt`) |
 
 ## Repo layout
@@ -60,7 +60,13 @@ apotech/
 │   ├── user_iface/v1/      # User + UserService + AuthService (login/refresh/logout/me)
 │   ├── inventory_iface/v1/ # Supplier, Medicine (+ MedicinePrice), Batch, StockMovement
 │   ├── customer_iface/v1/  # Customer + CustomerService
-│   └── pos_iface/v1/       # Sale, SaleItem, PaymentSource + SaleService (FEFO consumption)
+│   ├── pos_iface/v1/       # Sale, SaleItem, PaymentSource + SaleService (FEFO consumption)
+│   ├── analytics_iface/v1/ # SalesAnalytics + InventoryAnalytics + MarginAnalytics
+│   ├── purchasing_iface/v1/ # PurchaseOrder + PurchaseReceipt + PurchasePayment services
+│   ├── prescription_iface/v1/ # Prescription + PrescriptionItem + PrescriptionService
+│   ├── tax_iface/v1/       # NSFP pool + TaxInvoice (e-Faktur bookkeeping; no DJP API)
+│   ├── bpjs_iface/v1/      # BpjsClaim (stub: local claim tracking, no live BPJS API)
+│   └── branch_iface/v1/    # Branch + UserBranchMembership + BranchService
 ├── buf.yaml                # buf v2 module config (root)
 ├── buf.gen.yaml            # buf v2 codegen config (root)
 ├── backend/                # Go service
@@ -71,9 +77,11 @@ apotech/
 │   │   ├── config/         # YAML loader (Server, Database, Auth, Bootstrap)
 │   │   ├── db/             # GORM open + ping
 │   │   ├── model/          # GORM models (User, …)
+│   │   ├── printer/        # ESC/POS receipt rendering + raw-TCP dispatch
 │   │   └── service/        # ConnectRPC service implementations (Auth, Users, Health)
 │   ├── gen/                # GENERATED — do not hand-edit
-│   └── migrations/         # goose .sql files
+│   ├── migrations/         # goose .sql files
+│   └── e2e/                # integration tests (in-process httptest + real dev DB)
 ├── frontend/               # React app
 │   └── src/
 │       ├── gen/            # GENERATED — do not hand-edit
@@ -105,11 +113,17 @@ apotech/
 │       │   └── ProtectedRoute.tsx
 │       ├── routes/{Login,Dashboard,Users,Inventory}.tsx
 │       ├── routes/inventory/{Medicines,Suppliers,Batches,Movements}.tsx
+│       ├── routes/purchasing/{Purchasing,PurchaseOrdersList,SuppliersLedger,NewPurchaseOrder,PurchaseOrderDetail}.tsx
+│       ├── routes/Prescriptions.tsx
 │       ├── App.tsx           # picks AppShell vs bare layout (login)
 │       └── main.tsx          # ErrorBoundary > QueryClient > Chakra > Auth > Router + AppToaster
+│   ├── playwright.config.ts  # Playwright config (headless Chromium, single worker)
+│   └── tests/e2e/            # Browser E2E specs (auth, analytics, popups)
 ├── docker-compose.yml      # postgres:latest
 ├── config.example.yaml     # template; copy to config.yaml (gitignored)
 ├── config.yaml             # local runtime config (gitignored, lives at root)
+├── backups/                # gitignored; populated by `make backup`
+├── DEPLOYMENT.md           # production runbook (Phase 9)
 └── README.md
 ```
 
@@ -146,6 +160,7 @@ make migrate-down    # rollback one migration
 make migrate-status  # show migration state
 make migrate-create name=add_medicines_table   # new migration file
 make run             # API server on :8080
+make test-e2e        # run Go integration tests against the dev DB
 make web-install     # npm install (frontend)
 make web             # Vite dev server on :5173
 ```
@@ -158,6 +173,30 @@ make web             # Vite dev server on :5173
 - **Module path**: `github.com/apotech/backend` (placeholder — rename after pushing to a real Git host).
 - **Migrations dir**: `cmd/migrate/main.go` passes the literal string `"migrations"` to goose, resolved relative to the binary's CWD. The Makefile invokes the binary via `go -C backend run ./cmd/migrate ...`, so CWD = `backend/` and goose finds `backend/migrations/`. If you run it directly, do so from `backend/` (or change that string).
 - **Postgres volume mount**: `docker-compose.yml` mounts `./data/postgres` at `/var/lib/postgresql` (NOT `/var/lib/postgresql/data`). Required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. Do not "fix" the mount target back.
+
+## Testing
+
+### Backend integration / E2E (Go)
+- Tests live in `backend/e2e/`. Run with `make test-e2e`. Each `*_test.go` calls `e2e.SetupEnv(t)` to spin up an in-process `httptest.Server` wrapping the same handler stack `cmd/server/main.go` registers, backed by the **real dev Postgres** (`config.yaml`). Tests exercise the full Connect → service → DB stack over the wire.
+- **Assertion library**: `github.com/stretchr/testify/require`. One-liner asserts, fatal on failure.
+- **Side effect of `make test-e2e`**: `SetupEnv` calls `Users.EnsureBootstrapOwner` so the owner password gets reset to `cfg.Bootstrap.owner_password` on every run. Only run against the dev DB.
+- **Adding a new test**: drop a `<feature>_test.go` file in `backend/e2e/`, call `e2e.SetupEnv(t)`, use the typed Connect clients on `env.Auth` / `env.Users` (extend `Env` for new services as they're tested).
+- **What's covered today**: login (happy path, invalid credentials, public-when-authenticated). Refresh, Logout, role-guard enforcement, POS, inventory — **not yet tested**.
+
+### Browser E2E (Playwright)
+- Tests live in `frontend/tests/e2e/`. Run with `make test-browser` from the repo root (requires `make run` + `make web` already running in other terminals). Headless Chromium against the dev backend + dev DB.
+- **Config**: [frontend/playwright.config.ts](frontend/playwright.config.ts). Single worker, retains traces/screenshots/video on failure, HTML reporter at `frontend/playwright-report/`.
+- **Shared helpers** ([frontend/tests/e2e/_helpers.ts](frontend/tests/e2e/_helpers.ts)): `loginAs(page)`, `clearAuth(page)`, `OWNER` test-user constant, and an extended `test` fixture that **fails any test producing an unexpected browser console error** — this alone catches large classes of bugs (the BigInt JSON.stringify crash from the analytics page would fail every analytics test instantly). The `ALLOWED_CONSOLE_NOISE` allowlist mutes a few known-benign upstream warnings.
+- **What's covered today** (Phase A — 12 tests):
+  - `auth.spec.ts` — login success, wrong password stays on /login, logout clears tokens.
+  - `analytics.spec.ts` — all three tabs render; date-range change refetches without console errors (BigInt regression).
+  - `popups.spec.ts` — EntityDrawer Add/Cancel/Save; Branches required-field validation; Dialog F4-open + auto-focus; dismissal via Esc / Close [×] / outside-positioner click. **One `.fixme`**: drawer form-reset on Cancel (known bug — flip `.fixme` to `()` after fix).
+- **Adding a new test**: drop a `<feature>.spec.ts` in `frontend/tests/e2e/`, import `{ test, expect, loginAs }` from `./_helpers`, use Playwright's `page` API. Prefer role-based selectors (`getByRole`, `getByText`) over CSS — they're resilient to Chakra class-name churn.
+- **Test data**: same shared dev DB as the Go suite. Tests should use timestamped names (`e2e-customer-${Date.now()}`) and clean up after themselves (archive rows) until proper test-DB isolation lands.
+- **Interactive debugging**: `cd frontend && npx playwright test --ui` opens the time-travel debugger. `npx playwright show-report` opens the last HTML report.
+
+### Convenience
+- `make test-all` runs both suites back-to-back.
 
 ## Frontend conventions
 
@@ -196,6 +235,19 @@ make web             # Vite dev server on :5173
 - **Frontend tokens**: stored in `localStorage["apotech_access_token"]` and `localStorage["apotech_refresh_token"]`. Only `AuthProvider` ([lib/auth.tsx](frontend/src/lib/auth.tsx)) and the transport interceptor ([lib/transport.ts](frontend/src/lib/transport.ts)) touch them; everything else uses `useAuth()`. `logout()` is async — calls `AuthService.Logout` first (best-effort), then clears both keys.
 - **Route protection**: `<ProtectedRoute>` (with optional `requiredRole`) wraps router children. UI gating only — the backend `auth.NewInterceptor` is the real enforcement.
 
+## Analytics (Phase 4)
+- **Aggregation strategy**: live Postgres queries only. No materialized views, no external OLAP. Existing indexes (`sales_completed_idx`, `sale_items_medicine_idx`, `stock_movements_created_idx`, etc.) carry the current dataset comfortably. **If any query exceeds ~500ms in production** the next step is a materialized view refreshed every 5–15min; we don't pre-build that infrastructure.
+- **Proto package**: `analytics_iface.v1` with **three services** split by domain:
+  - `SalesAnalyticsService` — `GetRevenueTrend` (day/week/month buckets via `DATE_TRUNC`), `GetTopSellers` (qty or revenue), `GetPaymentMix`, `GetSalesByCashier`, `GetHourOfDayHeatmap` (`EXTRACT(DOW)` × `EXTRACT(HOUR)`).
+  - `InventoryAnalyticsService` — `GetTurnover`, `GetDeadStock`, `GetDaysOfStockRemaining`, `GetExpiryRiskForecast` (30d/90d/180d).
+  - `MarginAnalyticsService` — `GetMarginPerMedicine`, `GetTopMargin`, `GetSupplierCostTrend`. COGS uses `sale_items.batch_id` → `batches.cost_price`, so margins are accurate against the actual batch consumed (not a snapshot price).
+- **All RPCs are OWNER + PHARMACIST only** via the proto-declared `allowed_roles`. CASHIER doesn't see analytics.
+- **Charts**: Recharts. `<LineChart>` for trends + cost-trend, `<BarChart>` for top sellers / top margin, `<PieChart>` for payment mix.
+- **Hour-of-day heatmap is NOT Recharts** — built as a 7×24 Chakra `Grid` of `<Box>` cells in [components/HourHeatmap.tsx](frontend/src/components/HourHeatmap.tsx). Cell color interpolates blue intensity by `sale_count / max`. Simpler than fighting Recharts for a heatmap and stays in the theme.
+- **CSV export = client-side.** [lib/csv.ts](frontend/src/lib/csv.ts) serializes whatever rows the page currently has, prepends a UTF-8 BOM (so Excel doesn't mangle non-ASCII), and triggers a download. No server-side export RPC. Limitation: only exports what was fetched. Acceptable while datasets are page-sized.
+- **Date range filter**: shared [components/DateRangeFilter.tsx](frontend/src/components/DateRangeFilter.tsx) with presets (Today / 7d / 30d / 90d / YTD / custom). `resolveRange()` returns `{ fromUnix, toUnix }` for the RPC.
+- **Route**: `/analytics` with tabs Sales / Inventory / Margins. OWNER + PHARMACIST only.
+
 ## Sales model (Phase 3)
 - **Customers**: light table (`name`, `phone`, `bpjs_no`, `notes`, `active`). Sales may attach a customer or stay anonymous. CASHIER+PHARMACIST+OWNER can list/get/search/create; only OWNER+PHARMACIST can update/archive. `bpjs_no` column reserved for the BPJS integration phase.
 - **Sale state machine**: `DRAFT → COMPLETED` or `DRAFT → VOIDED`. `ON_HOLD` is intentionally not modeled. Only DRAFT sales accept item/customer mutations.
@@ -208,6 +260,115 @@ make web             # Vite dev server on :5173
 - **POS UI**: route `/pos`, available to CASHIER + PHARMACIST + OWNER. Opts out of `AppShell` — full-screen via the bare layout branch in [App.tsx](frontend/src/App.tsx). Split view: medicine search (~60%, auto-focused, barcode-scanner friendly — SKU-exact-match-on-Enter auto-adds), cart panel (~40%, qty inline-editable, payment radio, change calc). Keyboard shortcuts: **F2** search · **F4** customer · **F8** complete · **Esc** clear. Cart state lives in the backend `sales` row (DRAFT); the UI fetches/mutates via TanStack Query (no separate cart store).
 - **Receipt**: on-screen Chakra Dialog after CompleteSale. ESC/POS thermal printer wiring deferred to Phase 7.
 
+## Purchasing model (Phase 5)
+- **Proto package**: `purchasing_iface.v1` with **three services**:
+  - `PurchaseOrderService` — `ListPurchaseOrders` (with `only_outstanding` filter), `GetPurchaseOrder`, `CreatePurchaseOrder` (auto-assigns `po_no`), `UpdatePurchaseOrder` (DRAFT only, full item replace), `SendPurchaseOrder` (DRAFT→SENT), `VoidPurchaseOrder` (DRAFT/SENT only).
+  - `PurchaseReceiptService` — `CreateReceipt` (the meaty piece — see below), `ListReceipts` (for a PO), `GetReceipt`.
+  - `PurchasePaymentService` — `PayPurchase` (increments `paid_amount` + maybe closes), `GetSupplierBalances` (aggregated outstanding per supplier).
+- **All RPCs are OWNER + PHARMACIST only** via proto-declared `allowed_roles`. CASHIER doesn't see purchasing.
+- **PO state machine**: `DRAFT → SENT → PARTIALLY_RECEIVED → RECEIVED → CLOSED` (or `DRAFT/SENT → VOIDED`). `CLOSED` is reached when `paid_amount >= ordered_total` while `RECEIVED`. `recomputePOStatus` advances DRAFT/SENT/PARTIALLY_RECEIVED/RECEIVED based on summed `received_qty` vs `ordered_qty`; `maybeCloseIfPaid` finalizes to CLOSED after payment. Both helpers live in [service/purchasing_orders.go](backend/internal/service/purchasing_orders.go) and are called from receipts/payments services.
+- **PO + receipt numbering**: human-friendly per-year format `PO-2026-0001` and `RCV-2026-0001`. `po_no_counters(year, last_seq)` and `rcv_no_counters(year, last_seq)` rows are incremented under `FOR UPDATE` lock inside the relevant tx. UUID `id` is the primary key; the `_no` is for human reference.
+- **Receipt → batch creation chain** (the key piece, in `CreateReceipt`'s single tx):
+  1. Lock the PO `FOR UPDATE`; reject unless status is `SENT` or `PARTIALLY_RECEIVED`.
+  2. Assign `receipt_no` via the counter; insert `purchase_receipts` row.
+  3. For each line: load the PO item, validate `qty ≤ ordered_qty - received_qty`, insert a new `batches` row (carrying `medicine_id`, `supplier_id` from the PO, `batch_number`, `expiry_date`, `cost_price` from the PO line — so cost basis tracks reality, not the original PO if it was edited), insert a `PURCHASE` `stock_movements` row (positive qty, links to batch), insert `purchase_receipt_items` with `batch_id` pinned, increment `purchase_order_items.received_qty`.
+  4. Call `recomputePOStatus(tx, &po)` to advance the parent PO's status.
+- **Stock arrival**: the only path that creates batches today is `PurchaseReceiptService.CreateReceipt`. The legacy `MedicineService.CreateBatch` (Phase 2) remains as an emergency manual-entry path but should not be the primary flow once a supplier+PO is involved.
+- **Per-PO payment tracking**: `purchase_orders.paid_amount` is updated by `PayPurchase`; no separate payment ledger today. If history becomes needed, add a `purchase_payments(id, purchase_order_id, paid_at, amount, method, note)` table — out of scope this phase.
+- **Supplier outstanding balance**: `GetSupplierBalances` runs one SQL aggregation joining `suppliers` → `purchase_orders`, summing `ordered_total` and `paid_amount` grouped by supplier. `outstanding = SUM(ordered_total) - SUM(paid_amount)`. The `only_outstanding` filter adds `HAVING outstanding > 0`. Open POs counted via `COUNT(*) FILTER (WHERE status NOT IN ('CLOSED', 'VOIDED'))`.
+- **`branch_id` placeholder**: nullable column on `purchase_orders` (reserved for the multi-branch phase, same as sales tables).
+- **Route**: `/purchasing` with tabs All POs / Outstanding / Suppliers Ledger; `/purchasing/new` for create; `/purchasing/:id` for detail (status badge + Send/Receive/Pay/Void actions gated by current state). OWNER + PHARMACIST only.
+
+## Receipt printing (Phase 7-printer)
+- **ESC/POS over raw TCP**, dispatched directly from the backend. No separate print-bridge daemon — most network thermal printers (Epson TM-T, Star, generic 58/80mm Chinese units) listen on port 9100 and accept raw bytes. For a single-shop local deploy the backend is on the same LAN as the printer; that's good enough today.
+- **Package**: [internal/printer/](backend/internal/printer/) — three files, no new Go deps:
+  - `escpos.go` — minimal `Builder` wrapping the byte commands actually used (init, align, bold, double-size, line, feed, cut, drawer kick).
+  - `receipt.go` — `Render(Receipt, Settings)` turns a denormalized `Receipt` struct into a full ESC/POS byte stream. The package does NOT touch the DB — the caller (sales service) preloads medicine names, cashier name, and customer name.
+  - `dispatch.go` — `DispatchTCP(address, bytes, timeout)`. Dial, write, close.
+- **Config** ([config.example.yaml](config.example.yaml)): `printer.enabled`, `printer.address` (host:port), `printer.width` (32 for 58mm, 48 for 80mm), `printer.timeout`, `printer.open_drawer`, `printer.header[]` (shop name/address lines printed at top), `printer.footer[]` (closing lines). When `enabled: false`, `PrintReceipt` returns `FailedPrecondition` with a clear message.
+- **RPC**: `SaleService.PrintReceipt(sale_id)` ([service/sales.go](backend/internal/service/sales.go)). Open to CASHIER + PHARMACIST + OWNER. Requires the sale to be in `COMPLETED` status — reprints work because the RPC is idempotent and stateless. Returns `bytes_sent` for debugging. Network/printer errors come back as `Unavailable`.
+- **Frontend UX**: the receipt dialog after CompleteSale now has a **Print** button next to **New sale**. Reprint from the Sales list is not wired yet — straightforward follow-up if needed.
+- **Multi-shop limitation**: TCP dispatch assumes backend and printer share a LAN. If the backend ever moves to a hosted deployment, swap the dispatch path for the original "render bytes, return them, client-side print bridge POSTs to localhost:9100" architecture (the `Render` / `Dispatch` split makes this a 1-file change).
+
+## e-Faktur / tax invoice (Phase 7 sub-project 2)
+- **Bookkeeping only**, not a live DJP integration. The actual e-Nofa / DJP web-service client would need a digital certificate + merchant credentials that aren't wired today. The shipped pieces:
+  - `nsfp_pool` table — the seller pre-purchases NSFP (Nomor Seri Faktur Pajak) ranges from DJP via e-Nofa, then imports the range via `TaxInvoiceService.ImportNsfpRange`. Each NSFP body is stored as `XXX.YY.NNNNNNNN`.
+  - `TaxInvoiceService.ImportNsfpRange` / `ListNsfp` / `ListTaxInvoices` / `GetTaxInvoice`. Owner-only (List/Get also Pharmacist).
+  - Customer fields: `npwp` (15-digit tax ID, free-text formatted) and `address`. Customers with a non-empty NPWP are treated as PKP/B2B.
+  - `sales.tax_invoice_no` / `tax_invoice_code` / `tax_invoice_dpp` / `tax_invoice_ppn` / `tax_invoice_issued_at` — populated atomically in `CompleteSale` when the attached customer has an NPWP (`AssignTaxInvoiceForSaleTx` in [service/tax.go](backend/internal/service/tax.go)).
+- **Auto-assign rule** (inside `CompleteSale`'s tx): if the sale has a customer with non-empty NPWP, lock the lowest-numbered unused NSFP for the sale's fiscal year (`FOR UPDATE SKIP LOCKED`), mark it used, stamp the sale. If no NSFP is available, the whole `CompleteSale` rolls back with `FailedPrecondition` — better to fail loudly than miss a tax invoice.
+- **PPN**: assumed 11% (Indonesia rate as of 2026). DPP = total × (100/111); PPN = total - DPP. `total` is VAT-inclusive (apotek convention).
+- **CSV export**: client-side via [lib/csv.ts](frontend/src/lib/csv.ts) on the `/tax` route — DPP/PPN/total in BIGINT minor units (whole rupiah), one row per issued invoice. Suitable as a base for SPT Masa PPN reconciliation; map columns to the DJP CSV layout in a follow-up if you ever submit electronically.
+- **Route**: `/tax` (OWNER only) — tabs Issued invoices / NSFP pool. Sidebar entry "Tax" / "Pajak".
+
+## BPJS Kesehatan (Phase 7 sub-project 3 — STUB)
+- **Local claim tracking only.** The actual BPJS API client requires merchant credentials + Apotek-Vendor certification with BPJS. Today `BpjsClaimService.SubmitClaim` is a stub that flips DRAFT→SUBMITTED with a timestamp; no HTTP call is made. Wire a real client in [service/bpjs.go](backend/internal/service/bpjs.go) where the `TODO: real BPJS HTTP call goes here` comment lives.
+- **Schema** (`bpjs_claims`): one row per claim; FKs to `sales` + `customers`; status enum `DRAFT|SUBMITTED|APPROVED|REJECTED|PAID`; `external_ref` slot for the BPJS response code.
+- **RPCs**: `ListClaims`, `GetClaim`, `CreateClaim` (from a sale, requires customer with `bpjs_no`), `SubmitClaim` (stub), `ResolveClaim` (manual ack: APPROVED/REJECTED/PAID + external_ref + note). OWNER + PHARMACIST.
+- **Route**: `/bpjs`. Sidebar shows it when the user has a role with access.
+
+## Multi-branch (Phase 8)
+- **Schema**:
+  - `branches(id, code, name, address, phone, active)` — seeded with one row `code='MAIN', name='Main pharmacy'` so existing single-shop data has a home.
+  - `user_branches(user_id, branch_id, is_default)` — many-to-many. Partial unique index `(user_id) WHERE is_default` enforces one default branch per user.
+  - Backfill: migration `00015_branches.sql` UPDATEs `sales / sale_items / stock_movements / purchase_orders / prescriptions` setting `branch_id` to MAIN where NULL. Existing user rows are joined to MAIN as their default.
+- **Branch context flows through a header.** Frontend [lib/transport.ts](frontend/src/lib/transport.ts) sends `X-Branch-Id: <uuid>` on every RPC (value persisted in `localStorage["apotech_branch_id"]`). Backend [auth.NewInterceptor](backend/internal/auth/interceptor.go) reads it into `Principal.BranchID`. Handlers use `caller.BranchID` to stamp creates (e.g. `Sales.StartSale` stamps `branch_id` on the DRAFT sale).
+- **`BranchService`** ([service/branches.go](backend/internal/service/branches.go)):
+  - `ListBranches` — all roles.
+  - `CreateBranch` / `UpdateBranch` / `ArchiveBranch` — OWNER only.
+  - `GrantBranchAccess` / `RevokeBranchAccess` — OWNER only.
+  - `ListUserBranches` — self for any role; other users for OWNER. Hydrates the branches alongside the memberships so the TopBar selector renders in one fetch.
+  - `SetDefaultBranch` — self or, for OWNER, any user. Clears other defaults atomically.
+- **Branch selector** lives in `TopBar` (hidden when the user has access to only one branch). Switching branches `window.location.reload()`s the page so every TanStack-Query cache is refetched with the new header.
+- **`branch_id` columns stay nullable.** NULL means "unscoped / legacy" — backwards compatible with rows that predate Phase 8. Per-list branch filtering is opt-in per RPC; **only `Sales.StartSale` is currently retrofitted** to stamp branch on create. Adding `WHERE branch_id = ?` to existing List* queries is straightforward follow-up — left for when multi-branch is actually deployed.
+- **Route**: `/branches` (OWNER only). Minimal admin: list + create. Editing/grants live in follow-up; SQL works fine for now.
+
+## Production hardening (Phase 9)
+- **Login rate limit** ([auth/ratelimit.go](backend/internal/auth/ratelimit.go)): in-process token bucket keyed by lowercase email. Defaults: capacity 5, refill 1/60s. Trips with `ResourceExhausted` and a friendly message. In-process means multi-replica deployments don't share counters — acceptable for single-shop local deploy; swap to Redis if you ever scale out.
+- **Audit log** (`audit_log` table + [auth/audit.go](backend/internal/auth/audit.go)):
+  - Records every NON-read RPC (List/Get/Search/Me/Ping are skipped to keep the table actionable).
+  - Captures user_id, role, branch_id, procedure, ok/code/message, ip, user_agent, duration_ms.
+  - Wired as a second interceptor on every handler in `main.go`. Writes are async (`go func`) on a detached context so audit overhead never blocks the user; a crash mid-write loses the queued row — acceptable for this app.
+  - Query example in [DEPLOYMENT.md](DEPLOYMENT.md).
+- **Password reset** ([service/users.go](backend/internal/service/users.go)):
+  - `UserService.IssuePasswordResetToken` — OWNER only. Mints a 32-byte random token; raw value returned ONCE to the OWNER's UI; SHA-256 hash stored in `password_reset_tokens` with 24h TTL.
+  - `UserService.RedeemPasswordResetToken` — public RPC. Takes the raw token + new password (min 8 chars); validates, updates the user's bcrypt hash, marks token used. Idempotent failure on replay (already-used token returns `Unauthenticated`).
+  - **No SMTP integration.** Owner hands the token to the user out-of-band (verbal, SMS, paper). For a real email-based forgot-password flow, replace the OWNER-issue path with a Login-side `RequestPasswordReset(email)` RPC that mints and emails.
+- **Structured logging via `log/slog`** (JSON handler on stdout). Boot in `main.go`. Adopt `slog.With(...)` in services as needed; today only main.go writes structured logs.
+- **Backups**: `make backup` runs `pg_dump` inside the compose Postgres container and writes `backups/YYYY-mm-dd_HHMMSS.sql.gz`. Cron it for nightly. Restore procedure in [DEPLOYMENT.md](DEPLOYMENT.md).
+- **Deployment runbook**: [DEPLOYMENT.md](DEPLOYMENT.md) covers first-time setup, daily ops, backups, observability, security checklist, upgrade flow, and known limitations.
+- **What was NOT shipped** in Phase 9 (out of scope of "execute all roadmap"):
+  - Live SMTP-based forgot-password flow (placeholder above is OWNER-issued only).
+  - Prometheus `/metrics` endpoint.
+  - HA / multi-node deploy. Rate limit is in-process; the audit log is async-fire-and-forget.
+  - Frontend UI for IssuePasswordResetToken / RedeemPasswordResetToken (only backend wired; users self-serve via direct API for now).
+
+## Prescriptions model (Phase 6)
+- **Proto package**: `prescription_iface.v1` with a single `PrescriptionService` (5 RPCs: `ListPrescriptions`, `GetPrescription`, `CreatePrescription`, `UpdatePrescription`, `VoidPrescription`). Sale-side attach/detach RPCs live on `pos_iface.v1.SaleService` (`AttachPrescription`, `DetachPrescription`) so they share the sale tx surface.
+- **Role guards**:
+  - `List` / `Get` open to **OWNER + PHARMACIST + CASHIER** (cashier needs them to pick a Rx during POS).
+  - `Create` / `Update` / `Void` are **OWNER + PHARMACIST only** — cashiers don't issue scripts.
+  - `AttachPrescription` / `DetachPrescription` open to all three roles (POS flow).
+- **Issuer model**: free-text `issuer_name` column on `prescriptions`. No `doctors` table; matches paper-script workflow. Promote to a normalized table later if loyalty/reporting per doctor is ever scoped.
+- **Customer required**: every prescription has a non-null `customer_id`. The patient is the script's anchor for `ListPrescriptions(customer_id=...)` and the POS picker.
+- **Numbering**: per-year human-friendly `RX-2026-0001`. `rx_no_counters(year, last_seq)` row is incremented under `FOR UPDATE` lock inside `CreatePrescription`'s tx. UUID `id` is the primary key.
+- **Status is computed, not stored** (except the binary ACTIVE/VOIDED). `computeRxStatus` ([service/prescriptions.go](backend/internal/service/prescriptions.go)) derives the live status from stored fields each time:
+  - `VOIDED` — explicit `Status = 'VOIDED'`
+  - `DISPENSED` — every item's `dispensed_qty == prescribed_qty`
+  - `EXPIRED` — `now > expires_at + 1d` (end-of-day grace) and not voided/dispensed
+  - `ACTIVE` — otherwise
+- **Expiry**: `expires_at` defaults to `issued_at + 90d` server-side when omitted; editable on create/update. No background sweeper — status is read-through.
+- **Partial dispensing across sales**: `prescription_items.dispensed_qty` accumulates per medicine line, with DB constraint `dispensed_qty <= prescribed_qty`. The same Rx can back multiple visits until fully dispensed.
+- **Sales-side enforcement** (lives in [service/sales.go](backend/internal/service/sales.go)):
+  - `AttachPrescription`: requires status `ACTIVE`; rejects DISPENSED/EXPIRED/VOIDED; rejects if sale already has a customer that doesn't match the Rx customer; auto-fills the sale's customer if it was empty.
+  - `DetachPrescription`: blocked if any current cart line is Rx-required (forces user to remove those items first).
+  - `AddItem` / `SetItemQuantity`: `assertRxCovers` checks that a medicine with `prescription_required = true` has an attached, ACTIVE prescription that includes the medicine with `prescribed_qty - dispensed_qty >= newQty`. Returns `FailedPrecondition` if any precondition fails — surfaced to the user via the global toast.
+  - `CompleteSale`: after FEFO allocation succeeds, `incrementRxDispensed` sums per-medicine cart qty and bumps `prescription_items.dispensed_qty` for each Rx-required medicine. Same tx as the rest of CompleteSale, so rollback is atomic.
+- **Edit constraint**: `UpdatePrescription` is allowed only while status is `ACTIVE` **and** no item has any `dispensed_qty > 0` yet. After the first dispense the script is effectively frozen — only `Void` is available.
+- **Schema link**: nullable `prescription_id` FK on `sales`. Indexed for fast lookups (`sales_prescription_idx WHERE prescription_id IS NOT NULL`). `branch_id` placeholder column also present on `prescriptions` (reserved for the multi-branch phase, same as sales/POs).
+- **POS UX**: a new "Attach prescription" bar under the customer bar in the cart panel. Shortcut **F5** opens the picker (filtered to ACTIVE Rx, scoped to the sale's customer when set). Search results show a red **Rx** badge on `prescription_required` medicines. Adding an Rx-required medicine without an attached prescription surfaces the backend's `FailedPrecondition` as a toast.
+- **Route**: `/prescriptions` — single page with filter (status + customer) + table + create/edit drawer. OWNER + PHARMACIST only (sidebar). Edit drawer hides once any dispensing has happened; Void button stays available while ACTIVE.
+
 ## Inventory model
 - **Money**: `unit_price` (medicines) and `cost_price` (batches) are `BIGINT` storing the **minor currency unit**. For IDR (no subdivision) that's whole rupiah. Never floats. Frontend formats with `Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' })`.
 - **Stock ledger**: `stock_movements` is **insert-only**. Current batch stock = `SUM(qty) WHERE batch_id = $1`. No mutable counter on `batches`. Movement types: `PURCHASE` (inserted automatically by `CreateBatch` for `initial_quantity`), `SALE` (will come from POS in the next phase), `ADJUSTMENT`, `WRITE_OFF` (manual via `RecordMovement`). The handler refuses any movement that would drive a batch's stock below zero (post-insert check inside the tx; rollback on violation).
@@ -216,20 +377,26 @@ make web             # Vite dev server on :5173
 - **Soft delete**: catalog entities use `active = false` rather than DELETE; rows referenced by movements or price history must persist.
 
 ## Known gaps (not yet implemented)
-- No rate limiting / brute-force protection on `Login`.
-- No password reset / forgot-password flow.
-- No audit log of admin actions (role changes, deactivations, price changes other than the dedicated `medicine_prices` history).
+- No CI runner — both `make test-e2e` (Go integration) and `make test-browser` (Playwright) run locally only. Wiring `.github/workflows/test.yml` is the planned next step.
+- Tests share the dev DB (read-mostly today). Once test suites grow write-heavy (full POS / Purchasing coverage), introduce a separate `apotech_test` database or transactional rollback per test.
+- Browser E2E coverage is the Phase-A scaffold only: auth + analytics + popups. POS / Purchasing / Prescriptions / Tax / Branches / role-gating specs are documented in the testing plan but not yet written.
+- No live BPJS Kesehatan API client — Phase 7-BPJS is a local-tracking stub. Requires merchant credentials + Apotek-Vendor certification with BPJS.
+- No live DJP / e-Faktur web-service client — Phase 7-eFaktur is bookkeeping only. The shipped CSV is a base for SPT Masa PPN reconciliation but not the official DJP-submission format.
+- No SMTP-based forgot-password flow — Phase 9 ships an OWNER-issued one-shot reset token (raw value handed off out-of-band).
+- No frontend UI for password reset issue/redeem — the RPCs exist; wire `/reset?token=...` in a follow-up.
+- No Prometheus `/metrics` endpoint; logs are structured JSON via `log/slog` on stdout only.
+- Per-list branch filtering is opt-in per RPC — only `Sales.StartSale` stamps `branch_id` on create today. Existing List* queries don't yet filter by `caller.BranchID`; add `WHERE branch_id = ?` as multi-branch traffic appears.
 - No discounts in POS (line and cart discounts are schema-ready but the `DiscountService` proto + UI controls are deferred).
 - No returns / refunds flow.
 - No stocktake / reconciliation workflow.
 - No barcode scanning hardware wiring (POS search input is scanner-friendly via SKU-exact-Enter, but no HID/serial layer).
-- No ESC/POS thermal-printer rendering (Phase 7).
+- No reprint from the Sales list (Print is wired on the receipt dialog only).
 - Admin "force logout user" RPC (data model supports it via `refresh_tokens.user_id`; ship later).
+- Login rate limiter and audit-write queue are in-process — single-node only. Move to Redis + a real write-ahead log for HA.
 
 ## Out of scope (for the current phase)
 Do not invent these without an explicit user request:
 - Discount controls in POS (line + cart discounts)
-- Prescription handling
 - Multi-tenant / multi-branch (branch_id columns are placeholders only)
 - Production deployment, CI, Dockerfiles for app code
 

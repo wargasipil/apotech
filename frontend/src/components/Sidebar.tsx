@@ -1,13 +1,17 @@
 import { Box, HStack, IconButton, Stack, Text } from "@chakra-ui/react";
 import {
   BarChart3,
+  Building2,
   ChevronsLeft,
   ChevronsRight,
+  FileText,
   LayoutDashboard,
   LogOut,
   Package,
+  Percent,
   Pill,
   ShoppingCart,
+  Truck,
   UserRound,
   Users as UsersIcon,
 } from "lucide-react";
@@ -36,9 +40,21 @@ function buildItems(t: (k: string) => string): NavItem[] {
       roles: [Role.OWNER, Role.PHARMACIST],
     },
     {
+      to: "/purchasing",
+      label: t("nav.purchasing"),
+      icon: Truck,
+      roles: [Role.OWNER, Role.PHARMACIST],
+    },
+    {
       to: "/customers",
       label: t("nav.customers"),
       icon: UserRound,
+    },
+    {
+      to: "/prescriptions",
+      label: t("nav.prescriptions"),
+      icon: FileText,
+      roles: [Role.OWNER, Role.PHARMACIST],
     },
     {
       to: "/analytics",
@@ -46,6 +62,14 @@ function buildItems(t: (k: string) => string): NavItem[] {
       icon: BarChart3,
       roles: [Role.OWNER, Role.PHARMACIST],
     },
+    { to: "/tax", label: t("nav.tax"), icon: Percent, roles: [Role.OWNER] },
+    {
+      to: "/bpjs",
+      label: t("nav.bpjs"),
+      icon: FileText,
+      roles: [Role.OWNER, Role.PHARMACIST],
+    },
+    { to: "/branches", label: t("nav.branches"), icon: Building2, roles: [Role.OWNER] },
     { to: "/users", label: t("nav.users"), icon: UsersIcon, roles: [Role.OWNER] },
   ];
 }

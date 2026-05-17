@@ -29,7 +29,10 @@
       "Bash(echo \"tsc=$?\")",
       "Bash(timeout 5 npx vite)",
       "Bash(timeout 4 make run)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(echo \"tidy=$?\")",
+      "Bash(make test-e2e *)",
+      "Bash(make migrate-up *)"
     ]
   },
   "enabledPlugins": {

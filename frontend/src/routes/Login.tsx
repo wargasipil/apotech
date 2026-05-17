@@ -61,6 +61,7 @@ export default function Login() {
               label={t("auth.password")}
               type="password"
               required
+              passwordToggle
             />
             <Button type="submit" colorPalette="blue" loading={mutation.isPending}>
               {t("auth.signIn")}

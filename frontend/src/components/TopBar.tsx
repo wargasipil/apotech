@@ -4,13 +4,17 @@ import {
   HStack,
   IconButton,
   Menu,
+  NativeSelect,
   Portal,
   Text,
 } from "@chakra-ui/react";
 import { Languages, LogOut, Menu as MenuIcon, Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../lib/auth";
+import { BRANCH_KEY } from "../lib/transport";
+import { useMyBranchesQuery } from "../queries/branches";
 import { usePreferencesStore, type Locale } from "../stores/preferences";
 
 export default function TopBar() {
@@ -61,6 +65,7 @@ export default function TopBar() {
         </HStack>
 
         <HStack gap={1}>
+          {user && <BranchSelector />}
           <IconButton aria-label="language" variant="ghost" size="sm" onClick={flipLocale}>
             <HStack gap={1}>
               <Languages size={16} />
@@ -116,5 +121,50 @@ export default function TopBar() {
         </HStack>
       </Flex>
     </Box>
+  );
+}
+
+function BranchSelector() {
+  const myBranchesQ = useMyBranchesQuery();
+  const [current, setCurrent] = useState<string>(() => localStorage.getItem(BRANCH_KEY) || "");
+
+  // Once memberships load, default to the persisted choice or the user's
+  // default branch.
+  useEffect(() => {
+    const data = myBranchesQ.data;
+    if (!data || data.branches.length === 0) return;
+    const persisted = localStorage.getItem(BRANCH_KEY);
+    if (persisted && data.branches.some((b) => b.id === persisted)) {
+      setCurrent(persisted);
+      return;
+    }
+    const def = data.memberships.find((m) => m.isDefault);
+    const fallback = def?.branchId ?? data.branches[0].id;
+    setCurrent(fallback);
+    localStorage.setItem(BRANCH_KEY, fallback);
+  }, [myBranchesQ.data]);
+
+  if (!myBranchesQ.data || myBranchesQ.data.branches.length <= 1) return null;
+
+  return (
+    <NativeSelect.Root size="sm" width="160px">
+      <NativeSelect.Field
+        value={current}
+        onChange={(e) => {
+          const v = e.target.value;
+          setCurrent(v);
+          localStorage.setItem(BRANCH_KEY, v);
+          // Hard reload to refetch all branch-scoped data with the new header.
+          window.location.reload();
+        }}
+      >
+        {myBranchesQ.data.branches.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.code} · {b.name}
+          </option>
+        ))}
+      </NativeSelect.Field>
+      <NativeSelect.Indicator />
+    </NativeSelect.Root>
   );
 }

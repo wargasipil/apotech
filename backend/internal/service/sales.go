@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -12,7 +13,9 @@ import (
 
 	posifacev1 "github.com/apotech/backend/gen/pos_iface/v1"
 	"github.com/apotech/backend/internal/auth"
+	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/printer"
 )
 
 const (
@@ -28,10 +31,13 @@ const (
 )
 
 type Sales struct {
-	db *gorm.DB
+	db      *gorm.DB
+	printer config.Printer
 }
 
-func NewSales(db *gorm.DB) *Sales { return &Sales{db: db} }
+func NewSales(db *gorm.DB, printerCfg config.Printer) *Sales {
+	return &Sales{db: db, printer: printerCfg}
+}
 
 // ---------- Lifecycle ----------
 
@@ -46,6 +52,10 @@ func (s *Sales) StartSale(
 	sale := model.Sale{
 		CashierUserID: caller.UserID,
 		Status:        saleStatusDraft,
+	}
+	if caller.BranchID != "" {
+		bid := caller.BranchID
+		sale.BranchID = &bid
 	}
 	if err := s.db.WithContext(ctx).Create(&sale).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -127,11 +137,27 @@ func (s *Sales) AddItem(
 			return connect.NewError(connect.CodeFailedPrecondition, errors.New("medicine is archived"))
 		}
 
-		// If an item for this medicine already exists, increment its qty.
+		// Look up the existing line for this medicine (qty after this add).
 		var existing model.SaleItem
-		err = tx.Where("sale_id = ? AND medicine_id = ?", sale.ID, med.ID).First(&existing).Error
-		switch {
-		case errors.Is(err, gorm.ErrRecordNotFound):
+		findErr := tx.Where("sale_id = ? AND medicine_id = ?", sale.ID, med.ID).First(&existing).Error
+		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			return connect.NewError(connect.CodeInternal, findErr)
+		}
+		newQty := req.Msg.Qty
+		if findErr == nil {
+			newQty = existing.Qty + req.Msg.Qty
+		}
+
+		// Rx gate: prescription_required medicines need a valid Rx attached
+		// with sufficient remaining qty.
+		if med.PrescriptionRequired {
+			if err := assertRxCovers(tx, sale, med.ID, newQty); err != nil {
+				return err
+			}
+		}
+
+		// If an item for this medicine already exists, increment its qty.
+		if errors.Is(findErr, gorm.ErrRecordNotFound) {
 			item := model.SaleItem{
 				SaleID:            sale.ID,
 				MedicineID:        med.ID,
@@ -142,10 +168,8 @@ func (s *Sales) AddItem(
 			if err := tx.Create(&item).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
-		case err != nil:
-			return connect.NewError(connect.CodeInternal, err)
-		default:
-			existing.Qty += req.Msg.Qty
+		} else {
+			existing.Qty = newQty
 			existing.UnitPriceSnapshot = med.UnitPrice
 			existing.LineTotal = computeLineTotal(existing.Qty, existing.UnitPriceSnapshot, existing.LineDiscount)
 			if err := tx.Save(&existing).Error; err != nil {
@@ -184,6 +208,15 @@ func (s *Sales) SetItemQuantity(
 				return connect.NewError(connect.CodeNotFound, errors.New("item not found"))
 			}
 			return connect.NewError(connect.CodeInternal, err)
+		}
+		var med model.Medicine
+		if err := tx.Where("id = ?", item.MedicineID).First(&med).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if med.PrescriptionRequired {
+			if err := assertRxCovers(tx, sale, med.ID, req.Msg.Qty); err != nil {
+				return err
+			}
 		}
 		item.Qty = req.Msg.Qty
 		item.LineTotal = computeLineTotal(item.Qty, item.UnitPriceSnapshot, item.LineDiscount)
@@ -253,6 +286,93 @@ func (s *Sales) SetSaleCustomer(
 		return nil, err
 	}
 	return connect.NewResponse(&posifacev1.SetSaleCustomerResponse{Sale: saleToProto(sale)}), nil
+}
+
+func (s *Sales) AttachPrescription(
+	ctx context.Context,
+	req *connect.Request[posifacev1.AttachPrescriptionRequest],
+) (*connect.Response[posifacev1.AttachPrescriptionResponse], error) {
+	if req.Msg.PrescriptionId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("prescription_id required"))
+	}
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		sale, err := s.draftForUpdate(tx, req.Msg.SaleId)
+		if err != nil {
+			return err
+		}
+		var rx model.Prescription
+		if err := tx.Preload("Items").Where("id = ?", req.Msg.PrescriptionId).First(&rx).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return connect.NewError(connect.CodeNotFound, errors.New("prescription not found"))
+			}
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		switch computeRxStatus(&rx, time.Now()) {
+		case rxStatusActive:
+			// ok
+		case rxStatusDispensed:
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("prescription already fully dispensed"))
+		case rxStatusExpired:
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("prescription has expired"))
+		case rxStatusVoided:
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("prescription is voided"))
+		}
+		// If a customer is already set on the sale, it must match the Rx customer.
+		if sale.CustomerID != nil && *sale.CustomerID != "" && *sale.CustomerID != rx.CustomerID {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("sale customer does not match prescription customer"))
+		}
+		updates := map[string]any{"prescription_id": rx.ID}
+		// If sale has no customer, snap to the Rx's customer for convenience.
+		if sale.CustomerID == nil || *sale.CustomerID == "" {
+			updates["customer_id"] = rx.CustomerID
+		}
+		return tx.Model(sale).Updates(updates).Error
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	sale, err := s.loadFull(ctx, req.Msg.SaleId)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&posifacev1.AttachPrescriptionResponse{Sale: saleToProto(sale)}), nil
+}
+
+func (s *Sales) DetachPrescription(
+	ctx context.Context,
+	req *connect.Request[posifacev1.DetachPrescriptionRequest],
+) (*connect.Response[posifacev1.DetachPrescriptionResponse], error) {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		sale, err := s.draftForUpdate(tx, req.Msg.SaleId)
+		if err != nil {
+			return err
+		}
+		// Block detach if any current line still needs the Rx.
+		var items []model.SaleItem
+		if err := tx.Where("sale_id = ?", sale.ID).Find(&items).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		for _, it := range items {
+			var med model.Medicine
+			if err := tx.Where("id = ?", it.MedicineID).First(&med).Error; err != nil {
+				return connect.NewError(connect.CodeInternal, err)
+			}
+			if med.PrescriptionRequired {
+				return connect.NewError(connect.CodeFailedPrecondition,
+					errors.New("cart still contains Rx-required items; remove them before detaching"))
+			}
+		}
+		return tx.Model(sale).Update("prescription_id", nil).Error
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	sale, err := s.loadFull(ctx, req.Msg.SaleId)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&posifacev1.DetachPrescriptionResponse{Sale: saleToProto(sale)}), nil
 }
 
 // ---------- Complete (FEFO + stock movements + sale numbering) ----------
@@ -375,6 +495,13 @@ func (s *Sales) CompleteSale(
 			return err
 		}
 
+		// Increment prescription dispensed_qty for any Rx-required medicines.
+		if sale.PrescriptionID != nil && *sale.PrescriptionID != "" {
+			if err := incrementRxDispensed(tx, *sale.PrescriptionID, items); err != nil {
+				return err
+			}
+		}
+
 		// Assign per-year sale_no.
 		saleNo, err := assignSaleNo(tx, now)
 		if err != nil {
@@ -391,6 +518,26 @@ func (s *Sales) CompleteSale(
 		}
 		if err := tx.Model(sale).Updates(updates).Error; err != nil {
 			return connect.NewError(connect.CodeInternal, err)
+		}
+		sale.Status = saleStatusCompleted
+		sale.CompletedAt = &now
+		sale.SaleNo = &saleNo
+		sale.PaymentSource = &paymentStr
+		sale.PaidAmount = req.Msg.PaidAmount
+
+		// If the customer is PKP (has NPWP), assign a tax-invoice number from
+		// the NSFP pool. If the pool is empty the whole CompleteSale rolls back
+		// — better to fail loudly than silently miss a tax invoice.
+		if sale.CustomerID != nil && *sale.CustomerID != "" {
+			var cust model.Customer
+			if err := tx.Where("id = ?", *sale.CustomerID).First(&cust).Error; err != nil {
+				return connect.NewError(connect.CodeInternal, err)
+			}
+			if strings.TrimSpace(cust.NPWP) != "" {
+				if err := AssignTaxInvoiceForSaleTx(tx, sale); err != nil {
+					return err
+				}
+			}
 		}
 		return nil
 	})
@@ -492,6 +639,112 @@ func (s *Sales) GetTodaySnapshot(
 	}), nil
 }
 
+// ---------- Print ----------
+
+func (s *Sales) PrintReceipt(
+	ctx context.Context,
+	req *connect.Request[posifacev1.PrintReceiptRequest],
+) (*connect.Response[posifacev1.PrintReceiptResponse], error) {
+	if !s.printer.Enabled {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("printer is not configured (set printer.enabled in config.yaml)"))
+	}
+	sale, err := s.loadFull(ctx, req.Msg.SaleId)
+	if err != nil {
+		return nil, err
+	}
+	if sale.Status != saleStatusCompleted {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("only completed sales can be printed"))
+	}
+
+	// Resolve medicine names.
+	medIDs := make([]string, 0, len(sale.Items))
+	for _, it := range sale.Items {
+		medIDs = append(medIDs, it.MedicineID)
+	}
+	var meds []model.Medicine
+	if err := s.db.WithContext(ctx).Where("id IN ?", medIDs).Find(&meds).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	medName := make(map[string]string, len(meds))
+	for _, m := range meds {
+		medName[m.ID] = m.Name
+	}
+
+	// Resolve cashier name.
+	var cashier model.User
+	cashierName := ""
+	if err := s.db.WithContext(ctx).Where("id = ?", sale.CashierUserID).First(&cashier).Error; err == nil {
+		cashierName = cashier.Name
+		if cashierName == "" {
+			cashierName = cashier.Email
+		}
+	}
+
+	// Resolve customer name (optional).
+	customerName := ""
+	if sale.CustomerID != nil && *sale.CustomerID != "" {
+		var customer model.Customer
+		if err := s.db.WithContext(ctx).Where("id = ?", *sale.CustomerID).First(&customer).Error; err == nil {
+			customerName = customer.Name
+		}
+	}
+
+	// Build the renderer Receipt.
+	lines := make([]printer.ReceiptLine, 0, len(sale.Items))
+	for _, it := range sale.Items {
+		lines = append(lines, printer.ReceiptLine{
+			Qty:       it.Qty,
+			Name:      medName[it.MedicineID],
+			LineTotal: it.LineTotal,
+		})
+	}
+	completedAt := time.Time{}
+	if sale.CompletedAt != nil {
+		completedAt = *sale.CompletedAt
+	}
+	saleNo := ""
+	if sale.SaleNo != nil {
+		saleNo = *sale.SaleNo
+	}
+	paymentStr := ""
+	if sale.PaymentSource != nil {
+		paymentStr = *sale.PaymentSource
+	}
+	change := int64(0)
+	if paymentStr == paymentCash && sale.PaidAmount > sale.Total {
+		change = sale.PaidAmount - sale.Total
+	}
+
+	receipt := printer.Receipt{
+		SaleNo:      saleNo,
+		CompletedAt: completedAt,
+		Cashier:     cashierName,
+		Customer:    customerName,
+		Items:       lines,
+		Subtotal:    sale.Subtotal,
+		Total:       sale.Total,
+		Paid:        sale.PaidAmount,
+		Payment:     paymentStr,
+		Change:      change,
+	}
+	settings := printer.Settings{
+		Width:      s.printer.Width,
+		Header:     s.printer.Header,
+		Footer:     s.printer.Footer,
+		OpenDrawer: s.printer.OpenDrawer,
+	}
+	payload := printer.Render(receipt, settings)
+
+	if err := printer.DispatchTCP(s.printer.Address, payload, s.printer.Timeout); err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return connect.NewResponse(&posifacev1.PrintReceiptResponse{
+		BytesSent: int32(len(payload)),
+	}), nil
+}
+
 // ---------- Helpers ----------
 
 func (s *Sales) draftForUpdate(tx *gorm.DB, id string) (*model.Sale, error) {
@@ -587,6 +840,69 @@ func assignSaleNo(tx *gorm.DB, now time.Time) (string, error) {
 	return fmt.Sprintf("INV-%d-%04d", year, counter.LastSeq), nil
 }
 
+// assertRxCovers checks that the sale has an active prescription covering
+// `needQty` of `medicineID` (taking already-dispensed qty into account).
+func assertRxCovers(tx *gorm.DB, sale *model.Sale, medicineID string, needQty int32) error {
+	if sale.PrescriptionID == nil || *sale.PrescriptionID == "" {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("medicine requires a prescription; none attached to this sale"))
+	}
+	var rx model.Prescription
+	if err := tx.Preload("Items").Where("id = ?", *sale.PrescriptionID).First(&rx).Error; err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if status := computeRxStatus(&rx, time.Now()); status != rxStatusActive {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			fmt.Errorf("attached prescription is %s", status))
+	}
+	for _, it := range rx.Items {
+		if it.MedicineID != medicineID {
+			continue
+		}
+		remaining := it.PrescribedQty - it.DispensedQty
+		if needQty > remaining {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				fmt.Errorf("prescription remaining qty %d < requested %d for this medicine",
+					remaining, needQty))
+		}
+		return nil
+	}
+	return connect.NewError(connect.CodeFailedPrecondition,
+		errors.New("prescription does not include this medicine"))
+}
+
+// incrementRxDispensed bumps prescription_items.dispensed_qty for each sale
+// item whose medicine is Rx-required and present on the prescription. Caller
+// owns the tx; cart-line allocation has already succeeded.
+func incrementRxDispensed(tx *gorm.DB, prescriptionID string, items []model.SaleItem) error {
+	// Sum qty per medicine across the sale (FEFO may have split lines).
+	totals := map[string]int32{}
+	for _, it := range items {
+		// it.MedicineID is the original cart-line medicine.
+		totals[it.MedicineID] += it.Qty
+	}
+	for medID, qty := range totals {
+		var med model.Medicine
+		if err := tx.Where("id = ?", medID).First(&med).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if !med.PrescriptionRequired {
+			continue
+		}
+		res := tx.Model(&model.PrescriptionItem{}).
+			Where("prescription_id = ? AND medicine_id = ?", prescriptionID, medID).
+			Update("dispensed_qty", gorm.Expr("dispensed_qty + ?", qty))
+		if res.Error != nil {
+			return connect.NewError(connect.CodeInternal, res.Error)
+		}
+		if res.RowsAffected == 0 {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				fmt.Errorf("prescription does not cover medicine %s", medID))
+		}
+	}
+	return nil
+}
+
 // asConnectErr passes through connect errors and wraps others as Internal.
 func asConnectErr(err error) error {
 	var ce *connect.Error
@@ -621,6 +937,9 @@ func saleToProto(s *model.Sale) *posifacev1.Sale {
 	}
 	if s.BranchID != nil {
 		out.BranchId = *s.BranchID
+	}
+	if s.PrescriptionID != nil {
+		out.PrescriptionId = *s.PrescriptionID
 	}
 	if s.CompletedAt != nil {
 		out.CompletedAt = s.CompletedAt.Unix()

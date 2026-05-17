@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package tax_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/tax_iface/v1;taxifacev1";
+
+message NsfpEntry {
+  string id = 1;
+  string code = 2;             // "000.24.12345678"
+  int32 fiscal_year = 3;
+  string imported_by = 4;
+  int64 imported_at = 5;
+  int64 used_at = 6;           // 0 = unused
+  string sale_id = 7;
+}
+
+message TaxInvoice {
+  string sale_id = 1;
+  string sale_no = 2;
+  string tax_invoice_no = 3;   // 16-char "010.000-24.12345678" style
+  string tax_invoice_code = 4; // "01" etc.
+  string customer_name = 5;
+  string customer_npwp = 6;
+  string customer_address = 7;
+  int64  dpp = 8;              // taxable base, BIGINT minor units
+  int64  ppn = 9;              // tax amount, BIGINT minor units
+  int64  total = 10;           // dpp + ppn
+  int64  issued_at = 11;       // unix sec
+}
+
+service TaxInvoiceService {
+  rpc ImportNsfpRange(ImportNsfpRangeRequest) returns (ImportNsfpRangeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ListNsfp(ListNsfpRequest) returns (ListNsfpResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ListTaxInvoices(ListTaxInvoicesRequest) returns (ListTaxInvoicesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetTaxInvoice(GetTaxInvoiceRequest) returns (GetTaxInvoiceResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ImportNsfpRangeRequest {
+  // 13-char NSFP body without the prefix (the "000.24.12345678" portion).
+  // start/end inclusive.
+  string start_code = 1;
+  string end_code = 2;
+  int32 fiscal_year = 3;
+}
+message ImportNsfpRangeResponse {
+  int32 imported_count = 1;
+  int32 skipped_count = 2;          // duplicates already in the pool
+}
+
+message ListNsfpRequest {
+  int32 fiscal_year = 1;
+  bool unused_only = 2;
+  int32 limit = 3;
+}
+message ListNsfpResponse {
+  repeated NsfpEntry entries = 1;
+  int32 unused_total = 2;
+}
+
+message ListTaxInvoicesRequest {
+  int64 from_unix = 1;
+  int64 to_unix = 2;
+  int32 limit = 3;
+}
+message ListTaxInvoicesResponse {
+  repeated TaxInvoice invoices = 1;
+}
+
+message GetTaxInvoiceRequest { string sale_id = 1; }
+message GetTaxInvoiceResponse { TaxInvoice invoice = 1; }

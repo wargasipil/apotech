@@ -32,11 +32,22 @@ type Bootstrap struct {
 	OwnerPassword string `yaml:"owner_password"`
 }
 
+type Printer struct {
+	Enabled bool          `yaml:"enabled"`
+	Address string        `yaml:"address"`        // host:port (raw TCP, typically port 9100)
+	Width   int           `yaml:"width"`          // chars per line (32 for 58mm, 48 for 80mm)
+	Timeout time.Duration `yaml:"timeout"`        // dial+write timeout
+	Header  []string      `yaml:"header"`         // shop name/address lines printed on top
+	Footer  []string      `yaml:"footer"`         // closing lines (e.g. "Thank you!")
+	OpenDrawer bool       `yaml:"open_drawer"`    // send drawer-kick command after print
+}
+
 type Config struct {
 	Server    Server    `yaml:"server"`
 	Database  Database  `yaml:"database"`
 	Auth      Auth      `yaml:"auth"`
 	Bootstrap Bootstrap `yaml:"bootstrap"`
+	Printer   Printer   `yaml:"printer"`
 }
 
 func (d Database) DSN() string {

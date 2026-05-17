@@ -1,0 +1,175 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Inventory" [ref=e154] [cursor=pointer]:
+            - /url: /inventory
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - paragraph [ref=e160]: Inventory
+          - link "Purchasing" [ref=e161] [cursor=pointer]:
+            - /url: /purchasing
+            - generic [ref=e162]:
+              - img [ref=e163]
+              - paragraph [ref=e168]: Purchasing
+          - link "Customers" [ref=e27] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e32]: Customers
+          - link "Prescriptions" [ref=e169] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e170]:
+              - img [ref=e171]
+              - paragraph [ref=e174]: Prescriptions
+          - link "Analytics" [ref=e175] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e176]:
+              - img [ref=e177]
+              - paragraph [ref=e179]: Analytics
+          - link "Tax" [ref=e180] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e181]:
+              - img [ref=e182]
+              - paragraph [ref=e186]: Tax
+          - link "BPJS" [ref=e187] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e188]:
+              - img [ref=e189]
+              - paragraph [ref=e192]: BPJS
+          - link "Branches" [ref=e193] [cursor=pointer]:
+            - /url: /branches
+            - generic [ref=e194]:
+              - img [ref=e195]
+              - paragraph [ref=e199]: Branches
+          - link "Users" [ref=e200] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - paragraph [ref=e207]: Users
+        - generic [ref=e33]:
+          - generic [ref=e208]:
+            - paragraph [ref=e209]: Owner
+            - paragraph [ref=e210]: owner@apotech.local
+          - button "Sign out" [ref=e211] [cursor=pointer]:
+            - img [ref=e212]
+            - paragraph [ref=e215]: Sign out
+          - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e41]:
+            - button "language" [ref=e42] [cursor=pointer]:
+              - generic [ref=e43]:
+                - img [ref=e44]
+                - paragraph [ref=e48]: ID
+            - button "toggle theme" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+            - button "user menu" [ref=e216] [cursor=pointer]:
+              - generic [ref=e217]: O
+        - main [ref=e52]:
+          - generic [ref=e218]:
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - paragraph [ref=e222]: Analytics
+                  - img [ref=e223]
+                - paragraph [ref=e226]: Margins
+              - heading "Analytics" [level=2] [ref=e229]
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - link "Sales" [ref=e232] [cursor=pointer]:
+                  - /url: /analytics/sales
+                - link "Inventory" [ref=e233] [cursor=pointer]:
+                  - /url: /analytics/inventory
+                - link "Margins" [active] [ref=e234] [cursor=pointer]:
+                  - /url: /analytics/margins
+              - generic [ref=e627]:
+                - generic [ref=e628]:
+                  - heading "Margins" [level=2] [ref=e629]
+                  - generic [ref=e631]:
+                    - combobox [ref=e632]:
+                      - option "Today"
+                      - option "7 days"
+                      - option "30 days" [selected]
+                      - option "90 days"
+                      - option "Year to date"
+                      - option "Custom"
+                    - generic:
+                      - img
+                - generic [ref=e633]:
+                  - generic [ref=e634]:
+                    - heading "Top margin" [level=2] [ref=e635]
+                    - button "Export CSV" [ref=e636] [cursor=pointer]:
+                      - img [ref=e637]
+                      - text: Export CSV
+                  - table [ref=e640]:
+                    - rowgroup [ref=e641]:
+                      - row "SKU Medicine Revenue COGS Gross Margin %" [ref=e642]:
+                        - columnheader "SKU" [ref=e643]
+                        - columnheader "Medicine" [ref=e644]
+                        - columnheader "Revenue" [ref=e645]
+                        - columnheader "COGS" [ref=e646]
+                        - columnheader "Gross" [ref=e647]
+                        - columnheader "Margin %" [ref=e648]
+                    - rowgroup [ref=e649]:
+                      - row "asdasadas asdasdasd IDR 24,644 IDR 42,466 -IDR 17,822 -72.3%" [ref=e650]:
+                        - cell "asdasadas" [ref=e651]
+                        - cell "asdasdasd" [ref=e652]
+                        - cell "IDR 24,644" [ref=e653]
+                        - cell "IDR 42,466" [ref=e654]
+                        - cell "-IDR 17,822" [ref=e655]
+                        - cell "-72.3%" [ref=e656]
+                - generic [ref=e657]:
+                  - generic [ref=e658]:
+                    - heading "Margin per medicine" [level=2] [ref=e659]
+                    - button "Export CSV" [ref=e660] [cursor=pointer]:
+                      - img [ref=e661]
+                      - text: Export CSV
+                  - table [ref=e664]:
+                    - rowgroup [ref=e665]:
+                      - row "SKU Medicine Revenue COGS Gross Margin %" [ref=e666]:
+                        - columnheader "SKU" [ref=e667]
+                        - columnheader "Medicine" [ref=e668]
+                        - columnheader "Revenue" [ref=e669]
+                        - columnheader "COGS" [ref=e670]
+                        - columnheader "Gross" [ref=e671]
+                        - columnheader "Margin %" [ref=e672]
+                    - rowgroup [ref=e673]:
+                      - row "asdasadas asdasdasd IDR 24,644 IDR 42,466 -IDR 17,822 -72.3%" [ref=e674]:
+                        - cell "asdasadas" [ref=e675]
+                        - cell "asdasdasd" [ref=e676]
+                        - cell "IDR 24,644" [ref=e677]
+                        - cell "IDR 42,466" [ref=e678]
+                        - cell "-IDR 17,822" [ref=e679]
+                        - cell "-72.3%" [ref=e680]
+                - generic [ref=e681]:
+                  - generic [ref=e682]:
+                    - heading "Supplier cost trend" [level=2] [ref=e683]
+                    - generic [ref=e684]:
+                      - combobox [ref=e685]:
+                        - option "Select supplier" [selected]
+                        - option "asd"
+                      - generic:
+                        - img
+                  - paragraph [ref=e686]: Select supplier
+    - region "Notifications, top-end (alt+T)"
+    - generic [ref=e55]:
+      - img [ref=e57]
+      - button "Open Tanstack query devtools" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+  - generic [ref=e554]: asdasdasd

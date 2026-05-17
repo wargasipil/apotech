@@ -14,13 +14,19 @@ import (
 )
 
 type Auth struct {
-	db      *gorm.DB
-	access  *auth.Issuer
-	refresh *auth.RefreshIssuer
+	db       *gorm.DB
+	access   *auth.Issuer
+	refresh  *auth.RefreshIssuer
+	limiter  *auth.LoginLimiter
 }
 
-func NewAuth(db *gorm.DB, access *auth.Issuer, refresh *auth.RefreshIssuer) *Auth {
-	return &Auth{db: db, access: access, refresh: refresh}
+func NewAuth(
+	db *gorm.DB,
+	access *auth.Issuer,
+	refresh *auth.RefreshIssuer,
+	limiter *auth.LoginLimiter,
+) *Auth {
+	return &Auth{db: db, access: access, refresh: refresh, limiter: limiter}
 }
 
 func (a *Auth) Login(
@@ -30,6 +36,11 @@ func (a *Auth) Login(
 	email := strings.TrimSpace(req.Msg.Email)
 	if email == "" || req.Msg.Password == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and password required"))
+	}
+
+	if a.limiter != nil && !a.limiter.Allow(email) {
+		return nil, connect.NewError(connect.CodeResourceExhausted,
+			errors.New("too many login attempts; try again in a minute"))
 	}
 
 	var user model.User

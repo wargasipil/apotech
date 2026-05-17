@@ -36,7 +36,11 @@ func NewInterceptor(issuer *Issuer, policy map[string]Policy) connect.UnaryInter
 				}
 			}
 
-			ctx = WithPrincipal(ctx, Principal{UserID: claims.UserID, Role: claims.Role})
+			ctx = WithPrincipal(ctx, Principal{
+				UserID:   claims.UserID,
+				Role:     claims.Role,
+				BranchID: req.Header().Get("X-Branch-Id"),
+			})
 			return next(ctx, req)
 		}
 	}

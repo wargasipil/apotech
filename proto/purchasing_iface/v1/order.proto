@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package purchasing_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/purchasing_iface/v1;purchasingifacev1";
+
+enum POStatus {
+  PO_STATUS_UNSPECIFIED = 0;
+  PO_STATUS_DRAFT = 1;
+  PO_STATUS_SENT = 2;
+  PO_STATUS_PARTIALLY_RECEIVED = 3;
+  PO_STATUS_RECEIVED = 4;
+  PO_STATUS_CLOSED = 5;
+  PO_STATUS_VOIDED = 6;
+}
+
+message PurchaseOrder {
+  string id = 1;
+  string po_no = 2;
+  string supplier_id = 3;
+  POStatus status = 4;
+  string expected_at = 5;        // YYYY-MM-DD or empty
+  string note = 6;
+  int64 ordered_total = 7;
+  int64 paid_amount = 8;
+  int64 outstanding = 9;          // ordered_total - paid_amount (computed)
+  string created_by = 10;
+  string branch_id = 11;
+  int64 created_at = 12;
+  int64 sent_at = 13;
+  int64 closed_at = 14;
+  repeated PurchaseOrderItem items = 15;
+}
+
+message PurchaseOrderItem {
+  string id = 1;
+  string purchase_order_id = 2;
+  string medicine_id = 3;
+  int32 ordered_qty = 4;
+  int32 received_qty = 5;
+  int64 unit_cost_price = 6;
+  int64 subtotal = 7;             // ordered_qty * unit_cost_price
+}
+
+message PurchaseOrderItemInput {
+  string medicine_id = 1;
+  int32 ordered_qty = 2;
+  int64 unit_cost_price = 3;
+}
+
+service PurchaseOrderService {
+  rpc ListPurchaseOrders(ListPurchaseOrdersRequest) returns (ListPurchaseOrdersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetPurchaseOrder(GetPurchaseOrderRequest) returns (GetPurchaseOrderResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc CreatePurchaseOrder(CreatePurchaseOrderRequest) returns (CreatePurchaseOrderResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UpdatePurchaseOrder(UpdatePurchaseOrderRequest) returns (UpdatePurchaseOrderResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc SendPurchaseOrder(SendPurchaseOrderRequest) returns (SendPurchaseOrderResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc VoidPurchaseOrder(VoidPurchaseOrderRequest) returns (VoidPurchaseOrderResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message ListPurchaseOrdersRequest {
+  POStatus status = 1;
+  string supplier_id = 2;
+  bool only_outstanding = 3;   // outstanding > 0 AND status != VOIDED
+  int32 limit = 4;
+}
+message ListPurchaseOrdersResponse {
+  repeated PurchaseOrder orders = 1;
+}
+
+message GetPurchaseOrderRequest { string id = 1; }
+message GetPurchaseOrderResponse { PurchaseOrder order = 1; }
+
+message CreatePurchaseOrderRequest {
+  string supplier_id = 1;
+  string expected_at = 2;          // YYYY-MM-DD or empty
+  string note = 3;
+  repeated PurchaseOrderItemInput items = 4;
+}
+message CreatePurchaseOrderResponse { PurchaseOrder order = 1; }
+
+message UpdatePurchaseOrderRequest {
+  string id = 1;
+  string expected_at = 2;
+  string note = 3;
+  // Full replace of lines (only allowed while DRAFT).
+  repeated PurchaseOrderItemInput items = 4;
+}
+message UpdatePurchaseOrderResponse { PurchaseOrder order = 1; }
+
+message SendPurchaseOrderRequest { string id = 1; }
+message SendPurchaseOrderResponse { PurchaseOrder order = 1; }
+
+message VoidPurchaseOrderRequest { string id = 1; }
+message VoidPurchaseOrderResponse { PurchaseOrder order = 1; }

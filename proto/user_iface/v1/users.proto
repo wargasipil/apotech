@@ -30,6 +30,18 @@ service UserService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
   }
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // Owner mints a one-shot reset token that the user can redeem to set a new
+  // password without knowing the old one. The raw token is returned to the
+  // owner (display in UI), who hands it to the user out-of-band. No SMTP wired.
+  rpc IssuePasswordResetToken(IssuePasswordResetTokenRequest)
+      returns (IssuePasswordResetTokenResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc RedeemPasswordResetToken(RedeemPasswordResetTokenRequest)
+      returns (RedeemPasswordResetTokenResponse) {
+    option (auth_iface.v1.public) = true;
+  }
 }
 
 message ListUsersRequest {}
@@ -69,3 +81,17 @@ message ChangePasswordRequest {
   string new_password = 3;
 }
 message ChangePasswordResponse {}
+
+message IssuePasswordResetTokenRequest {
+  string user_id = 1;
+}
+message IssuePasswordResetTokenResponse {
+  string token = 1;          // raw token — show once, hand off OOB
+  int64  expires_at = 2;     // unix sec
+}
+
+message RedeemPasswordResetTokenRequest {
+  string token = 1;
+  string new_password = 2;
+}
+message RedeemPasswordResetTokenResponse {}
