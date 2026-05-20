@@ -586,6 +586,102 @@ func (x *ArchiveSupplierResponse) GetSupplier() *Supplier {
 	return nil
 }
 
+type SearchSuppliersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchSuppliersRequest) Reset() {
+	*x = SearchSuppliersRequest{}
+	mi := &file_inventory_iface_v1_supplier_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchSuppliersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchSuppliersRequest) ProtoMessage() {}
+
+func (x *SearchSuppliersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_supplier_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchSuppliersRequest.ProtoReflect.Descriptor instead.
+func (*SearchSuppliersRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_supplier_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SearchSuppliersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchSuppliersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type SearchSuppliersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Suppliers     []*Supplier            `protobuf:"bytes,1,rep,name=suppliers,proto3" json:"suppliers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchSuppliersResponse) Reset() {
+	*x = SearchSuppliersResponse{}
+	mi := &file_inventory_iface_v1_supplier_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchSuppliersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchSuppliersResponse) ProtoMessage() {}
+
+func (x *SearchSuppliersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_supplier_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchSuppliersResponse.ProtoReflect.Descriptor instead.
+func (*SearchSuppliersResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_supplier_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SearchSuppliersResponse) GetSuppliers() []*Supplier {
+	if x != nil {
+		return x.Suppliers
+	}
+	return nil
+}
+
 var File_inventory_iface_v1_supplier_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_supplier_proto_rawDesc = "" +
@@ -623,13 +719,19 @@ const file_inventory_iface_v1_supplier_proto_rawDesc = "" +
 	"\x16ArchiveSupplierRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"S\n" +
 	"\x17ArchiveSupplierResponse\x128\n" +
-	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier2\xbd\x04\n" +
+	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"D\n" +
+	"\x16SearchSuppliersRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"U\n" +
+	"\x17SearchSuppliersResponse\x12:\n" +
+	"\tsuppliers\x18\x01 \x03(\v2\x1c.inventory_iface.v1.SupplierR\tsuppliers2\xb1\x05\n" +
 	"\x0fSupplierService\x12l\n" +
 	"\rListSuppliers\x12(.inventory_iface.v1.ListSuppliersRequest\x1a).inventory_iface.v1.ListSuppliersResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12f\n" +
 	"\vGetSupplier\x12&.inventory_iface.v1.GetSupplierRequest\x1a'.inventory_iface.v1.GetSupplierResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12o\n" +
 	"\x0eCreateSupplier\x12).inventory_iface.v1.CreateSupplierRequest\x1a*.inventory_iface.v1.CreateSupplierResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12o\n" +
 	"\x0eUpdateSupplier\x12).inventory_iface.v1.UpdateSupplierRequest\x1a*.inventory_iface.v1.UpdateSupplierResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12r\n" +
-	"\x0fArchiveSupplier\x12*.inventory_iface.v1.ArchiveSupplierRequest\x1a+.inventory_iface.v1.ArchiveSupplierResponse\"\x06\x8a\xb5\x18\x02\x01\x02BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
+	"\x0fArchiveSupplier\x12*.inventory_iface.v1.ArchiveSupplierRequest\x1a+.inventory_iface.v1.ArchiveSupplierResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12r\n" +
+	"\x0fSearchSuppliers\x12*.inventory_iface.v1.SearchSuppliersRequest\x1a+.inventory_iface.v1.SearchSuppliersResponse\"\x06\x8a\xb5\x18\x02\x01\x02BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
 
 var (
 	file_inventory_iface_v1_supplier_proto_rawDescOnce sync.Once
@@ -643,7 +745,7 @@ func file_inventory_iface_v1_supplier_proto_rawDescGZIP() []byte {
 	return file_inventory_iface_v1_supplier_proto_rawDescData
 }
 
-var file_inventory_iface_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_inventory_iface_v1_supplier_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_inventory_iface_v1_supplier_proto_goTypes = []any{
 	(*Supplier)(nil),                // 0: inventory_iface.v1.Supplier
 	(*ListSuppliersRequest)(nil),    // 1: inventory_iface.v1.ListSuppliersRequest
@@ -656,6 +758,8 @@ var file_inventory_iface_v1_supplier_proto_goTypes = []any{
 	(*UpdateSupplierResponse)(nil),  // 8: inventory_iface.v1.UpdateSupplierResponse
 	(*ArchiveSupplierRequest)(nil),  // 9: inventory_iface.v1.ArchiveSupplierRequest
 	(*ArchiveSupplierResponse)(nil), // 10: inventory_iface.v1.ArchiveSupplierResponse
+	(*SearchSuppliersRequest)(nil),  // 11: inventory_iface.v1.SearchSuppliersRequest
+	(*SearchSuppliersResponse)(nil), // 12: inventory_iface.v1.SearchSuppliersResponse
 }
 var file_inventory_iface_v1_supplier_proto_depIdxs = []int32{
 	0,  // 0: inventory_iface.v1.ListSuppliersResponse.suppliers:type_name -> inventory_iface.v1.Supplier
@@ -663,21 +767,24 @@ var file_inventory_iface_v1_supplier_proto_depIdxs = []int32{
 	0,  // 2: inventory_iface.v1.CreateSupplierResponse.supplier:type_name -> inventory_iface.v1.Supplier
 	0,  // 3: inventory_iface.v1.UpdateSupplierResponse.supplier:type_name -> inventory_iface.v1.Supplier
 	0,  // 4: inventory_iface.v1.ArchiveSupplierResponse.supplier:type_name -> inventory_iface.v1.Supplier
-	1,  // 5: inventory_iface.v1.SupplierService.ListSuppliers:input_type -> inventory_iface.v1.ListSuppliersRequest
-	3,  // 6: inventory_iface.v1.SupplierService.GetSupplier:input_type -> inventory_iface.v1.GetSupplierRequest
-	5,  // 7: inventory_iface.v1.SupplierService.CreateSupplier:input_type -> inventory_iface.v1.CreateSupplierRequest
-	7,  // 8: inventory_iface.v1.SupplierService.UpdateSupplier:input_type -> inventory_iface.v1.UpdateSupplierRequest
-	9,  // 9: inventory_iface.v1.SupplierService.ArchiveSupplier:input_type -> inventory_iface.v1.ArchiveSupplierRequest
-	2,  // 10: inventory_iface.v1.SupplierService.ListSuppliers:output_type -> inventory_iface.v1.ListSuppliersResponse
-	4,  // 11: inventory_iface.v1.SupplierService.GetSupplier:output_type -> inventory_iface.v1.GetSupplierResponse
-	6,  // 12: inventory_iface.v1.SupplierService.CreateSupplier:output_type -> inventory_iface.v1.CreateSupplierResponse
-	8,  // 13: inventory_iface.v1.SupplierService.UpdateSupplier:output_type -> inventory_iface.v1.UpdateSupplierResponse
-	10, // 14: inventory_iface.v1.SupplierService.ArchiveSupplier:output_type -> inventory_iface.v1.ArchiveSupplierResponse
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	0,  // 5: inventory_iface.v1.SearchSuppliersResponse.suppliers:type_name -> inventory_iface.v1.Supplier
+	1,  // 6: inventory_iface.v1.SupplierService.ListSuppliers:input_type -> inventory_iface.v1.ListSuppliersRequest
+	3,  // 7: inventory_iface.v1.SupplierService.GetSupplier:input_type -> inventory_iface.v1.GetSupplierRequest
+	5,  // 8: inventory_iface.v1.SupplierService.CreateSupplier:input_type -> inventory_iface.v1.CreateSupplierRequest
+	7,  // 9: inventory_iface.v1.SupplierService.UpdateSupplier:input_type -> inventory_iface.v1.UpdateSupplierRequest
+	9,  // 10: inventory_iface.v1.SupplierService.ArchiveSupplier:input_type -> inventory_iface.v1.ArchiveSupplierRequest
+	11, // 11: inventory_iface.v1.SupplierService.SearchSuppliers:input_type -> inventory_iface.v1.SearchSuppliersRequest
+	2,  // 12: inventory_iface.v1.SupplierService.ListSuppliers:output_type -> inventory_iface.v1.ListSuppliersResponse
+	4,  // 13: inventory_iface.v1.SupplierService.GetSupplier:output_type -> inventory_iface.v1.GetSupplierResponse
+	6,  // 14: inventory_iface.v1.SupplierService.CreateSupplier:output_type -> inventory_iface.v1.CreateSupplierResponse
+	8,  // 15: inventory_iface.v1.SupplierService.UpdateSupplier:output_type -> inventory_iface.v1.UpdateSupplierResponse
+	10, // 16: inventory_iface.v1.SupplierService.ArchiveSupplier:output_type -> inventory_iface.v1.ArchiveSupplierResponse
+	12, // 17: inventory_iface.v1.SupplierService.SearchSuppliers:output_type -> inventory_iface.v1.SearchSuppliersResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_inventory_iface_v1_supplier_proto_init() }
@@ -691,7 +798,7 @@ func file_inventory_iface_v1_supplier_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_iface_v1_supplier_proto_rawDesc), len(file_inventory_iface_v1_supplier_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -662,3 +662,89 @@ export class ListMedicinePricesResponse extends Message<ListMedicinePricesRespon
   }
 }
 
+/**
+ * @generated from message inventory_iface.v1.SearchMedicinesRequest
+ */
+export class SearchMedicinesRequest extends Message<SearchMedicinesRequest> {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: bool include_inactive = 3;
+   */
+  includeInactive = false;
+
+  constructor(data?: PartialMessage<SearchMedicinesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchMedicinesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "include_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchMedicinesRequest {
+    return new SearchMedicinesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchMedicinesRequest {
+    return new SearchMedicinesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchMedicinesRequest {
+    return new SearchMedicinesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchMedicinesRequest | PlainMessage<SearchMedicinesRequest> | undefined, b: SearchMedicinesRequest | PlainMessage<SearchMedicinesRequest> | undefined): boolean {
+    return proto3.util.equals(SearchMedicinesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.SearchMedicinesResponse
+ */
+export class SearchMedicinesResponse extends Message<SearchMedicinesResponse> {
+  /**
+   * @generated from field: repeated inventory_iface.v1.Medicine medicines = 1;
+   */
+  medicines: Medicine[] = [];
+
+  constructor(data?: PartialMessage<SearchMedicinesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchMedicinesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "medicines", kind: "message", T: Medicine, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchMedicinesResponse {
+    return new SearchMedicinesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchMedicinesResponse {
+    return new SearchMedicinesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchMedicinesResponse {
+    return new SearchMedicinesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchMedicinesResponse | PlainMessage<SearchMedicinesResponse> | undefined, b: SearchMedicinesResponse | PlainMessage<SearchMedicinesResponse> | undefined): boolean {
+    return proto3.util.equals(SearchMedicinesResponse, a, b);
+  }
+}
+

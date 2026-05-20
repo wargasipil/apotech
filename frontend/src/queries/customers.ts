@@ -38,6 +38,13 @@ export function useCustomerSearchQuery(query: string, enabled = true) {
   });
 }
 
+// Imperative search — call directly from <SearchableSelect loadOptions={...}>.
+// Mirrors the searchSuppliers / searchMedicines / searchBatches contract.
+export async function searchCustomers(query: string) {
+  const res = await customerClient.searchCustomers({ query, limit: 20 });
+  return res.customers;
+}
+
 export function useCreateCustomerMutation() {
   const qc = useQueryClient();
   return useMutation({

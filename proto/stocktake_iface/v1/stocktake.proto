@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package stocktake_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/stocktake_iface/v1;stocktakeifacev1";
+
+// A physical-inventory count event. Pharmacist starts a session, adds the
+// batches they intend to count, walks the shelves recording counted_qty per
+// batch, then CompleteStocktake atomically writes one stock_movements row
+// per non-zero variance line. See CLAUDE.md → Stocktake model.
+message StocktakeSession {
+  string id = 1;
+  string name = 2;
+  string status = 3;             // DRAFT | COMPLETED | VOIDED
+  string branch_id = 4;
+  string created_by = 5;
+  int64 created_at = 6;
+  int64 completed_at = 7;
+  int64 voided_at = 8;
+
+  // Hydrated summary counts (computed server-side from lines).
+  int32 line_count = 9;
+  int32 counted_count = 10;
+  int32 variance_count = 11;
+}
+
+message StocktakeLine {
+  string id = 1;
+  string session_id = 2;
+  string batch_id = 3;
+  // Denormalized for display.
+  string medicine_id = 4;
+  string medicine_name = 5;
+  string medicine_sku = 6;
+  string batch_number = 7;
+  string expiry_date = 8;        // YYYY-MM-DD
+
+  int32 expected_qty = 9;
+  // counted_qty is optional — present only after RecordCount.
+  bool counted = 10;
+  int32 counted_qty = 11;
+
+  string disposition = 12;       // ADJUSTMENT | WRITE_OFF
+  string write_off_kind = 13;    // EXPIRED | DAMAGED | LOST | THEFT | OTHER (empty when ADJUSTMENT)
+  string disposition_note = 14;
+
+  int32 variance = 15;           // counted_qty - expected_qty (0 if uncounted)
+}
+
+service StocktakeService {
+  rpc StartStocktake(StartStocktakeRequest) returns (StartStocktakeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc AddBatchesToSession(AddBatchesToSessionRequest) returns (AddBatchesToSessionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc AddAllInStockBatches(AddAllInStockBatchesRequest) returns (AddAllInStockBatchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc RecordCount(RecordCountRequest) returns (RecordCountResponse) {
+    // Floor-walking step open to cashiers so a helper can punch in counts.
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SetLineDisposition(SetLineDispositionRequest) returns (SetLineDispositionResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc RemoveLine(RemoveLineRequest) returns (RemoveLineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc CompleteStocktake(CompleteStocktakeRequest) returns (CompleteStocktakeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc VoidStocktake(VoidStocktakeRequest) returns (VoidStocktakeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ListStocktakes(ListStocktakesRequest) returns (ListStocktakesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetStocktake(GetStocktakeRequest) returns (GetStocktakeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message StartStocktakeRequest {
+  string name = 1;
+}
+message StartStocktakeResponse { StocktakeSession session = 1; }
+
+message AddBatchesToSessionRequest {
+  string session_id = 1;
+  repeated string batch_ids = 2;
+}
+message AddBatchesToSessionResponse {
+  int32 added_count = 1;
+  int32 skipped_count = 2;       // already present
+}
+
+message AddAllInStockBatchesRequest {
+  string session_id = 1;
+}
+message AddAllInStockBatchesResponse {
+  int32 added_count = 1;
+  int32 skipped_count = 2;
+}
+
+message RecordCountRequest {
+  string line_id = 1;
+  int32 counted_qty = 2;
+}
+message RecordCountResponse { StocktakeLine line = 1; }
+
+message SetLineDispositionRequest {
+  string line_id = 1;
+  string disposition = 2;        // ADJUSTMENT | WRITE_OFF
+  string write_off_kind = 3;     // required when disposition = WRITE_OFF
+  string disposition_note = 4;
+}
+message SetLineDispositionResponse { StocktakeLine line = 1; }
+
+message RemoveLineRequest { string line_id = 1; }
+message RemoveLineResponse {}
+
+message CompleteStocktakeRequest { string session_id = 1; }
+message CompleteStocktakeResponse {
+  StocktakeSession session = 1;
+  int32 movements_written = 2;
+}
+
+message VoidStocktakeRequest { string session_id = 1; }
+message VoidStocktakeResponse { StocktakeSession session = 1; }
+
+message ListStocktakesRequest {
+  string status = 1;             // empty = all
+  int32 limit = 2;
+}
+message ListStocktakesResponse {
+  repeated StocktakeSession sessions = 1;
+}
+
+message GetStocktakeRequest { string id = 1; }
+message GetStocktakeResponse {
+  StocktakeSession session = 1;
+  repeated StocktakeLine lines = 2;
+}

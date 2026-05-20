@@ -5,12 +5,13 @@ import {
   Grid,
   HStack,
   Heading,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
+
+import EnumSelect from "../../components/EnumSelect";
 import { Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -121,16 +122,18 @@ export default function SalesAnalytics() {
           title={t("analytics.sales.topSellers")}
           actions={
             <HStack gap={2}>
-              <NativeSelect.Root size="sm" width="auto">
-                <NativeSelect.Field
-                  value={String(topMetric)}
-                  onChange={(e) => setTopMetric(Number(e.target.value) as SortMetric)}
-                >
-                  <option value={SortMetric.REVENUE}>{t("analytics.sales.revenue")}</option>
-                  <option value={SortMetric.QTY}>{t("analytics.sales.qty")}</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
+              <EnumSelect
+                size="sm"
+                width="140px"
+                value={String(topMetric)}
+                onChange={(v) => setTopMetric(Number(v) as SortMetric)}
+                items={[
+                  { value: String(SortMetric.REVENUE), label: t("analytics.sales.revenue") },
+                  { value: String(SortMetric.QTY), label: t("analytics.sales.qty") },
+                ]}
+                itemToString={(o) => o.label}
+                itemToValue={(o) => o.value}
+              />
               <Button
                 size="xs"
                 variant="ghost"

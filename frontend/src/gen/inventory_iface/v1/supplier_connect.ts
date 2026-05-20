@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveSupplierRequest, ArchiveSupplierResponse, CreateSupplierRequest, CreateSupplierResponse, GetSupplierRequest, GetSupplierResponse, ListSuppliersRequest, ListSuppliersResponse, UpdateSupplierRequest, UpdateSupplierResponse } from "./supplier_pb.js";
+import { ArchiveSupplierRequest, ArchiveSupplierResponse, CreateSupplierRequest, CreateSupplierResponse, GetSupplierRequest, GetSupplierResponse, ListSuppliersRequest, ListSuppliersResponse, SearchSuppliersRequest, SearchSuppliersResponse, UpdateSupplierRequest, UpdateSupplierResponse } from "./supplier_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,15 @@ export const SupplierService = {
       name: "ArchiveSupplier",
       I: ArchiveSupplierRequest,
       O: ArchiveSupplierResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc inventory_iface.v1.SupplierService.SearchSuppliers
+     */
+    searchSuppliers: {
+      name: "SearchSuppliers",
+      I: SearchSuppliersRequest,
+      O: SearchSuppliersResponse,
       kind: MethodKind.Unary,
     },
   }

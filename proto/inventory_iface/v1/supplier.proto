@@ -36,6 +36,10 @@ service SupplierService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  rpc SearchSuppliers(SearchSuppliersRequest) returns (SearchSuppliersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
 }
 
 message ListSuppliersRequest {
@@ -65,3 +69,11 @@ message UpdateSupplierResponse { Supplier supplier = 1; }
 
 message ArchiveSupplierRequest { string id = 1; }
 message ArchiveSupplierResponse { Supplier supplier = 1; }
+
+message SearchSuppliersRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+message SearchSuppliersResponse {
+  repeated Supplier suppliers = 1;
+}

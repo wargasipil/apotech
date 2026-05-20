@@ -473,3 +473,83 @@ export class ArchiveSupplierResponse extends Message<ArchiveSupplierResponse> {
   }
 }
 
+/**
+ * @generated from message inventory_iface.v1.SearchSuppliersRequest
+ */
+export class SearchSuppliersRequest extends Message<SearchSuppliersRequest> {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<SearchSuppliersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchSuppliersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchSuppliersRequest {
+    return new SearchSuppliersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchSuppliersRequest {
+    return new SearchSuppliersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchSuppliersRequest {
+    return new SearchSuppliersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchSuppliersRequest | PlainMessage<SearchSuppliersRequest> | undefined, b: SearchSuppliersRequest | PlainMessage<SearchSuppliersRequest> | undefined): boolean {
+    return proto3.util.equals(SearchSuppliersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.SearchSuppliersResponse
+ */
+export class SearchSuppliersResponse extends Message<SearchSuppliersResponse> {
+  /**
+   * @generated from field: repeated inventory_iface.v1.Supplier suppliers = 1;
+   */
+  suppliers: Supplier[] = [];
+
+  constructor(data?: PartialMessage<SearchSuppliersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchSuppliersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "suppliers", kind: "message", T: Supplier, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchSuppliersResponse {
+    return new SearchSuppliersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchSuppliersResponse {
+    return new SearchSuppliersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchSuppliersResponse {
+    return new SearchSuppliersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchSuppliersResponse | PlainMessage<SearchSuppliersResponse> | undefined, b: SearchSuppliersResponse | PlainMessage<SearchSuppliersResponse> | undefined): boolean {
+    return proto3.util.equals(SearchSuppliersResponse, a, b);
+  }
+}
+

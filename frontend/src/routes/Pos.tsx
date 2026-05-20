@@ -67,6 +67,11 @@ export default function Pos() {
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [rxOpen, setRxOpen] = useState(false);
+  // When the cashier clicks an Rx-required medicine without an attached Rx,
+  // we open the picker filtered to that medicine and defer the AddItem call.
+  // The AttachPrescription -> AddItem chain runs in `onAttachRx` once the
+  // cashier picks an Rx. Reset to null whenever the picker closes.
+  const [pendingAddMedicineId, setPendingAddMedicineId] = useState<string | null>(null);
   const [paymentSource, setPaymentSource] = useState<PaymentSource>(
     PaymentSource.CASH,
   );
@@ -98,6 +103,10 @@ export default function Pos() {
     }
     return out;
   }, [stockQ.data]);
+  const medById = useMemo(
+    () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m])),
+    [medicinesQ.data],
+  );
 
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -125,6 +134,15 @@ export default function Pos() {
       const stock = Number(stockByMedicine.get(medicine.id) ?? 0n);
       if (stock <= 0) {
         toast.error(t("pos.outOfStock"));
+        return;
+      }
+      // Rx-required medicines without an attached prescription: reroute to
+      // the picker (filtered to this medicine) instead of letting the
+      // backend reject the add. The actual addItem call happens in
+      // onAttachRx after the cashier picks an Rx.
+      if (medicine.prescriptionRequired && !s.prescriptionId) {
+        setPendingAddMedicineId(medicine.id);
+        setRxOpen(true);
         return;
       }
       try {
@@ -244,12 +262,36 @@ export default function Pos() {
 
   const onAttachRx = async (prescriptionId: string) => {
     if (!sale) return;
+    const pendingMedicineId = pendingAddMedicineId;
     try {
-      const res = await attachRx.mutateAsync({ saleId: sale.id, prescriptionId });
-      if (res.sale) setSale(res.sale);
+      const attachRes = await attachRx.mutateAsync({
+        saleId: sale.id,
+        prescriptionId,
+      });
+      if (attachRes.sale) setSale(attachRes.sale);
       setRxOpen(false);
+      // Pending-add chain: after a successful attach triggered by clicking
+      // an Rx-required medicine, fire the deferred addItem. If addItem
+      // fails (e.g., remaining qty insufficient), the Rx stays attached —
+      // the cashier sees the addItem error toast and can try another Rx.
+      if (pendingMedicineId) {
+        setPendingAddMedicineId(null);
+        try {
+          const addRes = await addItem.mutateAsync({
+            saleId: sale.id,
+            medicineId: pendingMedicineId,
+            qty: 1,
+          });
+          if (addRes.sale) setSale(addRes.sale);
+          setQuery("");
+          searchRef.current?.focus();
+        } catch {
+          /* addItem error toast surfaces globally */
+        }
+      }
     } catch {
-      /* toast handled globally */
+      /* attach error toast surfaces globally; pendingAddMedicineId left set
+         so cashier can retry by closing/reopening the picker */
     }
   };
 
@@ -571,7 +613,12 @@ export default function Pos() {
       <PrescriptionPickerDialog
         open={rxOpen}
         customerId={sale?.customerId ?? ""}
-        onClose={() => setRxOpen(false)}
+        requiredMedicineId={pendingAddMedicineId}
+        medById={medById}
+        onClose={() => {
+          setRxOpen(false);
+          setPendingAddMedicineId(null);
+        }}
         onPick={onAttachRx}
       />
 
@@ -643,17 +690,42 @@ function PrescriptionBar({
 function PrescriptionPickerDialog({
   open,
   customerId,
+  requiredMedicineId,
+  medById,
   onClose,
   onPick,
 }: {
   open: boolean;
   customerId: string;
+  /** When set, the picker is in "pending-add" mode: filter to Rx that
+   * contain this medicine with remaining qty > 0, and surface a caption
+   * + empty-state link explaining the context. */
+  requiredMedicineId: string | null;
+  /** Page-level medicine lookup for displaying per-item names. */
+  medById: Map<string, Medicine>;
   onClose: () => void;
   onPick: (prescriptionId: string) => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   // List ACTIVE Rx; filter to current customer when one is set.
   const rxQ = usePrescriptionsQuery({ status: "ACTIVE", customerId });
+
+  // In pending-add mode, narrow the loaded prescriptions to ones that
+  // include the required medicine with remaining qty. Done client-side on
+  // the page-of-active-Rx the query already returns — no extra RPC.
+  const visibleRxs = useMemo(() => {
+    const all = rxQ.data ?? [];
+    if (!requiredMedicineId) return all;
+    return all.filter((rx) =>
+      rx.items.some(
+        (it) => it.medicineId === requiredMedicineId && it.dispensedQty < it.prescribedQty,
+      ),
+    );
+  }, [rxQ.data, requiredMedicineId]);
+
+  const requiredMedicineName =
+    requiredMedicineId ? medById.get(requiredMedicineId)?.name ?? requiredMedicineId : "";
 
   if (!open) return null;
   return (
@@ -671,39 +743,93 @@ function PrescriptionPickerDialog({
               </Dialog.CloseTrigger>
             </Dialog.Header>
             <Dialog.Body>
-              <Stack gap={1} maxH="400px" overflowY="auto">
-                {(rxQ.data ?? []).map((rx) => (
-                  <Flex
+              {requiredMedicineId && (
+                <Box
+                  mb={3}
+                  px={3}
+                  py={2}
+                  borderRadius="md"
+                  bg="orange.subtle"
+                  borderWidth="1px"
+                  borderColor="orange.muted"
+                >
+                  <Text fontSize="sm">
+                    {t("prescriptions.needForMedicine", { medicine: requiredMedicineName })}
+                  </Text>
+                </Box>
+              )}
+              <Stack gap={2} maxH="420px" overflowY="auto">
+                {visibleRxs.map((rx) => (
+                  <Box
                     key={rx.id}
-                    px={3}
-                    py={2}
-                    borderRadius="md"
                     borderWidth="1px"
+                    borderRadius="md"
                     _hover={{ bg: "bg.muted" }}
                     cursor="pointer"
-                    justify="space-between"
-                    align="center"
                     onClick={() => onPick(rx.id)}
                   >
-                    <Stack gap={0}>
-                      <HStack gap={2}>
-                        <Text fontFamily="mono" fontSize="sm">{rx.rxNo}</Text>
-                        <Badge size="xs" colorPalette="green">
-                          {t("prescriptions.states.active")}
-                        </Badge>
-                      </HStack>
-                      <Text fontSize="xs" color="fg.muted">
-                        {rx.issuerName} · {rx.issuedAt} → {rx.expiresAt} · {rx.items.length}{" "}
-                        {t("prescriptions.items").toLowerCase()}
-                      </Text>
+                    <Flex px={3} py={2} justify="space-between" align="center">
+                      <Stack gap={0}>
+                        <HStack gap={2}>
+                          <Text fontFamily="mono" fontSize="sm">
+                            {rx.rxNo}
+                          </Text>
+                          <Badge size="xs" colorPalette="green">
+                            {t("prescriptions.states.active")}
+                          </Badge>
+                        </HStack>
+                        <Text fontSize="xs" color="fg.muted">
+                          {rx.issuerName} · {rx.issuedAt} → {rx.expiresAt}
+                        </Text>
+                      </Stack>
+                      <Plus size={14} />
+                    </Flex>
+                    <Stack gap={0} borderTopWidth="1px" px={3} py={2} bg="bg.subtle">
+                      {rx.items.map((it) => {
+                        const remaining = it.prescribedQty - it.dispensedQty;
+                        const name = medById.get(it.medicineId)?.name ?? it.medicineId.slice(0, 8);
+                        const exhausted = remaining <= 0;
+                        const isMatch = it.medicineId === requiredMedicineId;
+                        return (
+                          <Flex
+                            key={it.id}
+                            justify="space-between"
+                            fontSize="xs"
+                            color={exhausted ? "fg.subtle" : isMatch ? "green.fg" : "fg"}
+                            textDecoration={exhausted ? "line-through" : undefined}
+                            py={0.5}
+                          >
+                            <Text>{name}</Text>
+                            <Text fontFamily="mono">
+                              {remaining}/{it.prescribedQty} {t("prescriptions.remaining")}
+                            </Text>
+                          </Flex>
+                        );
+                      })}
                     </Stack>
-                    <Plus size={14} />
-                  </Flex>
+                  </Box>
                 ))}
-                {(rxQ.data?.length ?? 0) === 0 && (
-                  <Text color="fg.muted" fontSize="sm" textAlign="center" py={6}>
-                    {t("common.noResults")}
-                  </Text>
+                {visibleRxs.length === 0 && (
+                  <Stack gap={2} textAlign="center" py={6}>
+                    <Text color="fg.muted" fontSize="sm">
+                      {requiredMedicineId
+                        ? t("prescriptions.rxRequiredMissing")
+                        : t("common.noResults")}
+                    </Text>
+                    {requiredMedicineId && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        alignSelf="center"
+                        onClick={() => {
+                          onClose();
+                          navigate("/prescriptions");
+                        }}
+                      >
+                        {t("prescriptions.goCreate")}
+                      </Button>
+                    )}
+                  </Stack>
                 )}
               </Stack>
             </Dialog.Body>

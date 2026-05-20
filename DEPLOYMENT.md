@@ -1,113 +1,122 @@
 # Apotech — Deployment runbook
 
-Single-shop local deployment. The app is designed to run on one box (or VM)
-behind the apotek's LAN, talking to a thermal printer on the same network.
+Single-shop deployment. Apotech ships as **one self-contained binary** that
+serves the web UI and the API on a single port and auto-applies its database
+migrations on boot. Two turnkey distribution flavors:
 
-## Prerequisites
-- Linux host (any modern distro) or Windows with WSL2.
+- **Docker image** — for a Linux box / VM / cloud host. `docker compose up`.
+- **Windows installer** — for a pharmacy running everything on a Windows PC,
+  optionally serving a few LAN registers. Double-click `ApotechSetup-*.exe`.
+
+Both embed the SPA + migrations into the binary; there is **no separate nginx,
+static host, or manual migrate step**.
+
+---
+
+## Flavor 1 — Docker
+
+### Prerequisites
 - Docker + Docker Compose v2.
-- Go 1.25+ (only if you'll rebuild the binary on the box; CI-built binaries
-  are fine too).
-- Node 20+ (only for rebuilding the frontend; ship `frontend/dist/` from CI).
-- Network thermal printer reachable on the LAN (Epson TM-T, Star, or generic
-  ESC/POS over TCP 9100). Optional — Phase 7-printer is disabled by default.
 
-## Files
-| File | Purpose |
-|---|---|
-| `config.yaml` | runtime config (gitignored). Copy from `config.example.yaml` and fill in. |
-| `docker-compose.yml` | Postgres 18+ container. |
-| `backend/cmd/server` | Go server binary (`make run` or build with `go -C backend build`). |
-| `frontend/dist/` | static SPA bundle (`npm run build` produces it). Serve via the reverse proxy. |
+### Deploy
+```sh
+cp .env.example .env          # set APOTECH_JWT_SECRET (openssl rand -hex 32) + owner creds
+docker compose -f docker-compose.prod.yml up -d --build
+```
+- The `app` image (built from the repo `Dockerfile`) serves UI + `/api` on `:8080`.
+- `postgres` (pinned `postgres:18`) starts first; the app waits for it healthy,
+  auto-migrates, then listens. Data persists in the `apotech-pgdata` named volume.
+- Secrets come from `.env` (env overrides in `internal/config`): `APOTECH_JWT_SECRET`,
+  `APOTECH_DB_PASSWORD`, `APOTECH_OWNER_EMAIL`, `APOTECH_OWNER_PASSWORD`, `APOTECH_TZ`.
 
-## First-time setup
-1. `cp config.example.yaml config.yaml` and fill in:
-   - `auth.jwt_secret` — long random string (`openssl rand -hex 32`).
-   - `bootstrap.owner_email` / `owner_password` — the initial OWNER. **Change after first login** via the password-reset flow.
-   - `printer.address` if you have a thermal printer; otherwise leave `enabled: false`.
-2. `make up` to start Postgres.
-3. `make migrate-up` to apply all migrations through #17.
-4. `make run` to start the server on `:8080`.
-5. Serve `frontend/dist/` and reverse-proxy `/api/*` to `localhost:8080`. Example nginx snippet:
-   ```nginx
-   server {
-     listen 80;
-     server_name apotek.local;
-     root /var/www/apotech;
-     location /api/ { proxy_pass http://127.0.0.1:8080/; }
-     location / { try_files $uri /index.html; }
-   }
-   ```
-6. Browse to the host, log in as the bootstrap owner, immediately create proper user accounts and disable the bootstrap account.
+Browse `http://<host>:8080`, log in as the bootstrap owner, create real OWNER
+users, then change/disable the bootstrap account.
+
+### Update
+```sh
+git pull
+docker compose -f docker-compose.prod.yml up -d --build   # rebuilds image, re-migrates on boot
+```
+
+### Make shortcuts
+`make docker-build`, `make docker-up`, `make docker-down`.
+
+---
+
+## Flavor 2 — Windows installer
+
+A self-contained `.exe` that installs the app, a **bundled PostgreSQL**, both as
+auto-start Windows Services, plus a browser shortcut. Zero prerequisites for the
+pharmacist. Full build + install + verification details: [packaging/windows/README.md](packaging/windows/README.md).
+
+### Build (developer machine, Windows x64)
+Needs Go 1.25+, Node 20+, and Inno Setup 6.
+```powershell
+make installer          # = dist-windows + packaging\windows\build-windows.ps1
+# -> dist\ApotechSetup-<version>.exe
+```
+
+### Install (target PC)
+Run the `.exe`. The wizard asks for the owner email/password, **network access**
+(single-PC `127.0.0.1` vs LAN `0.0.0.0` + firewall rule), and ports. Post-install
+initializes the DB, writes `C:\ProgramData\Apotech\config.yaml` (random
+`jwt_secret` + DB password), registers + starts `apotech-postgres` and
+`apotech-server`, and opens the browser.
+
+### Topology
+Editable later in `C:\ProgramData\Apotech\config.yaml` (`server.host`); run
+`Restart-Service apotech-server` to apply. LAN mode adds a firewall rule for the
+app port; PostgreSQL always stays bound to `127.0.0.1` (clients hit the app).
+
+---
+
+## Local dev (unchanged)
+`make up` (Postgres) · `make run` (server on `:8080`) · `make web` (Vite on `:5173`,
+proxies `/api` → `:8080`). Dev uses the Vite server, not the embedded SPA.
+
+`make build` produces the native self-contained binary at `dist/apotech` for a
+local production smoke test.
+
+---
 
 ## Daily operations
-| Action | Command / location |
-|---|---|
-| Tail server logs (structured JSON via `log/slog`) | `journalctl -fu apotech` or wherever you run `make run` |
-| Apply a new migration | `make migrate-up` |
-| Backup (one-off) | `make backup` → `backups/YYYY-mm-dd_HHMMSS.sql.gz` |
-| Backup (nightly) | cron the same command, e.g. `0 2 * * * cd /opt/apotech && make backup` |
-| Rotate the JWT secret | edit `config.yaml`, restart server — all sessions invalidated |
-| Reset a forgotten password | OWNER → Users page → "Issue reset token" → hand the displayed token OOB to the user → they redeem at `/reset?token=...` |
+| Action | Docker | Windows |
+|---|---|---|
+| Logs | `docker logs -f apotech-app` (JSON via `slog`) | `C:\ProgramData\Apotech\logs\` (WinSW) + Event Viewer |
+| Migrations | automatic on boot | automatic on boot |
+| Backup (one-off) | `make backup` (dev compose) or `docker exec apotech-postgres-prod pg_dump ...` | `scripts\apotech-backup.bat` → `backups\` |
+| Backup (nightly) | cron the command | Task Scheduler → `apotech-backup.bat` |
+| Rotate JWT secret | edit `.env`, `up -d` | edit `config.yaml`, `Restart-Service apotech-server` (invalidates sessions) |
+| Reset a password | OWNER → Users → "Issue reset token" → hand token OOB → user redeems at `/reset?token=...` | same |
 
 ## Backups
-- `make backup` runs `pg_dump` inside the Postgres container and writes a
-  gzipped SQL file to `backups/`.
-- Keep at least 7 nightlies on disk; ship the latest off-host weekly (rsync to
-  external drive or to S3 with `aws s3 sync backups/ s3://apotech-backups/`).
-- Test restore: spin up a second compose stack pointed at a fresh DB, run
-  `gunzip -c backups/<file>.sql.gz | docker compose exec -T db psql -U apotech apotech`.
+- Keep at least 7 nightlies; ship the latest off-host weekly (rsync / S3 / external drive).
+- Test restore against a fresh DB before you rely on a backup.
 
 ## Observability
-- The server emits structured JSON logs via `log/slog` on stdout.
-- Every write RPC is recorded in the `audit_log` table (see
-  `internal/auth/audit.go`). Query via SQL to investigate "who changed what":
+- Structured JSON logs via `log/slog`.
+- Every write RPC is recorded in the `audit_log` table (`internal/auth/audit.go`):
   ```sql
   SELECT created_at, user_id, role, procedure, ok, code, message
-  FROM audit_log
-  WHERE created_at > now() - interval '24 hours'
-  ORDER BY created_at DESC;
+  FROM audit_log WHERE created_at > now() - interval '24 hours' ORDER BY created_at DESC;
   ```
-- No external metrics endpoint today. Add a `/metrics` Prometheus endpoint in
-  a follow-up if you wire Prometheus/Grafana.
+- No external metrics endpoint today; add a Prometheus `/metrics` in a follow-up.
 
 ## Security checklist
-- Change `auth.jwt_secret` from the example value.
-- Change `bootstrap.owner_password` from the example value, then disable the
-  bootstrap account after creating real OWNER users.
-- Terminate TLS at the reverse proxy (Caddy, nginx, or Traefik). The Go
-  server runs plaintext on `localhost:8080`.
-- Restrict Postgres to localhost (already true in `docker-compose.yml`).
-- Login rate limit: 5 attempts then ~1/minute refill per email (see
-  `internal/auth/ratelimit.go`). In-process — single-node only.
-- Refresh tokens rotate on every Refresh; replaying a revoked token kills the
-  whole family.
+- Set a strong `auth.jwt_secret` (Docker: `APOTECH_JWT_SECRET`; Windows: generated automatically).
+- Change the bootstrap owner password after first login; disable the bootstrap account.
+- Put TLS in front for any non-localhost exposure (the server speaks plaintext HTTP).
+- PostgreSQL is reachable only from the app (no published host port in prod compose; localhost-only on Windows).
+- Login rate limit: 5 attempts then ~1/min refill per email (in-process, single-node).
+- Refresh tokens rotate on every Refresh; replaying a revoked token revokes the whole family.
 
-## Updates / upgrades
-1. `git pull`
-2. `make generate` (regenerate proto code if proto changed)
-3. `make tidy`
-4. `make migrate-up`
-5. Rebuild binary + restart: `go -C backend build -o /usr/local/bin/apotech ./cmd/server && systemctl restart apotech`
-6. Rebuild frontend if needed: `npm --prefix frontend run build && rsync frontend/dist/ /var/www/apotech/`
-
-## Multi-branch deployment
-- Multi-branch is supported at the data layer (Phase 8). The `branches` table
-  is seeded with a single `MAIN` row at migration time; create more via the
-  `/branches` admin page (OWNER only).
-- Users access branches via the `user_branches` join. Grant access via the
-  same admin page or directly: `INSERT INTO user_branches (user_id, branch_id, is_default) VALUES (...)`.
-- The frontend sends the current `X-Branch-Id` header on every RPC; switching
-  branches in the top-bar selector reloads the page.
-- Per-list branch filtering is opt-in per RPC and not yet retrofitted across
-  every read query — see the "Known gaps" section in `CLAUDE.md`.
+## Multi-branch
+- Supported at the data layer (Phase 8); `branches` is seeded with `MAIN`. Create more via `/branches` (OWNER).
+- Frontend sends `X-Branch-Id` per RPC; switching branches reloads. Per-list branch filtering is opt-in per RPC (see CLAUDE.md "Known gaps").
 
 ## Known limitations
-- ESC/POS dispatch assumes the backend and printer share a LAN (raw TCP to
-  port 9100). For hosted backends, swap to a local print-bridge daemon.
-- BPJS Kesehatan integration is a local-only stub; the actual DJP/BPJS API
-  client is pending merchant credentials + Apotek-Vendor certification.
-- No SMTP integration for password reset; tokens are minted by OWNER and
-  handed to the user out-of-band.
-- No HA / load balancing: single-process, in-memory rate limiter; the audit
-  log is async-write (loses queued rows if the process crashes mid-write).
+- ESC/POS dispatch assumes backend + printer share a LAN (raw TCP :9100).
+- BPJS / e-Faktur are local stubs pending real credentials.
+- No SMTP password-reset (OWNER-issued token, handed OOB).
+- No HA: single-process, in-memory rate limiter; async audit-write loses queued rows on crash.
+- Windows + Docker images are **unsigned**; expect SmartScreen on the installer until code-signed.

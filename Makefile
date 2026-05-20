@@ -1,6 +1,7 @@
 .PHONY: up down generate tidy run test-e2e test-browser test-all \
         migrate-up migrate-down migrate-status migrate-create \
         web-install web \
+        embed-web build dist-windows docker-build docker-up docker-down installer \
         backup
 
 # `go -C backend run ...` runs the binary with CWD = backend/, so we point
@@ -28,6 +29,42 @@ tidy:
 
 run:
 	$(GO_BACKEND) run ./cmd/server
+
+# --- Packaging (single self-contained binary) --------------------------------
+# embed-web builds the SPA and copies it into the Go embed dir. `build` and
+# `dist-windows` then compile a single binary with the UI + migrations embedded.
+embed-web:
+	npm --prefix frontend ci
+	npm --prefix frontend run build
+	rm -rf backend/internal/web/dist/assets
+	cp -r frontend/dist/. backend/internal/web/dist/
+
+# Native single binary -> dist/apotech (serves UI + /api + auto-migrates).
+build: embed-web
+	@mkdir -p dist
+	$(GO_BACKEND) build -ldflags "-s -w" -o ../dist/apotech ./cmd/server
+
+# Windows single binary -> dist/apotech.exe (input to the installer build).
+# Pure-Go deps mean no CGO, so this cross-compiles from any host.
+dist-windows: embed-web
+	@mkdir -p dist
+	GOOS=windows GOARCH=amd64 $(GO_BACKEND) build -ldflags "-s -w" -o ../dist/apotech.exe ./cmd/server
+
+# --- Docker (production image + compose) --------------------------------------
+docker-build:
+	docker build -t apotech:latest .
+
+docker-up:
+	docker compose -f docker-compose.prod.yml up -d --build
+
+docker-down:
+	docker compose -f docker-compose.prod.yml down
+
+# --- Windows installer -------------------------------------------------------
+# Assembles the payload (exe + bundled Postgres + WinSW) and runs Inno Setup.
+# Requires PowerShell + Inno Setup (ISCC) on PATH; see packaging/windows/.
+installer: dist-windows
+	powershell -ExecutionPolicy Bypass -File packaging/windows/build-windows.ps1
 
 # End-to-end / integration tests (in-process httptest server + real dev Postgres).
 # Test binaries run with CWD = backend/e2e/, so the APOTECH_CONFIG path needs

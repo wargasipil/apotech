@@ -51,6 +51,9 @@ const (
 	// MedicineServiceListMedicinePricesProcedure is the fully-qualified name of the MedicineService's
 	// ListMedicinePrices RPC.
 	MedicineServiceListMedicinePricesProcedure = "/inventory_iface.v1.MedicineService/ListMedicinePrices"
+	// MedicineServiceSearchMedicinesProcedure is the fully-qualified name of the MedicineService's
+	// SearchMedicines RPC.
+	MedicineServiceSearchMedicinesProcedure = "/inventory_iface.v1.MedicineService/SearchMedicines"
 )
 
 // MedicineServiceClient is a client for the inventory_iface.v1.MedicineService service.
@@ -61,6 +64,7 @@ type MedicineServiceClient interface {
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
+	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
 }
 
 // NewMedicineServiceClient constructs a client for the inventory_iface.v1.MedicineService service.
@@ -110,6 +114,12 @@ func NewMedicineServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(medicineServiceMethods.ByName("ListMedicinePrices")),
 			connect.WithClientOptions(opts...),
 		),
+		searchMedicines: connect.NewClient[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse](
+			httpClient,
+			baseURL+MedicineServiceSearchMedicinesProcedure,
+			connect.WithSchema(medicineServiceMethods.ByName("SearchMedicines")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -121,6 +131,7 @@ type medicineServiceClient struct {
 	updateMedicine     *connect.Client[v1.UpdateMedicineRequest, v1.UpdateMedicineResponse]
 	archiveMedicine    *connect.Client[v1.ArchiveMedicineRequest, v1.ArchiveMedicineResponse]
 	listMedicinePrices *connect.Client[v1.ListMedicinePricesRequest, v1.ListMedicinePricesResponse]
+	searchMedicines    *connect.Client[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse]
 }
 
 // ListMedicines calls inventory_iface.v1.MedicineService.ListMedicines.
@@ -153,6 +164,11 @@ func (c *medicineServiceClient) ListMedicinePrices(ctx context.Context, req *con
 	return c.listMedicinePrices.CallUnary(ctx, req)
 }
 
+// SearchMedicines calls inventory_iface.v1.MedicineService.SearchMedicines.
+func (c *medicineServiceClient) SearchMedicines(ctx context.Context, req *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error) {
+	return c.searchMedicines.CallUnary(ctx, req)
+}
+
 // MedicineServiceHandler is an implementation of the inventory_iface.v1.MedicineService service.
 type MedicineServiceHandler interface {
 	ListMedicines(context.Context, *connect.Request[v1.ListMedicinesRequest]) (*connect.Response[v1.ListMedicinesResponse], error)
@@ -161,6 +177,7 @@ type MedicineServiceHandler interface {
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
+	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
 }
 
 // NewMedicineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -206,6 +223,12 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 		connect.WithSchema(medicineServiceMethods.ByName("ListMedicinePrices")),
 		connect.WithHandlerOptions(opts...),
 	)
+	medicineServiceSearchMedicinesHandler := connect.NewUnaryHandler(
+		MedicineServiceSearchMedicinesProcedure,
+		svc.SearchMedicines,
+		connect.WithSchema(medicineServiceMethods.ByName("SearchMedicines")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/inventory_iface.v1.MedicineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MedicineServiceListMedicinesProcedure:
@@ -220,6 +243,8 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 			medicineServiceArchiveMedicineHandler.ServeHTTP(w, r)
 		case MedicineServiceListMedicinePricesProcedure:
 			medicineServiceListMedicinePricesHandler.ServeHTTP(w, r)
+		case MedicineServiceSearchMedicinesProcedure:
+			medicineServiceSearchMedicinesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -251,4 +276,8 @@ func (UnimplementedMedicineServiceHandler) ArchiveMedicine(context.Context, *con
 
 func (UnimplementedMedicineServiceHandler) ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ListMedicinePrices is not implemented"))
+}
+
+func (UnimplementedMedicineServiceHandler) SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.SearchMedicines is not implemented"))
 }

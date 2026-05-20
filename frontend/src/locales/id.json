@@ -250,7 +250,11 @@
     "rxRequiredMissing": "Obat ini perlu resep. Lampirkan resep ke transaksi terlebih dahulu.",
     "attached": "Resep terlampir",
     "attach": "Lampirkan resep (F5)",
-    "detach": "Lepas"
+    "detach": "Lepas",
+    "needForMedicine": "Perlu resep untuk: {{medicine}}",
+    "remaining": "sisa",
+    "goCreate": "Buat resep",
+    "noCoveringRx": "Belum ada resep aktif untuk obat ini."
   },
   "customers": {
     "title": "Pelanggan",
@@ -319,7 +323,8 @@
       "medicines": "Obat",
       "suppliers": "Pemasok",
       "batches": "Batch",
-      "movements": "Mutasi"
+      "movements": "Mutasi",
+      "stocktake": "Stok opname"
     },
     "medicines": {
       "title": "Obat",
@@ -380,6 +385,60 @@
         "adjustment": "Penyesuaian",
         "writeOff": "Write-off",
         "unspecified": "—"
+      }
+    },
+    "stocktake": {
+      "title": "Stok opname",
+      "intro": "Hitung fisik berkala. Mulai sesi, tambahkan batch yang akan dihitung, lalu lakukan opname.",
+      "newSession": "Sesi baru",
+      "defaultName": "Stok opname {{date}}",
+      "createdToast": "Sesi dibuat",
+      "completed": "Opname selesai — {{count}} penyesuaian dicatat",
+      "voided": "Sesi dibatalkan",
+      "name": "Nama",
+      "status": "Status",
+      "lines": "Baris",
+      "counted": "Terhitung",
+      "variances": "Selisih",
+      "createdAt": "Dibuat",
+      "empty": "Belum ada sesi opname.",
+      "sessionEmpty": "Belum ada batch dalam sesi ini.",
+      "summary": "{{counted}} dari {{total}} terhitung · {{variances}} selisih",
+      "addBatches": "Tambah batch",
+      "addAllInStock": "Tambah semua yang ada stok",
+      "addedSummary": "{{added}} ditambahkan · {{skipped}} dilewati",
+      "filterByMedicine": "Saring per obat (opsional)",
+      "anyMedicine": "Semua obat",
+      "pickBatch": "Pilih batch",
+      "add": "Tambah",
+      "medicine": "Obat",
+      "batch": "Batch",
+      "expiry": "Kedaluwarsa",
+      "expected": "Sistem",
+      "countedQty": "Hitung",
+      "variance": "Selisih",
+      "disposition": "Tindakan",
+      "removeLine": "Hapus baris",
+      "complete": "Selesaikan",
+      "void": "Batalkan",
+      "invalidCount": "Jumlah harus bilangan bulat ≥ 0",
+      "selectKind": "Pilih jenis",
+      "notePlaceholder": "Catatan (opsional)",
+      "statuses": {
+        "draft": "Draf",
+        "completed": "Selesai",
+        "voided": "Dibatalkan"
+      },
+      "dispositions": {
+        "adjustment": "Penyesuaian",
+        "writeOff": "Write-off"
+      },
+      "writeOffKinds": {
+        "expired": "Kedaluwarsa",
+        "damaged": "Rusak",
+        "lost": "Hilang",
+        "theft": "Pencurian",
+        "other": "Lainnya"
       }
     }
   },

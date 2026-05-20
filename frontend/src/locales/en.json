@@ -250,7 +250,11 @@
     "rxRequiredMissing": "This medicine requires a prescription. Attach one to the sale first.",
     "attached": "Rx attached",
     "attach": "Attach prescription (F5)",
-    "detach": "Detach"
+    "detach": "Detach",
+    "needForMedicine": "Need prescription for: {{medicine}}",
+    "remaining": "remaining",
+    "goCreate": "Create a prescription",
+    "noCoveringRx": "No active prescription for this medicine."
   },
   "customers": {
     "title": "Customers",
@@ -319,7 +323,8 @@
       "medicines": "Medicines",
       "suppliers": "Suppliers",
       "batches": "Batches",
-      "movements": "Movements"
+      "movements": "Movements",
+      "stocktake": "Stocktake"
     },
     "medicines": {
       "title": "Medicines",
@@ -380,6 +385,60 @@
         "adjustment": "Adjustment",
         "writeOff": "Write-off",
         "unspecified": "—"
+      }
+    },
+    "stocktake": {
+      "title": "Stocktake",
+      "intro": "Periodic physical count. Start a session, add the batches you intend to count, then walk the shelves.",
+      "newSession": "New session",
+      "defaultName": "Stocktake {{date}}",
+      "createdToast": "Session created",
+      "completed": "Stocktake completed — {{count}} adjustments written",
+      "voided": "Session voided",
+      "name": "Name",
+      "status": "Status",
+      "lines": "Lines",
+      "counted": "Counted",
+      "variances": "Variances",
+      "createdAt": "Created",
+      "empty": "No stocktake sessions yet.",
+      "sessionEmpty": "No batches added to this session yet.",
+      "summary": "{{counted}} of {{total}} counted · {{variances}} variances",
+      "addBatches": "Add batches",
+      "addAllInStock": "Seed all in-stock",
+      "addedSummary": "{{added}} added · {{skipped}} skipped",
+      "filterByMedicine": "Filter by medicine (optional)",
+      "anyMedicine": "Any medicine",
+      "pickBatch": "Pick a batch",
+      "add": "Add",
+      "medicine": "Medicine",
+      "batch": "Batch",
+      "expiry": "Expiry",
+      "expected": "Expected",
+      "countedQty": "Counted",
+      "variance": "Variance",
+      "disposition": "Disposition",
+      "removeLine": "Remove line",
+      "complete": "Complete",
+      "void": "Void",
+      "invalidCount": "Counted qty must be a non-negative integer",
+      "selectKind": "Select kind",
+      "notePlaceholder": "Note (optional)",
+      "statuses": {
+        "draft": "Draft",
+        "completed": "Completed",
+        "voided": "Voided"
+      },
+      "dispositions": {
+        "adjustment": "Adjustment",
+        "writeOff": "Write-off"
+      },
+      "writeOffKinds": {
+        "expired": "Expired",
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "theft": "Theft",
+        "other": "Other"
       }
     }
   },

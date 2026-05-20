@@ -7,7 +7,6 @@ import {
   Heading,
   IconButton,
   Input,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
@@ -19,12 +18,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import EntityDrawer from "../components/EntityDrawer";
+import EnumSelect from "../components/EnumSelect";
 import PageHeader from "../components/PageHeader";
+import SearchableSelect from "../components/SearchableSelect";
 import type { Prescription } from "../gen/prescription_iface/v1/prescription_pb";
 import { formatDate } from "../lib/format";
 import { toast } from "../lib/toaster";
-import { useCustomersQuery } from "../queries/customers";
-import { useMedicinesQuery } from "../queries/medicines";
+import { searchCustomers, useCustomersQuery } from "../queries/customers";
+import { searchMedicines, useMedicinesQuery } from "../queries/medicines";
 import {
   useCreatePrescriptionMutation,
   usePrescriptionsQuery,
@@ -97,39 +98,36 @@ export default function Prescriptions() {
           <Text fontSize="xs" color="fg.muted" mb={1}>
             {t("prescriptions.filterStatus")}
           </Text>
-          <NativeSelect.Root size="sm">
-            <NativeSelect.Field
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">{t("prescriptions.filterAll")}</option>
-              {ALL_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`prescriptions.states.${s.toLowerCase()}`)}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <EnumSelect
+            size="sm"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder={t("prescriptions.filterAll")}
+            items={[
+              { value: "", label: t("prescriptions.filterAll") },
+              ...ALL_STATUSES.map((s) => ({
+                value: s as string,
+                label: t(`prescriptions.states.${s.toLowerCase()}`),
+              })),
+            ]}
+            itemToString={(o) => o.label}
+            itemToValue={(o) => o.value}
+          />
         </Box>
         <Box minW="240px">
           <Text fontSize="xs" color="fg.muted" mb={1}>
             {t("prescriptions.customer")}
           </Text>
-          <NativeSelect.Root size="sm">
-            <NativeSelect.Field
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value)}
-            >
-              <option value="">{t("prescriptions.filterAll")}</option>
-              {(customersQ.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <SearchableSelect
+            size="sm"
+            value={customerFilter}
+            onChange={setCustomerFilter}
+            loadOptions={searchCustomers}
+            itemToString={(c) => c.name}
+            itemToValue={(c) => c.id}
+            selectedLabel={customerNameById.get(customerFilter)}
+            placeholder={t("prescriptions.filterAll")}
+          />
         </Box>
       </Flex>
 
@@ -335,20 +333,17 @@ function PrescriptionDrawer({
           <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
             {t("prescriptions.customer")} *
           </Text>
-          <NativeSelect.Root>
-            <NativeSelect.Field
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">{t("prescriptions.selectCustomer")}</option>
-              {(customersQ.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <SearchableSelect
+            value={customerId}
+            onChange={setCustomerId}
+            loadOptions={searchCustomers}
+            itemToString={(c) => c.name}
+            itemToValue={(c) => c.id}
+            selectedLabel={
+              (customersQ.data ?? []).find((c) => c.id === customerId)?.name
+            }
+            placeholder={t("prescriptions.selectCustomer")}
+          />
         </Box>
 
         <Box>
@@ -410,21 +405,23 @@ function PrescriptionDrawer({
                       <Text fontSize="xs" color="fg.muted" mb={1}>
                         {t("prescriptions.selectMedicine")}
                       </Text>
-                      <NativeSelect.Root size="sm">
-                        <NativeSelect.Field
-                          value={l.medicineId}
-                          onChange={(e) => updateLine(idx, { medicineId: e.target.value })}
-                        >
-                          <option value="">—</option>
-                          {(medicinesQ.data ?? []).map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.sku} · {m.name}
-                              {m.prescriptionRequired ? " (Rx)" : ""}
-                            </option>
-                          ))}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
+                      <SearchableSelect
+                        size="sm"
+                        value={l.medicineId}
+                        onChange={(v) => updateLine(idx, { medicineId: v })}
+                        loadOptions={searchMedicines}
+                        itemToString={(m) =>
+                          `${m.sku} · ${m.name}${m.prescriptionRequired ? " (Rx)" : ""}`
+                        }
+                        itemToValue={(m) => m.id}
+                        selectedLabel={(() => {
+                          const m = (medicinesQ.data ?? []).find((x) => x.id === l.medicineId);
+                          return m
+                            ? `${m.sku} · ${m.name}${m.prescriptionRequired ? " (Rx)" : ""}`
+                            : undefined;
+                        })()}
+                        placeholder={t("prescriptions.selectMedicine")}
+                      />
                       {l.medicineId && isRx === false && (
                         <Text fontSize="xs" color="fg.muted" mt={1}>
                           (non-Rx)

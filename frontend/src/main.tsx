@@ -25,6 +25,8 @@ import Medicines from "./routes/inventory/Medicines";
 import Suppliers from "./routes/inventory/Suppliers";
 import Batches from "./routes/inventory/Batches";
 import Movements from "./routes/inventory/Movements";
+import Stocktake from "./routes/inventory/Stocktake";
+import StocktakeDetail from "./routes/inventory/StocktakeDetail";
 import Analytics from "./routes/Analytics";
 import SalesAnalytics from "./routes/analytics/Sales";
 import InventoryAnalytics from "./routes/analytics/Inventory";
@@ -73,6 +75,8 @@ const router = createBrowserRouter([
               { path: "suppliers", element: <Suppliers /> },
               { path: "batches", element: <Batches /> },
               { path: "movements", element: <Movements /> },
+              { path: "stocktake", element: <Stocktake /> },
+              { path: "stocktake/:id", element: <StocktakeDetail /> },
             ],
           },
           {

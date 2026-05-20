@@ -120,3 +120,57 @@ test.describe("Dialog (centered modal)", () => {
     await expect(page.getByRole("dialog")).toBeHidden();
   });
 });
+
+test.describe("RouteTabs (Chakra Tabs + NavLink)", () => {
+  test("Analytics tab strip is Chakra Tabs and clicking changes the URL", async ({ page }) => {
+    await page.goto("/analytics/sales");
+
+    // Hard rule: the tab strip is a Chakra Tabs.List, not a hand-rolled
+    // NavLink row. The accessibility tree exposes [role=tablist] +
+    // [role=tab] only when the Chakra primitive is in use.
+    const tablist = page.getByRole("tablist");
+    await expect(tablist).toBeVisible();
+    const tabs = page.getByRole("tab");
+    await expect(tabs).toHaveCount(3);
+
+    // The active tab matches the URL.
+    await expect(page.getByRole("tab", { name: "Sales" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    // Clicking a tab updates the URL (no full reload) and shifts active state.
+    await page.getByRole("tab", { name: "Inventory" }).click();
+    await expect(page).toHaveURL(/\/analytics\/inventory$/);
+    await expect(page.getByRole("tab", { name: "Inventory" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+});
+
+test.describe("SearchableSelect (Combobox)", () => {
+  test("Branches Add → supplier-style selects are Chakra Combobox (not OS-native)", async ({
+    page,
+  }) => {
+    // Open any drawer that hosts a SearchableSelect. Customers Add drawer
+    // doesn't have one — use Prescriptions which has multiple. We only need
+    // to confirm the rendered DOM uses Chakra's combobox primitive (no
+    // bare <select>).
+    await page.goto("/prescriptions");
+    await page.getByRole("button", { name: "New prescription" }).click();
+    const drawer = page.getByRole("dialog");
+    await expect(drawer).toBeVisible();
+
+    // Chakra Combobox renders a [role=combobox] input (not a <select>).
+    // Assert at least one is present in the drawer.
+    const comboboxes = drawer.locator("[role=combobox]");
+    await expect(comboboxes.first()).toBeVisible();
+
+    // Critical regression: there should be ZERO bare <select> elements
+    // inside the drawer. If somebody re-introduces NativeSelect on a long
+    // list, this test fails loudly.
+    const nativeSelects = await drawer.locator("select").count();
+    expect(nativeSelects).toBe(0);
+  });
+});

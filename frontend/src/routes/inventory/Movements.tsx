@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   HStack,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
@@ -16,7 +15,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import EntityDrawer from "../../components/EntityDrawer";
+import EnumSelect from "../../components/EnumSelect";
 import FormField from "../../components/FormField";
+import SearchableSelect from "../../components/SearchableSelect";
+import { searchBatches } from "../../queries/batches";
 import { MovementType } from "../../gen/inventory_iface/v1/stock_pb";
 import { formatUnix } from "../../lib/format";
 import { toast } from "../../lib/toaster";
@@ -71,21 +73,24 @@ export default function Movements() {
           <Text fontSize="sm" color="fg.muted">
             {t("inventory.movements.filterByBatch")}
           </Text>
-          <NativeSelect.Root size="sm" width="auto">
-            <NativeSelect.Field
-              value={filterBatch}
-              onChange={(e) => setFilterBatch(e.target.value)}
-            >
-              <option value="">{t("inventory.movements.filterAll")}</option>
-              {batchesQ.data?.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {medById.get(b.medicineId)?.name ?? b.medicineId} ·{" "}
-                  {b.batchNumber || b.id.slice(0, 8)}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <SearchableSelect
+            size="sm"
+            width="280px"
+            value={filterBatch}
+            onChange={setFilterBatch}
+            loadOptions={(q) => searchBatches(q)}
+            itemToString={(b) =>
+              `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)}`
+            }
+            itemToValue={(b) => b.id}
+            selectedLabel={(() => {
+              const b = batchById.get(filterBatch);
+              return b
+                ? `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)}`
+                : undefined;
+            })()}
+            placeholder={t("inventory.movements.filterAll")}
+          />
         </HStack>
         <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
           <Plus size={16} />
@@ -140,7 +145,6 @@ export default function Movements() {
       <RecordDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        batches={batchesQ.data ?? []}
         medById={medById}
       />
     </Stack>
@@ -150,12 +154,10 @@ export default function Movements() {
 function RecordDrawer({
   open,
   onClose,
-  batches,
   medById,
 }: {
   open: boolean;
   onClose: () => void;
-  batches: { id: string; medicineId: string; batchNumber: string; currentQuantity: bigint }[];
   medById: Map<string, { name: string }>;
 }) {
   const { t } = useTranslation();
@@ -208,40 +210,31 @@ function RecordDrawer({
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("inventory.movements.batch")} *
             </Text>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                value={form.watch("batchId")}
-                onChange={(e) => form.setValue("batchId", e.target.value)}
-              >
-                <option value="">{t("inventory.batches.selectMedicine")}</option>
-                {batches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {medById.get(b.medicineId)?.name ?? b.medicineId} ·{" "}
-                    {b.batchNumber || b.id.slice(0, 8)} (qty {String(b.currentQuantity)})
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <SearchableSelect
+              value={form.watch("batchId")}
+              onChange={(v) => form.setValue("batchId", v)}
+              loadOptions={(q) => searchBatches(q)}
+              itemToString={(b) =>
+                `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)} (qty ${String(b.currentQuantity)})`
+              }
+              itemToValue={(b) => b.id}
+              placeholder={t("inventory.batches.selectMedicine")}
+            />
           </Stack>
           <Stack gap={1}>
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("inventory.movements.type")} *
             </Text>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                value={String(form.watch("type"))}
-                onChange={(e) => form.setValue("type", Number(e.target.value))}
-              >
-                <option value={MovementType.ADJUSTMENT}>
-                  {t("inventory.movements.types.adjustment")}
-                </option>
-                <option value={MovementType.WRITE_OFF}>
-                  {t("inventory.movements.types.writeOff")}
-                </option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <EnumSelect
+              value={String(form.watch("type"))}
+              onChange={(v) => form.setValue("type", Number(v))}
+              items={[
+                { value: String(MovementType.ADJUSTMENT), label: t("inventory.movements.types.adjustment") },
+                { value: String(MovementType.WRITE_OFF), label: t("inventory.movements.types.writeOff") },
+              ]}
+              itemToString={(o) => o.label}
+              itemToValue={(o) => o.value}
+            />
           </Stack>
           <FormField
             control={form.control}

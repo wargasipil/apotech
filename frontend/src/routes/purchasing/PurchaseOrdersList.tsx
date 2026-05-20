@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   HStack,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
@@ -14,13 +13,15 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import EnumSelect from "../../components/EnumSelect";
+import SearchableSelect from "../../components/SearchableSelect";
 import {
   POStatus,
   type PurchaseOrder,
 } from "../../gen/purchasing_iface/v1/order_pb";
 import { formatMoney, formatDate } from "../../lib/format";
 import { usePurchaseOrdersQuery } from "../../queries/purchasing";
-import { useSuppliersQuery } from "../../queries/suppliers";
+import { searchSuppliers, useSuppliersQuery } from "../../queries/suppliers";
 
 type Props = { onlyOutstanding?: boolean };
 
@@ -58,38 +59,35 @@ export default function PurchaseOrdersList({ onlyOutstanding = false }: Props) {
       <HStack justify="space-between" wrap="wrap" gap={2}>
         <HStack gap={2}>
           {!onlyOutstanding && (
-            <NativeSelect.Root size="sm" width="auto">
-              <NativeSelect.Field
-                value={String(statusFilter)}
-                onChange={(e) => setStatusFilter(Number(e.target.value) as POStatus)}
-              >
-                <option value={POStatus.PO_STATUS_UNSPECIFIED}>{t("common.actions")} —</option>
-                <option value={POStatus.PO_STATUS_DRAFT}>{t("purchasing.states.draft")}</option>
-                <option value={POStatus.PO_STATUS_SENT}>{t("purchasing.states.sent")}</option>
-                <option value={POStatus.PO_STATUS_PARTIALLY_RECEIVED}>
-                  {t("purchasing.states.partiallyReceived")}
-                </option>
-                <option value={POStatus.PO_STATUS_RECEIVED}>{t("purchasing.states.received")}</option>
-                <option value={POStatus.PO_STATUS_CLOSED}>{t("purchasing.states.closed")}</option>
-                <option value={POStatus.PO_STATUS_VOIDED}>{t("purchasing.states.voided")}</option>
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <EnumSelect
+              size="sm"
+              width="180px"
+              value={String(statusFilter)}
+              onChange={(v) => setStatusFilter(Number(v) as POStatus)}
+              items={[
+                { value: String(POStatus.PO_STATUS_UNSPECIFIED), label: `${t("common.actions")} —` },
+                { value: String(POStatus.PO_STATUS_DRAFT), label: t("purchasing.states.draft") },
+                { value: String(POStatus.PO_STATUS_SENT), label: t("purchasing.states.sent") },
+                { value: String(POStatus.PO_STATUS_PARTIALLY_RECEIVED), label: t("purchasing.states.partiallyReceived") },
+                { value: String(POStatus.PO_STATUS_RECEIVED), label: t("purchasing.states.received") },
+                { value: String(POStatus.PO_STATUS_CLOSED), label: t("purchasing.states.closed") },
+                { value: String(POStatus.PO_STATUS_VOIDED), label: t("purchasing.states.voided") },
+              ]}
+              itemToString={(o) => o.label}
+              itemToValue={(o) => o.value}
+            />
           )}
-          <NativeSelect.Root size="sm" width="auto">
-            <NativeSelect.Field
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-            >
-              <option value="">{t("purchasing.supplier")} —</option>
-              {(suppliersQ.data ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <SearchableSelect
+            size="sm"
+            width="220px"
+            value={supplierFilter}
+            onChange={setSupplierFilter}
+            loadOptions={searchSuppliers}
+            itemToString={(s) => s.name}
+            itemToValue={(s) => s.id}
+            selectedLabel={supplierName.get(supplierFilter)}
+            placeholder={`${t("purchasing.supplier")} —`}
+          />
         </HStack>
         <Button colorPalette="blue" onClick={() => navigate("/purchasing/new")}>
           <Plus size={16} />

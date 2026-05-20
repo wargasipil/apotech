@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"os"
 	"time"
+	// Embed the IANA timezone DB so `TZ=Asia/Jakarta` resolves even on a minimal
+	// base image (distroless has no /usr/share/zoneinfo). The "today" boundary in
+	// GetTodaySnapshot relies on time.Local being the shop's zone.
+	_ "time/tzdata"
 
 	"connectrpc.com/connect"
 
@@ -20,12 +24,15 @@ import (
 	"github.com/apotech/backend/gen/pos_iface/v1/posifacev1connect"
 	"github.com/apotech/backend/gen/prescription_iface/v1/prescriptionifacev1connect"
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
+	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	"github.com/apotech/backend/gen/tax_iface/v1/taxifacev1connect"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/db"
+	"github.com/apotech/backend/internal/dbmigrate"
 	"github.com/apotech/backend/internal/service"
+	"github.com/apotech/backend/internal/web"
 )
 
 func main() {
@@ -34,6 +41,19 @@ func main() {
 
 	cfg := config.MustLoad()
 	gormDB := db.MustOpen(cfg)
+
+	// Auto-migrate on boot (default on) so a freshly deployed binary brings its
+	// own schema up to date — no separate migrate step in Docker / Windows.
+	if cfg.Database.ShouldAutoMigrate() {
+		sqlDB, err := gormDB.DB()
+		if err != nil {
+			log.Fatalf("get sql.DB for migrate: %v", err)
+		}
+		if err := dbmigrate.Run(sqlDB); err != nil {
+			log.Fatalf("auto-migrate: %v", err)
+		}
+		slog.Info("migrations applied")
+	}
 
 	issuer := &auth.Issuer{
 		Secret: []byte(cfg.Auth.JWTSecret),
@@ -71,40 +91,54 @@ func main() {
 	taxInvoicesSvc := service.NewTaxInvoices(gormDB)
 	bpjsClaimsSvc := service.NewBpjsClaims(gormDB)
 	branchesSvc := service.NewBranches(gormDB)
+	stocktakesSvc := service.NewStocktakes(gormDB)
 
 	if err := userSvc.EnsureBootstrapOwner(context.Background(), cfg.Bootstrap); err != nil {
 		log.Fatalf("bootstrap: %v", err) // intentionally fatal — server can't start
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle(healthifacev1connect.NewHealthServiceHandler(healthSvc, interceptors))
-	mux.Handle(userifacev1connect.NewAuthServiceHandler(authSvc, interceptors))
-	mux.Handle(userifacev1connect.NewUserServiceHandler(userSvc, interceptors))
-	mux.Handle(inventoryifacev1connect.NewSupplierServiceHandler(supplierSvc, interceptors))
-	mux.Handle(inventoryifacev1connect.NewMedicineServiceHandler(medicineSvc, interceptors))
-	mux.Handle(inventoryifacev1connect.NewBatchServiceHandler(batchSvc, interceptors))
-	mux.Handle(inventoryifacev1connect.NewStockMovementServiceHandler(stockSvc, interceptors))
-	mux.Handle(customerifacev1connect.NewCustomerServiceHandler(customerSvc, interceptors))
-	mux.Handle(posifacev1connect.NewSaleServiceHandler(saleSvc, interceptors))
-	mux.Handle(analyticsifacev1connect.NewSalesAnalyticsServiceHandler(salesAnalyticsSvc, interceptors))
-	mux.Handle(analyticsifacev1connect.NewInventoryAnalyticsServiceHandler(inventoryAnalyticsSvc, interceptors))
-	mux.Handle(analyticsifacev1connect.NewMarginAnalyticsServiceHandler(marginAnalyticsSvc, interceptors))
-	mux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(purchaseOrdersSvc, interceptors))
-	mux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(purchaseReceiptsSvc, interceptors))
-	mux.Handle(purchasingifacev1connect.NewPurchasePaymentServiceHandler(purchasePaymentsSvc, interceptors))
-	mux.Handle(prescriptionifacev1connect.NewPrescriptionServiceHandler(prescriptionsSvc, interceptors))
-	mux.Handle(taxifacev1connect.NewTaxInvoiceServiceHandler(taxInvoicesSvc, interceptors))
-	mux.Handle(bpjsifacev1connect.NewBpjsClaimServiceHandler(bpjsClaimsSvc, interceptors))
-	mux.Handle(branchifacev1connect.NewBranchServiceHandler(branchesSvc, interceptors))
+	// Connect RPC handlers live on apiMux and are mounted under /api so the
+	// embedded SPA can share the same origin (frontend transport baseUrl="/api").
+	apiMux := http.NewServeMux()
+	apiMux.Handle(healthifacev1connect.NewHealthServiceHandler(healthSvc, interceptors))
+	apiMux.Handle(userifacev1connect.NewAuthServiceHandler(authSvc, interceptors))
+	apiMux.Handle(userifacev1connect.NewUserServiceHandler(userSvc, interceptors))
+	apiMux.Handle(inventoryifacev1connect.NewSupplierServiceHandler(supplierSvc, interceptors))
+	apiMux.Handle(inventoryifacev1connect.NewMedicineServiceHandler(medicineSvc, interceptors))
+	apiMux.Handle(inventoryifacev1connect.NewBatchServiceHandler(batchSvc, interceptors))
+	apiMux.Handle(inventoryifacev1connect.NewStockMovementServiceHandler(stockSvc, interceptors))
+	apiMux.Handle(customerifacev1connect.NewCustomerServiceHandler(customerSvc, interceptors))
+	apiMux.Handle(posifacev1connect.NewSaleServiceHandler(saleSvc, interceptors))
+	apiMux.Handle(analyticsifacev1connect.NewSalesAnalyticsServiceHandler(salesAnalyticsSvc, interceptors))
+	apiMux.Handle(analyticsifacev1connect.NewInventoryAnalyticsServiceHandler(inventoryAnalyticsSvc, interceptors))
+	apiMux.Handle(analyticsifacev1connect.NewMarginAnalyticsServiceHandler(marginAnalyticsSvc, interceptors))
+	apiMux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(purchaseOrdersSvc, interceptors))
+	apiMux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(purchaseReceiptsSvc, interceptors))
+	apiMux.Handle(purchasingifacev1connect.NewPurchasePaymentServiceHandler(purchasePaymentsSvc, interceptors))
+	apiMux.Handle(prescriptionifacev1connect.NewPrescriptionServiceHandler(prescriptionsSvc, interceptors))
+	apiMux.Handle(taxifacev1connect.NewTaxInvoiceServiceHandler(taxInvoicesSvc, interceptors))
+	apiMux.Handle(bpjsifacev1connect.NewBpjsClaimServiceHandler(bpjsClaimsSvc, interceptors))
+	apiMux.Handle(branchifacev1connect.NewBranchServiceHandler(branchesSvc, interceptors))
+	apiMux.Handle(stocktakeifacev1connect.NewStocktakeServiceHandler(stocktakesSvc, interceptors))
+
+	// Root mux: /api/* → Connect handlers, /healthz → liveness probe,
+	// everything else → the embedded SPA (single self-contained binary).
+	root := http.NewServeMux()
+	root.Handle("/api/", http.StripPrefix("/api", apiMux))
+	root.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("ok"))
+	})
+	root.Handle("/", web.Handler())
 
 	var protocols http.Protocols
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true) // h2c: HTTP/2 over plain TCP for gRPC/Connect streams
 
-	addr := fmt.Sprintf("localhost:%d", cfg.Server.Port)
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{
 		Addr:      addr,
-		Handler:   mux,
+		Handler:   root,
 		Protocols: &protocols,
 	}
 

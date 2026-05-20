@@ -578,6 +578,110 @@ func (x *UpdateBatchResponse) GetBatch() *Batch {
 	return nil
 }
 
+type SearchBatchesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	MedicineId    string                 `protobuf:"bytes,3,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"` // optional scope: search within a single medicine's batches
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchBatchesRequest) Reset() {
+	*x = SearchBatchesRequest{}
+	mi := &file_inventory_iface_v1_batch_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchBatchesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchBatchesRequest) ProtoMessage() {}
+
+func (x *SearchBatchesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_batch_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchBatchesRequest.ProtoReflect.Descriptor instead.
+func (*SearchBatchesRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_batch_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SearchBatchesRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchBatchesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *SearchBatchesRequest) GetMedicineId() string {
+	if x != nil {
+		return x.MedicineId
+	}
+	return ""
+}
+
+type SearchBatchesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Batches       []*Batch               `protobuf:"bytes,1,rep,name=batches,proto3" json:"batches,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchBatchesResponse) Reset() {
+	*x = SearchBatchesResponse{}
+	mi := &file_inventory_iface_v1_batch_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchBatchesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchBatchesResponse) ProtoMessage() {}
+
+func (x *SearchBatchesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_batch_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchBatchesResponse.ProtoReflect.Descriptor instead.
+func (*SearchBatchesResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_batch_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SearchBatchesResponse) GetBatches() []*Batch {
+	if x != nil {
+		return x.Batches
+	}
+	return nil
+}
+
 var File_inventory_iface_v1_batch_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_batch_proto_rawDesc = "" +
@@ -636,12 +740,20 @@ const file_inventory_iface_v1_batch_proto_rawDesc = "" +
 	"\vreceived_at\x18\x06 \x01(\tR\n" +
 	"receivedAt\"F\n" +
 	"\x13UpdateBatchResponse\x12/\n" +
-	"\x05batch\x18\x01 \x01(\v2\x19.inventory_iface.v1.BatchR\x05batch2\xa7\x03\n" +
+	"\x05batch\x18\x01 \x01(\v2\x19.inventory_iface.v1.BatchR\x05batch\"c\n" +
+	"\x14SearchBatchesRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x1f\n" +
+	"\vmedicine_id\x18\x03 \x01(\tR\n" +
+	"medicineId\"L\n" +
+	"\x15SearchBatchesResponse\x123\n" +
+	"\abatches\x18\x01 \x03(\v2\x19.inventory_iface.v1.BatchR\abatches2\x96\x04\n" +
 	"\fBatchService\x12g\n" +
 	"\vListBatches\x12&.inventory_iface.v1.ListBatchesRequest\x1a'.inventory_iface.v1.ListBatchesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12^\n" +
 	"\bGetBatch\x12#.inventory_iface.v1.GetBatchRequest\x1a$.inventory_iface.v1.GetBatchResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12f\n" +
 	"\vCreateBatch\x12&.inventory_iface.v1.CreateBatchRequest\x1a'.inventory_iface.v1.CreateBatchResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12f\n" +
-	"\vUpdateBatch\x12&.inventory_iface.v1.UpdateBatchRequest\x1a'.inventory_iface.v1.UpdateBatchResponse\"\x06\x8a\xb5\x18\x02\x01\x02BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
+	"\vUpdateBatch\x12&.inventory_iface.v1.UpdateBatchRequest\x1a'.inventory_iface.v1.UpdateBatchResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12m\n" +
+	"\rSearchBatches\x12(.inventory_iface.v1.SearchBatchesRequest\x1a).inventory_iface.v1.SearchBatchesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
 
 var (
 	file_inventory_iface_v1_batch_proto_rawDescOnce sync.Once
@@ -655,36 +767,41 @@ func file_inventory_iface_v1_batch_proto_rawDescGZIP() []byte {
 	return file_inventory_iface_v1_batch_proto_rawDescData
 }
 
-var file_inventory_iface_v1_batch_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_inventory_iface_v1_batch_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_inventory_iface_v1_batch_proto_goTypes = []any{
-	(*Batch)(nil),               // 0: inventory_iface.v1.Batch
-	(*ListBatchesRequest)(nil),  // 1: inventory_iface.v1.ListBatchesRequest
-	(*ListBatchesResponse)(nil), // 2: inventory_iface.v1.ListBatchesResponse
-	(*GetBatchRequest)(nil),     // 3: inventory_iface.v1.GetBatchRequest
-	(*GetBatchResponse)(nil),    // 4: inventory_iface.v1.GetBatchResponse
-	(*CreateBatchRequest)(nil),  // 5: inventory_iface.v1.CreateBatchRequest
-	(*CreateBatchResponse)(nil), // 6: inventory_iface.v1.CreateBatchResponse
-	(*UpdateBatchRequest)(nil),  // 7: inventory_iface.v1.UpdateBatchRequest
-	(*UpdateBatchResponse)(nil), // 8: inventory_iface.v1.UpdateBatchResponse
+	(*Batch)(nil),                 // 0: inventory_iface.v1.Batch
+	(*ListBatchesRequest)(nil),    // 1: inventory_iface.v1.ListBatchesRequest
+	(*ListBatchesResponse)(nil),   // 2: inventory_iface.v1.ListBatchesResponse
+	(*GetBatchRequest)(nil),       // 3: inventory_iface.v1.GetBatchRequest
+	(*GetBatchResponse)(nil),      // 4: inventory_iface.v1.GetBatchResponse
+	(*CreateBatchRequest)(nil),    // 5: inventory_iface.v1.CreateBatchRequest
+	(*CreateBatchResponse)(nil),   // 6: inventory_iface.v1.CreateBatchResponse
+	(*UpdateBatchRequest)(nil),    // 7: inventory_iface.v1.UpdateBatchRequest
+	(*UpdateBatchResponse)(nil),   // 8: inventory_iface.v1.UpdateBatchResponse
+	(*SearchBatchesRequest)(nil),  // 9: inventory_iface.v1.SearchBatchesRequest
+	(*SearchBatchesResponse)(nil), // 10: inventory_iface.v1.SearchBatchesResponse
 }
 var file_inventory_iface_v1_batch_proto_depIdxs = []int32{
-	0, // 0: inventory_iface.v1.ListBatchesResponse.batches:type_name -> inventory_iface.v1.Batch
-	0, // 1: inventory_iface.v1.GetBatchResponse.batch:type_name -> inventory_iface.v1.Batch
-	0, // 2: inventory_iface.v1.CreateBatchResponse.batch:type_name -> inventory_iface.v1.Batch
-	0, // 3: inventory_iface.v1.UpdateBatchResponse.batch:type_name -> inventory_iface.v1.Batch
-	1, // 4: inventory_iface.v1.BatchService.ListBatches:input_type -> inventory_iface.v1.ListBatchesRequest
-	3, // 5: inventory_iface.v1.BatchService.GetBatch:input_type -> inventory_iface.v1.GetBatchRequest
-	5, // 6: inventory_iface.v1.BatchService.CreateBatch:input_type -> inventory_iface.v1.CreateBatchRequest
-	7, // 7: inventory_iface.v1.BatchService.UpdateBatch:input_type -> inventory_iface.v1.UpdateBatchRequest
-	2, // 8: inventory_iface.v1.BatchService.ListBatches:output_type -> inventory_iface.v1.ListBatchesResponse
-	4, // 9: inventory_iface.v1.BatchService.GetBatch:output_type -> inventory_iface.v1.GetBatchResponse
-	6, // 10: inventory_iface.v1.BatchService.CreateBatch:output_type -> inventory_iface.v1.CreateBatchResponse
-	8, // 11: inventory_iface.v1.BatchService.UpdateBatch:output_type -> inventory_iface.v1.UpdateBatchResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: inventory_iface.v1.ListBatchesResponse.batches:type_name -> inventory_iface.v1.Batch
+	0,  // 1: inventory_iface.v1.GetBatchResponse.batch:type_name -> inventory_iface.v1.Batch
+	0,  // 2: inventory_iface.v1.CreateBatchResponse.batch:type_name -> inventory_iface.v1.Batch
+	0,  // 3: inventory_iface.v1.UpdateBatchResponse.batch:type_name -> inventory_iface.v1.Batch
+	0,  // 4: inventory_iface.v1.SearchBatchesResponse.batches:type_name -> inventory_iface.v1.Batch
+	1,  // 5: inventory_iface.v1.BatchService.ListBatches:input_type -> inventory_iface.v1.ListBatchesRequest
+	3,  // 6: inventory_iface.v1.BatchService.GetBatch:input_type -> inventory_iface.v1.GetBatchRequest
+	5,  // 7: inventory_iface.v1.BatchService.CreateBatch:input_type -> inventory_iface.v1.CreateBatchRequest
+	7,  // 8: inventory_iface.v1.BatchService.UpdateBatch:input_type -> inventory_iface.v1.UpdateBatchRequest
+	9,  // 9: inventory_iface.v1.BatchService.SearchBatches:input_type -> inventory_iface.v1.SearchBatchesRequest
+	2,  // 10: inventory_iface.v1.BatchService.ListBatches:output_type -> inventory_iface.v1.ListBatchesResponse
+	4,  // 11: inventory_iface.v1.BatchService.GetBatch:output_type -> inventory_iface.v1.GetBatchResponse
+	6,  // 12: inventory_iface.v1.BatchService.CreateBatch:output_type -> inventory_iface.v1.CreateBatchResponse
+	8,  // 13: inventory_iface.v1.BatchService.UpdateBatch:output_type -> inventory_iface.v1.UpdateBatchResponse
+	10, // 14: inventory_iface.v1.BatchService.SearchBatches:output_type -> inventory_iface.v1.SearchBatchesResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_inventory_iface_v1_batch_proto_init() }
@@ -698,7 +815,7 @@ func file_inventory_iface_v1_batch_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_iface_v1_batch_proto_rawDesc), len(file_inventory_iface_v1_batch_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

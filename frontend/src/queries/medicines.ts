@@ -14,6 +14,7 @@ export const medicineKeys = {
     [...medicineKeys.all, "list", { includeInactive }] as const,
   prices: (medicineId: string) =>
     [...medicineKeys.all, "prices", medicineId] as const,
+  search: (query: string) => [...medicineKeys.all, "search", query] as const,
 };
 
 export function useMedicinesQuery(includeInactive = false) {
@@ -24,6 +25,13 @@ export function useMedicinesQuery(includeInactive = false) {
       return res.medicines;
     },
   });
+}
+
+// Imperative search — call directly from <SearchableSelect loadOptions={...}>.
+// Mirrors the SearchCustomers / searchSuppliers contract.
+export async function searchMedicines(query: string) {
+  const res = await medicineClient.searchMedicines({ query, limit: 20 });
+  return res.medicines;
 }
 
 export function useMedicinePricesQuery(medicineId: string, enabled = true) {

@@ -27,6 +27,17 @@ export function useBatchesQuery(filters: PartialMessage<ListBatchesRequest> = {}
   });
 }
 
+// Imperative search — call directly from <SearchableSelect loadOptions={...}>.
+// Optional medicineId scopes the search to a single medicine's batches.
+export async function searchBatches(query: string, medicineId?: string) {
+  const res = await batchClient.searchBatches({
+    query,
+    limit: 20,
+    medicineId: medicineId ?? "",
+  });
+  return res.batches;
+}
+
 export function useCreateBatchMutation() {
   const qc = useQueryClient();
   return useMutation({

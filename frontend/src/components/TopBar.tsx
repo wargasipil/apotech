@@ -4,10 +4,11 @@ import {
   HStack,
   IconButton,
   Menu,
-  NativeSelect,
   Portal,
   Text,
 } from "@chakra-ui/react";
+
+import EnumSelect from "./EnumSelect";
 import { Languages, LogOut, Menu as MenuIcon, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -147,24 +148,19 @@ function BranchSelector() {
   if (!myBranchesQ.data || myBranchesQ.data.branches.length <= 1) return null;
 
   return (
-    <NativeSelect.Root size="sm" width="160px">
-      <NativeSelect.Field
-        value={current}
-        onChange={(e) => {
-          const v = e.target.value;
-          setCurrent(v);
-          localStorage.setItem(BRANCH_KEY, v);
-          // Hard reload to refetch all branch-scoped data with the new header.
-          window.location.reload();
-        }}
-      >
-        {myBranchesQ.data.branches.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.code} · {b.name}
-          </option>
-        ))}
-      </NativeSelect.Field>
-      <NativeSelect.Indicator />
-    </NativeSelect.Root>
+    <EnumSelect
+      size="sm"
+      width="180px"
+      value={current}
+      onChange={(v) => {
+        setCurrent(v);
+        localStorage.setItem(BRANCH_KEY, v);
+        // Hard reload to refetch all branch-scoped data with the new header.
+        window.location.reload();
+      }}
+      items={myBranchesQ.data.branches}
+      itemToString={(b) => `${b.code} · ${b.name}`}
+      itemToValue={(b) => b.id}
+    />
   );
 }

@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Box,
   Button,
-  NativeSelect,
   Spinner,
   Stack,
   Switch,
@@ -16,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import EntityDrawer from "../components/EntityDrawer";
+import EnumSelect from "../components/EnumSelect";
 import FormField from "../components/FormField";
 import PageHeader from "../components/PageHeader";
 import { Role } from "../gen/auth_iface/v1/policy_pb";
@@ -103,24 +103,23 @@ function UserRow({ user }: { user: User }) {
       <Table.Cell>{user.email}</Table.Cell>
       <Table.Cell>{user.name}</Table.Cell>
       <Table.Cell>
-        <NativeSelect.Root size="sm" width="auto">
-          <NativeSelect.Field
-            value={String(user.role)}
-            onChange={(e) => {
-              const next = Number(e.target.value) as Role;
-              if (next !== user.role) {
-                setRole.mutate({ userId: user.id, role: next });
-              }
-            }}
-          >
-            {ROLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {t(`dashboard.roles.${o.key}`)}
-              </option>
-            ))}
-          </NativeSelect.Field>
-          <NativeSelect.Indicator />
-        </NativeSelect.Root>
+        <EnumSelect
+          size="sm"
+          width="160px"
+          value={String(user.role)}
+          onChange={(v) => {
+            const next = Number(v) as Role;
+            if (next !== user.role) {
+              setRole.mutate({ userId: user.id, role: next });
+            }
+          }}
+          items={ROLE_OPTIONS.map((o) => ({
+            value: String(o.value),
+            label: t(`dashboard.roles.${o.key}`),
+          }))}
+          itemToString={(o) => o.label}
+          itemToValue={(o) => o.value}
+        />
       </Table.Cell>
       <Table.Cell>
         <Switch.Root
@@ -209,19 +208,16 @@ function RoleSelect({ form }: { form: ReturnType<typeof useForm<CreateValues>> }
       <Text fontSize="sm" fontWeight="medium" color="fg.muted">
         {t("users.role")}
       </Text>
-      <NativeSelect.Root>
-        <NativeSelect.Field
-          value={String(value)}
-          onChange={(e) => form.setValue("role", Number(e.target.value))}
-        >
-          {ROLE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(`dashboard.roles.${o.key}`)}
-            </option>
-          ))}
-        </NativeSelect.Field>
-        <NativeSelect.Indicator />
-      </NativeSelect.Root>
+      <EnumSelect
+        value={String(value)}
+        onChange={(v) => form.setValue("role", Number(v))}
+        items={ROLE_OPTIONS.map((o) => ({
+          value: String(o.value),
+          label: t(`dashboard.roles.${o.key}`),
+        }))}
+        itemToString={(o) => o.label}
+        itemToValue={(o) => o.value}
+      />
     </Stack>
   );
 }

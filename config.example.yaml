@@ -1,4 +1,8 @@
 server:
+  # host: interface to bind.
+  #   0.0.0.0   = all interfaces — reachable from the LAN / inside Docker (default)
+  #   127.0.0.1 = this machine only — single-PC install
+  host: 0.0.0.0
   port: 8080
 
 database:
@@ -8,6 +12,9 @@ database:
   password: apotech
   name: apotech
   sslmode: disable
+  # auto_migrate: run goose migrations on server boot. Default true (turnkey).
+  # Set false to apply migrations explicitly via `make migrate-up`.
+  auto_migrate: true
 
 auth:
   jwt_secret: change-me-to-a-long-random-string

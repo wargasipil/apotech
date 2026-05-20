@@ -44,6 +44,9 @@ const (
 	// BatchServiceUpdateBatchProcedure is the fully-qualified name of the BatchService's UpdateBatch
 	// RPC.
 	BatchServiceUpdateBatchProcedure = "/inventory_iface.v1.BatchService/UpdateBatch"
+	// BatchServiceSearchBatchesProcedure is the fully-qualified name of the BatchService's
+	// SearchBatches RPC.
+	BatchServiceSearchBatchesProcedure = "/inventory_iface.v1.BatchService/SearchBatches"
 )
 
 // BatchServiceClient is a client for the inventory_iface.v1.BatchService service.
@@ -52,6 +55,7 @@ type BatchServiceClient interface {
 	GetBatch(context.Context, *connect.Request[v1.GetBatchRequest]) (*connect.Response[v1.GetBatchResponse], error)
 	CreateBatch(context.Context, *connect.Request[v1.CreateBatchRequest]) (*connect.Response[v1.CreateBatchResponse], error)
 	UpdateBatch(context.Context, *connect.Request[v1.UpdateBatchRequest]) (*connect.Response[v1.UpdateBatchResponse], error)
+	SearchBatches(context.Context, *connect.Request[v1.SearchBatchesRequest]) (*connect.Response[v1.SearchBatchesResponse], error)
 }
 
 // NewBatchServiceClient constructs a client for the inventory_iface.v1.BatchService service. By
@@ -89,15 +93,22 @@ func NewBatchServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(batchServiceMethods.ByName("UpdateBatch")),
 			connect.WithClientOptions(opts...),
 		),
+		searchBatches: connect.NewClient[v1.SearchBatchesRequest, v1.SearchBatchesResponse](
+			httpClient,
+			baseURL+BatchServiceSearchBatchesProcedure,
+			connect.WithSchema(batchServiceMethods.ByName("SearchBatches")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // batchServiceClient implements BatchServiceClient.
 type batchServiceClient struct {
-	listBatches *connect.Client[v1.ListBatchesRequest, v1.ListBatchesResponse]
-	getBatch    *connect.Client[v1.GetBatchRequest, v1.GetBatchResponse]
-	createBatch *connect.Client[v1.CreateBatchRequest, v1.CreateBatchResponse]
-	updateBatch *connect.Client[v1.UpdateBatchRequest, v1.UpdateBatchResponse]
+	listBatches   *connect.Client[v1.ListBatchesRequest, v1.ListBatchesResponse]
+	getBatch      *connect.Client[v1.GetBatchRequest, v1.GetBatchResponse]
+	createBatch   *connect.Client[v1.CreateBatchRequest, v1.CreateBatchResponse]
+	updateBatch   *connect.Client[v1.UpdateBatchRequest, v1.UpdateBatchResponse]
+	searchBatches *connect.Client[v1.SearchBatchesRequest, v1.SearchBatchesResponse]
 }
 
 // ListBatches calls inventory_iface.v1.BatchService.ListBatches.
@@ -120,12 +131,18 @@ func (c *batchServiceClient) UpdateBatch(ctx context.Context, req *connect.Reque
 	return c.updateBatch.CallUnary(ctx, req)
 }
 
+// SearchBatches calls inventory_iface.v1.BatchService.SearchBatches.
+func (c *batchServiceClient) SearchBatches(ctx context.Context, req *connect.Request[v1.SearchBatchesRequest]) (*connect.Response[v1.SearchBatchesResponse], error) {
+	return c.searchBatches.CallUnary(ctx, req)
+}
+
 // BatchServiceHandler is an implementation of the inventory_iface.v1.BatchService service.
 type BatchServiceHandler interface {
 	ListBatches(context.Context, *connect.Request[v1.ListBatchesRequest]) (*connect.Response[v1.ListBatchesResponse], error)
 	GetBatch(context.Context, *connect.Request[v1.GetBatchRequest]) (*connect.Response[v1.GetBatchResponse], error)
 	CreateBatch(context.Context, *connect.Request[v1.CreateBatchRequest]) (*connect.Response[v1.CreateBatchResponse], error)
 	UpdateBatch(context.Context, *connect.Request[v1.UpdateBatchRequest]) (*connect.Response[v1.UpdateBatchResponse], error)
+	SearchBatches(context.Context, *connect.Request[v1.SearchBatchesRequest]) (*connect.Response[v1.SearchBatchesResponse], error)
 }
 
 // NewBatchServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -159,6 +176,12 @@ func NewBatchServiceHandler(svc BatchServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(batchServiceMethods.ByName("UpdateBatch")),
 		connect.WithHandlerOptions(opts...),
 	)
+	batchServiceSearchBatchesHandler := connect.NewUnaryHandler(
+		BatchServiceSearchBatchesProcedure,
+		svc.SearchBatches,
+		connect.WithSchema(batchServiceMethods.ByName("SearchBatches")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/inventory_iface.v1.BatchService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BatchServiceListBatchesProcedure:
@@ -169,6 +192,8 @@ func NewBatchServiceHandler(svc BatchServiceHandler, opts ...connect.HandlerOpti
 			batchServiceCreateBatchHandler.ServeHTTP(w, r)
 		case BatchServiceUpdateBatchProcedure:
 			batchServiceUpdateBatchHandler.ServeHTTP(w, r)
+		case BatchServiceSearchBatchesProcedure:
+			batchServiceSearchBatchesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -192,4 +217,8 @@ func (UnimplementedBatchServiceHandler) CreateBatch(context.Context, *connect.Re
 
 func (UnimplementedBatchServiceHandler) UpdateBatch(context.Context, *connect.Request[v1.UpdateBatchRequest]) (*connect.Response[v1.UpdateBatchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.BatchService.UpdateBatch is not implemented"))
+}
+
+func (UnimplementedBatchServiceHandler) SearchBatches(context.Context, *connect.Request[v1.SearchBatchesRequest]) (*connect.Response[v1.SearchBatchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.BatchService.SearchBatches is not implemented"))
 }

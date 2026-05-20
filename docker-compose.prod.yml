@@ -1,0 +1,48 @@
+# Production stack: the self-contained Apotech image + PostgreSQL.
+# Usage:
+#   1. Copy .env.example -> .env and set the secrets (at minimum APOTECH_JWT_SECRET).
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+#   3. Browse http://<host>:8080 and log in as the bootstrap owner.
+#
+# The app auto-migrates on boot and waits for Postgres to be healthy first.
+# Data persists in the named volume `apotech-pgdata` across down/up.
+services:
+  postgres:
+    image: postgres:18          # pinned (dev compose uses :latest; never in prod)
+    container_name: apotech-postgres-prod   # distinct from the dev compose container
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apotech
+      POSTGRES_USER: apotech
+      POSTGRES_PASSWORD: ${APOTECH_DB_PASSWORD:-apotech}
+    volumes:
+      - apotech-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apotech -d apotech"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No host port published — only the app needs to reach the DB.
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apotech:latest
+    container_name: apotech-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APOTECH_DB_HOST: postgres
+      APOTECH_DB_PASSWORD: ${APOTECH_DB_PASSWORD:-apotech}
+      APOTECH_JWT_SECRET: ${APOTECH_JWT_SECRET:?set APOTECH_JWT_SECRET in .env}
+      APOTECH_OWNER_EMAIL: ${APOTECH_OWNER_EMAIL:-owner@apotech.local}
+      APOTECH_OWNER_PASSWORD: ${APOTECH_OWNER_PASSWORD:-change-me-on-first-login}
+      TZ: ${APOTECH_TZ:-Asia/Jakarta}
+    ports:
+      - "8080:8080"
+
+volumes:
+  apotech-pgdata:

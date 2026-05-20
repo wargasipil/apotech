@@ -1,0 +1,203 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Inventory" [ref=e27] [cursor=pointer]:
+            - /url: /inventory
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e33]: Inventory
+          - link "Purchasing" [ref=e34] [cursor=pointer]:
+            - /url: /purchasing
+            - generic [ref=e35]:
+              - img [ref=e36]
+              - paragraph [ref=e41]: Purchasing
+          - link "Customers" [ref=e42] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - paragraph [ref=e47]: Customers
+          - link "Prescriptions" [ref=e48] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e49]:
+              - img [ref=e50]
+              - paragraph [ref=e53]: Prescriptions
+          - link "Analytics" [ref=e54] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e55]:
+              - img [ref=e56]
+              - paragraph [ref=e58]: Analytics
+          - link "Tax" [ref=e59] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e60]:
+              - img [ref=e61]
+              - paragraph [ref=e65]: Tax
+          - link "BPJS" [ref=e66] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e67]:
+              - img [ref=e68]
+              - paragraph [ref=e71]: BPJS
+          - link "Branches" [ref=e72] [cursor=pointer]:
+            - /url: /branches
+            - generic [ref=e73]:
+              - img [ref=e74]
+              - paragraph [ref=e78]: Branches
+          - link "Users" [ref=e79] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e80]:
+              - img [ref=e81]
+              - paragraph [ref=e86]: Users
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - paragraph [ref=e89]: Owner
+            - paragraph [ref=e90]: owner@apotech.local
+          - button "Sign out" [ref=e91] [cursor=pointer]:
+            - img [ref=e92]
+            - paragraph [ref=e95]: Sign out
+          - button "toggle sidebar" [ref=e96] [cursor=pointer]:
+            - img [ref=e97]
+      - generic [ref=e100]:
+        - banner [ref=e101]:
+          - generic [ref=e103]:
+            - button "language" [ref=e104] [cursor=pointer]:
+              - generic [ref=e105]:
+                - img [ref=e106]
+                - paragraph [ref=e110]: ID
+            - button "toggle theme" [ref=e111] [cursor=pointer]:
+              - img [ref=e112]
+            - button "user menu" [ref=e114] [cursor=pointer]:
+              - generic [ref=e115]: O
+        - main [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - paragraph [ref=e121]: Analytics
+                  - img [ref=e122]
+                - paragraph [ref=e125]: Inventory
+              - heading "Analytics" [level=2] [ref=e128]
+            - generic [ref=e129]:
+              - tablist [ref=e131]:
+                - tab "Sales" [ref=e132] [cursor=pointer]
+                - tab "Inventory" [selected] [ref=e133] [cursor=pointer]
+                - tab "Margins" [ref=e134] [cursor=pointer]
+              - generic [ref=e135]:
+                - generic [ref=e136]:
+                  - generic [ref=e137]:
+                    - paragraph [ref=e138]: Expiring in 30d
+                    - paragraph [ref=e139]: 68 Qty at risk
+                    - paragraph [ref=e140]: IDR 68,000
+                  - generic [ref=e141]:
+                    - paragraph [ref=e142]: Expiring in 90d
+                    - paragraph [ref=e143]: 68 Qty at risk
+                    - paragraph [ref=e144]: IDR 68,000
+                  - generic [ref=e145]:
+                    - paragraph [ref=e146]: Expiring in 180d
+                    - paragraph [ref=e147]: 68 Qty at risk
+                    - paragraph [ref=e148]: IDR 68,000
+                - generic [ref=e149]:
+                  - generic [ref=e150]:
+                    - heading "Turnover (period)" [level=2] [ref=e151]
+                    - button "Export CSV" [ref=e152] [cursor=pointer]:
+                      - img [ref=e153]
+                      - text: Export CSV
+                  - table [ref=e156]:
+                    - rowgroup [ref=e157]:
+                      - row "SKU Medicine Sold Avg inventory Turnover ratio" [ref=e158]:
+                        - columnheader "SKU" [ref=e159]
+                        - columnheader "Medicine" [ref=e160]
+                        - columnheader "Sold" [ref=e161]
+                        - columnheader "Avg inventory" [ref=e162]
+                        - columnheader "Turnover ratio" [ref=e163]
+                    - rowgroup [ref=e164]:
+                      - row "asdasadas asdasdasd 2 2531 0.00" [ref=e165]:
+                        - cell "asdasadas" [ref=e166]
+                        - cell "asdasdasd" [ref=e167]
+                        - cell "2" [ref=e168]
+                        - cell "2531" [ref=e169]
+                        - cell "0.00" [ref=e170]
+                      - row "sdasd adasd 0 1 0.00" [ref=e171]:
+                        - cell "sdasd" [ref=e172]
+                        - cell "adasd" [ref=e173]
+                        - cell "0" [ref=e174]
+                        - cell "1" [ref=e175]
+                        - cell "0.00" [ref=e176]
+                      - row "Antibiotik asdasdasd 0 1 0.00" [ref=e177]:
+                        - cell "Antibiotik" [ref=e178]
+                        - cell "asdasdasd" [ref=e179]
+                        - cell "0" [ref=e180]
+                        - cell "1" [ref=e181]
+                        - cell "0.00" [ref=e182]
+                      - row "asdasd asdasd 0 1 0.00" [ref=e183]:
+                        - cell "asdasd" [ref=e184]
+                        - cell "asdasd" [ref=e185]
+                        - cell "0" [ref=e186]
+                        - cell "1" [ref=e187]
+                        - cell "0.00" [ref=e188]
+                      - row "tiuitiui khlkhl ll;jl; 0 68 0.00" [ref=e189]:
+                        - cell "tiuitiui" [ref=e190]
+                        - cell "khlkhl ll;jl;" [ref=e191]
+                        - cell "0" [ref=e192]
+                        - cell "68" [ref=e193]
+                        - cell "0.00" [ref=e194]
+                - generic [ref=e195]:
+                  - generic [ref=e196]:
+                    - heading "Days of stock remaining" [level=2] [ref=e197]
+                    - button "Export CSV" [ref=e198] [cursor=pointer]:
+                      - img [ref=e199]
+                      - text: Export CSV
+                  - table [ref=e202]:
+                    - rowgroup [ref=e203]:
+                      - row "SKU Medicine On hand Avg daily Days left" [ref=e204]:
+                        - columnheader "SKU" [ref=e205]
+                        - columnheader "Medicine" [ref=e206]
+                        - columnheader "On hand" [ref=e207]
+                        - columnheader "Avg daily" [ref=e208]
+                        - columnheader "Days left" [ref=e209]
+                    - rowgroup [ref=e210]:
+                      - row "asdasadas asdasdasd 2530 0.07 37950.0" [ref=e211]:
+                        - cell "asdasadas" [ref=e212]
+                        - cell "asdasdasd" [ref=e213]
+                        - cell "2530" [ref=e214]
+                        - cell "0.07" [ref=e215]
+                        - cell "37950.0" [ref=e216]
+                      - row "tiuitiui khlkhl ll;jl; 68 0.00 ∞" [ref=e217]:
+                        - cell "tiuitiui" [ref=e218]
+                        - cell "khlkhl ll;jl;" [ref=e219]
+                        - cell "68" [ref=e220]
+                        - cell "0.00" [ref=e221]
+                        - cell "∞" [ref=e222]
+                - generic [ref=e223]:
+                  - heading "Dead stock" [level=2] [ref=e225]
+                  - table [ref=e226]:
+                    - rowgroup [ref=e227]:
+                      - row "SKU Medicine On hand Last sale" [ref=e228]:
+                        - columnheader "SKU" [ref=e229]
+                        - columnheader "Medicine" [ref=e230]
+                        - columnheader "On hand" [ref=e231]
+                        - columnheader "Last sale" [ref=e232]
+                    - rowgroup [ref=e233]:
+                      - row "tiuitiui khlkhl ll;jl; 68 —" [ref=e234]:
+                        - cell "tiuitiui" [ref=e235]
+                        - cell "khlkhl ll;jl;" [ref=e236]
+                        - cell "68" [ref=e237]
+                        - cell "—" [ref=e238]
+    - generic [ref=e239]:
+      - img [ref=e241]
+      - button "Open Tanstack query devtools" [ref=e289] [cursor=pointer]:
+        - img [ref=e290]
+  - region "Notifications, top-end (alt+T)"

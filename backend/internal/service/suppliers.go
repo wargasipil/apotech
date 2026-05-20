@@ -91,6 +91,31 @@ func (s *Suppliers) UpdateSupplier(
 	return connect.NewResponse(&inventoryifacev1.UpdateSupplierResponse{Supplier: supplierToProto(sup)}), nil
 }
 
+func (s *Suppliers) SearchSuppliers(
+	ctx context.Context,
+	req *connect.Request[inventoryifacev1.SearchSuppliersRequest],
+) (*connect.Response[inventoryifacev1.SearchSuppliersResponse], error) {
+	query := strings.TrimSpace(req.Msg.Query)
+	limit := int(req.Msg.Limit)
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	q := s.db.WithContext(ctx).Where("active = ?", true).Order("name").Limit(limit)
+	if query != "" {
+		pattern := "%" + query + "%"
+		q = q.Where("name ILIKE ? OR contact_email ILIKE ? OR phone ILIKE ?", pattern, pattern, pattern)
+	}
+	var rows []model.Supplier
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*inventoryifacev1.Supplier, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, supplierToProto(&r))
+	}
+	return connect.NewResponse(&inventoryifacev1.SearchSuppliersResponse{Suppliers: out}), nil
+}
+
 func (s *Suppliers) ArchiveSupplier(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ArchiveSupplierRequest],

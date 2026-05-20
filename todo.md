@@ -1,0 +1,3 @@
+# todo
+- stock tampilan
+- opname

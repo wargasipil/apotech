@@ -1,0 +1,36 @@
+# Baked into the Docker image as /app/config.yaml. Non-secret defaults live
+# here; secrets are supplied at runtime via environment variables (see
+# docker-compose.prod.yml and the env overrides in internal/config):
+#   APOTECH_JWT_SECRET, APOTECH_DB_PASSWORD, APOTECH_OWNER_EMAIL, APOTECH_OWNER_PASSWORD
+server:
+  host: 0.0.0.0      # reachable from the host / LAN (container network)
+  port: 8080
+
+database:
+  host: postgres     # docker-compose service name
+  port: 5432
+  user: apotech
+  password: apotech  # override with APOTECH_DB_PASSWORD
+  name: apotech
+  sslmode: disable
+  auto_migrate: true
+
+auth:
+  jwt_secret: change-me-via-APOTECH_JWT_SECRET   # override with APOTECH_JWT_SECRET
+  access_token_ttl: 1h
+  refresh_token_ttl: 720h
+
+bootstrap:
+  owner_email: owner@apotech.local               # override with APOTECH_OWNER_EMAIL
+  owner_password: change-me-on-first-login        # override with APOTECH_OWNER_PASSWORD
+
+printer:
+  enabled: false
+  address: 192.168.1.100:9100
+  width: 32
+  timeout: 5s
+  open_drawer: false
+  header:
+    - "APOTECH PHARMACY"
+  footer:
+    - "Thank you!"

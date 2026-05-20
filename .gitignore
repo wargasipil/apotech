@@ -1,6 +1,9 @@
 # Local config (copy from config.example.yaml)
 config.yaml
 
+# Docker compose secrets (copy from .env.example)
+.env
+
 # Local docker volumes (postgres data, etc.)
 data/
 
@@ -12,13 +15,24 @@ data/
 
 # Node / frontend
 node_modules/
-dist/
 .vite/
+# Build outputs: frontend bundle + the compiled single binary.
+/frontend/dist/
+/dist/
+
+# Embedded SPA: the build copies frontend/dist here before `go build`; keep the
+# committed stub so //go:embed compiles, ignore everything the build drops in.
+/backend/internal/web/dist/*
+!/backend/internal/web/dist/.gitkeep
 
 # Playwright
 frontend/tests/e2e/.auth/
 frontend/test-results/
 frontend/playwright-report/
+
+# Windows installer build artifacts (assembled payload + cached downloads)
+packaging/windows/payload/
+packaging/windows/.cache/
 
 # Editor / OS
 .vscode/

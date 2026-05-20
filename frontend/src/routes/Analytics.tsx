@@ -1,19 +1,20 @@
-import { Box, HStack, Link as ChakraLink, Stack } from "@chakra-ui/react";
+import { Box, Stack } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
+import RouteTabs from "../components/RouteTabs";
 
 export default function Analytics() {
   const { t } = useTranslation();
   const location = useLocation();
   const tabs = [
-    { to: "/analytics/sales", key: "sales" },
-    { to: "/analytics/inventory", key: "inventory" },
-    { to: "/analytics/margins", key: "margins" },
+    { value: "sales", to: "/analytics/sales", label: t("analytics.tabs.sales") },
+    { value: "inventory", to: "/analytics/inventory", label: t("analytics.tabs.inventory") },
+    { value: "margins", to: "/analytics/margins", label: t("analytics.tabs.margins") },
   ];
   const activeKey =
-    tabs.find((tab) => location.pathname.startsWith(tab.to))?.key ?? "sales";
+    tabs.find((tab) => location.pathname.startsWith(tab.to))?.value ?? "sales";
 
   return (
     <Box>
@@ -25,23 +26,7 @@ export default function Analytics() {
         title={t("analytics.title")}
       />
       <Stack gap={4}>
-        <HStack gap={4} borderBottomWidth="1px" pb={2}>
-          {tabs.map((tab) => (
-            <ChakraLink key={tab.to} asChild>
-              <NavLink
-                to={tab.to}
-                style={({ isActive }) => ({
-                  fontWeight: isActive ? 600 : 400,
-                  borderBottom: isActive ? "2px solid currentColor" : "2px solid transparent",
-                  paddingBottom: "6px",
-                  textDecoration: "none",
-                })}
-              >
-                {t(`analytics.tabs.${tab.key}`)}
-              </NavLink>
-            </ChakraLink>
-          ))}
-        </HStack>
+        <RouteTabs items={tabs} />
         <Outlet />
       </Stack>
     </Box>

@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateBatchRequest, CreateBatchResponse, GetBatchRequest, GetBatchResponse, ListBatchesRequest, ListBatchesResponse, UpdateBatchRequest, UpdateBatchResponse } from "./batch_pb.js";
+import { CreateBatchRequest, CreateBatchResponse, GetBatchRequest, GetBatchResponse, ListBatchesRequest, ListBatchesResponse, SearchBatchesRequest, SearchBatchesResponse, UpdateBatchRequest, UpdateBatchResponse } from "./batch_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,6 +46,15 @@ export const BatchService = {
       name: "UpdateBatch",
       I: UpdateBatchRequest,
       O: UpdateBatchResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc inventory_iface.v1.BatchService.SearchBatches
+     */
+    searchBatches: {
+      name: "SearchBatches",
+      I: SearchBatchesRequest,
+      O: SearchBatchesResponse,
       kind: MethodKind.Unary,
     },
   }

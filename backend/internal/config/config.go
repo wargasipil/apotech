@@ -9,7 +9,10 @@ import (
 )
 
 type Server struct {
-	Port int `yaml:"port"`
+	// Host is the interface to bind. "0.0.0.0" = all interfaces (LAN/Docker),
+	// "127.0.0.1" = this machine only. Empty defaults to "0.0.0.0" (see Load).
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 type Database struct {
@@ -19,6 +22,16 @@ type Database struct {
 	Password string `yaml:"password"`
 	Name     string `yaml:"name"`
 	SSLMode  string `yaml:"sslmode"`
+	// AutoMigrate runs goose migrations on server boot. Pointer so an unset
+	// value defaults to true (turnkey deploys); set `auto_migrate: false` to
+	// run migrations explicitly via `cmd/migrate`. Read via ShouldAutoMigrate.
+	AutoMigrate *bool `yaml:"auto_migrate"`
+}
+
+// ShouldAutoMigrate reports whether the server should run migrations on boot.
+// Defaults to true when unset.
+func (d Database) ShouldAutoMigrate() bool {
+	return d.AutoMigrate == nil || *d.AutoMigrate
 }
 
 type Auth struct {
@@ -74,7 +87,40 @@ func Load(path string) (*Config, error) {
 	if err := yaml.NewDecoder(f).Decode(&c); err != nil {
 		return nil, fmt.Errorf("decode config %s: %w", path, err)
 	}
+	applyEnvOverrides(&c)
+	applyDefaults(&c)
 	return &c, nil
+}
+
+// applyEnvOverrides lets the most security-sensitive fields be supplied via
+// environment variables instead of the YAML file. This keeps secrets out of a
+// baked Docker image (12-factor) while the YAML still drives everything else.
+// An empty env var is treated as "not set" and leaves the YAML value intact.
+func applyEnvOverrides(c *Config) {
+	if v := os.Getenv("APOTECH_JWT_SECRET"); v != "" {
+		c.Auth.JWTSecret = v
+	}
+	if v := os.Getenv("APOTECH_DB_HOST"); v != "" {
+		c.Database.Host = v
+	}
+	if v := os.Getenv("APOTECH_DB_PASSWORD"); v != "" {
+		c.Database.Password = v
+	}
+	if v := os.Getenv("APOTECH_OWNER_EMAIL"); v != "" {
+		c.Bootstrap.OwnerEmail = v
+	}
+	if v := os.Getenv("APOTECH_OWNER_PASSWORD"); v != "" {
+		c.Bootstrap.OwnerPassword = v
+	}
+}
+
+// applyDefaults fills in safe fallbacks for fields that the packaged flavors
+// rely on. Bind to all interfaces by default so a container is reachable from
+// the host; single-PC installs override this to 127.0.0.1.
+func applyDefaults(c *Config) {
+	if c.Server.Host == "" {
+		c.Server.Host = "0.0.0.0"
+	}
 }
 
 func MustLoad() *Config {

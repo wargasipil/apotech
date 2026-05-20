@@ -1,5 +1,7 @@
-import { HStack, NativeSelect, Input } from "@chakra-ui/react";
+import { HStack, Input } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
+
+import EnumSelect from "./EnumSelect";
 
 export type RangePreset = "today" | "7d" | "30d" | "90d" | "ytd" | "custom";
 
@@ -61,24 +63,29 @@ type Props = {
   onChange: (next: DateRange) => void;
 };
 
+type RangeOption = { value: RangePreset; label: string };
+
 export default function DateRangeFilter({ value, onChange }: Props) {
   const { t } = useTranslation();
+  const options: RangeOption[] = [
+    { value: "today", label: t("analytics.range.today") },
+    { value: "7d", label: t("analytics.range.7d") },
+    { value: "30d", label: t("analytics.range.30d") },
+    { value: "90d", label: t("analytics.range.90d") },
+    { value: "ytd", label: t("analytics.range.ytd") },
+    { value: "custom", label: t("analytics.range.custom") },
+  ];
   return (
     <HStack gap={2}>
-      <NativeSelect.Root size="sm" width="auto">
-        <NativeSelect.Field
-          value={value.preset}
-          onChange={(e) => onChange(resolveRange(e.target.value as RangePreset, value.customFrom, value.customTo))}
-        >
-          <option value="today">{t("analytics.range.today")}</option>
-          <option value="7d">{t("analytics.range.7d")}</option>
-          <option value="30d">{t("analytics.range.30d")}</option>
-          <option value="90d">{t("analytics.range.90d")}</option>
-          <option value="ytd">{t("analytics.range.ytd")}</option>
-          <option value="custom">{t("analytics.range.custom")}</option>
-        </NativeSelect.Field>
-        <NativeSelect.Indicator />
-      </NativeSelect.Root>
+      <EnumSelect
+        size="sm"
+        width="160px"
+        value={value.preset}
+        onChange={(v) => onChange(resolveRange(v as RangePreset, value.customFrom, value.customTo))}
+        items={options}
+        itemToString={(o) => o.label}
+        itemToValue={(o) => o.value}
+      />
       {value.preset === "custom" && (
         <>
           <Input

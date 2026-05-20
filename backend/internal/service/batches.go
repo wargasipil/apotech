@@ -179,6 +179,43 @@ func (b *Batches) UpdateBatch(
 	return connect.NewResponse(&inventoryifacev1.UpdateBatchResponse{Batch: batchToProto(batch, qty)}), nil
 }
 
+func (b *Batches) SearchBatches(
+	ctx context.Context,
+	req *connect.Request[inventoryifacev1.SearchBatchesRequest],
+) (*connect.Response[inventoryifacev1.SearchBatchesResponse], error) {
+	query := strings.TrimSpace(req.Msg.Query)
+	limit := int(req.Msg.Limit)
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	q := b.db.WithContext(ctx).
+		Table("batches AS b").
+		Joins("JOIN medicines AS m ON m.id = b.medicine_id").
+		Order("b.expiry_date ASC").
+		Limit(limit).
+		Select("b.*")
+	if req.Msg.MedicineId != "" {
+		q = q.Where("b.medicine_id = ?", req.Msg.MedicineId)
+	}
+	if query != "" {
+		pattern := "%" + query + "%"
+		q = q.Where("b.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern)
+	}
+	var rows []model.Batch
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*inventoryifacev1.Batch, 0, len(rows))
+	for _, r := range rows {
+		qty, err := batchCurrentQty(ctx, b.db, r.ID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		out = append(out, batchToProto(&r, qty))
+	}
+	return connect.NewResponse(&inventoryifacev1.SearchBatchesResponse{Batches: out}), nil
+}
+
 func (b *Batches) load(ctx context.Context, id string) (*model.Batch, error) {
 	if id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id required"))

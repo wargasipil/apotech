@@ -1,8 +1,9 @@
-import { Box, HStack, Link as ChakraLink, Stack } from "@chakra-ui/react";
+import { Box, Stack } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import PageHeader from "../../components/PageHeader";
+import RouteTabs from "../../components/RouteTabs";
 
 export default function Purchasing() {
   const { t } = useTranslation();
@@ -15,12 +16,12 @@ export default function Purchasing() {
     /^\/purchasing\/[^/]+\/?$/.test(location.pathname);
 
   const tabs = [
-    { to: "/purchasing/all", key: "all" },
-    { to: "/purchasing/outstanding", key: "outstanding" },
-    { to: "/purchasing/suppliers", key: "suppliersLedger" },
+    { value: "all", to: "/purchasing/all", label: t("purchasing.tabs.all") },
+    { value: "outstanding", to: "/purchasing/outstanding", label: t("purchasing.tabs.outstanding") },
+    { value: "suppliersLedger", to: "/purchasing/suppliers", label: t("purchasing.tabs.suppliersLedger") },
   ];
   const activeKey =
-    tabs.find((tab) => location.pathname.startsWith(tab.to))?.key ?? "all";
+    tabs.find((tab) => location.pathname.startsWith(tab.to))?.value ?? "all";
 
   return (
     <Box>
@@ -36,27 +37,7 @@ export default function Purchasing() {
         title={t("purchasing.title")}
       />
       <Stack gap={4}>
-        {!isSubpage && (
-          <HStack gap={4} borderBottomWidth="1px" pb={2}>
-            {tabs.map((tab) => (
-              <ChakraLink key={tab.to} asChild>
-                <NavLink
-                  to={tab.to}
-                  style={({ isActive }) => ({
-                    fontWeight: isActive ? 600 : 400,
-                    borderBottom: isActive
-                      ? "2px solid currentColor"
-                      : "2px solid transparent",
-                    paddingBottom: "6px",
-                    textDecoration: "none",
-                  })}
-                >
-                  {t(`purchasing.tabs.${tab.key}`)}
-                </NavLink>
-              </ChakraLink>
-            ))}
-          </HStack>
-        )}
+        {!isSubpage && <RouteTabs items={tabs} />}
         <Outlet />
       </Stack>
     </Box>

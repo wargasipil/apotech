@@ -10,6 +10,9 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/apotech/backend/gen/inventory_iface/v1/inventoryifacev1connect"
+	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
+	userifacev1 "github.com/apotech/backend/gen/user_iface/v1"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
@@ -27,11 +30,30 @@ type TestUser struct {
 // stack served by httptest, plus typed Connect clients for the auth + user
 // services.
 type Env struct {
-	Server *httptest.Server
-	DB     *gorm.DB
-	Auth   userifacev1connect.AuthServiceClient
-	Users  userifacev1connect.UserServiceClient
-	Owner  TestUser
+	Server    *httptest.Server
+	DB        *gorm.DB
+	Auth      userifacev1connect.AuthServiceClient
+	Users     userifacev1connect.UserServiceClient
+	Suppliers  inventoryifacev1connect.SupplierServiceClient
+	Medicines  inventoryifacev1connect.MedicineServiceClient
+	Batches    inventoryifacev1connect.BatchServiceClient
+	Stocktakes stocktakeifacev1connect.StocktakeServiceClient
+	Owner      TestUser
+}
+
+// AuthHeader returns "Bearer <access_token>" after logging in the owner.
+// Convenience for tests that need an authenticated call.
+func (e *Env) AuthHeader(t *testing.T) string {
+	t.Helper()
+	ctx := context.Background()
+	res, err := e.Auth.Login(ctx, connect.NewRequest(&userifacev1.LoginRequest{
+		Email:    e.Owner.Email,
+		Password: e.Owner.Password,
+	}))
+	if err != nil {
+		t.Fatalf("owner login: %v", err)
+	}
+	return "Bearer " + res.Msg.AccessToken
 }
 
 // SetupEnv builds the same handler stack cmd/server/main.go uses, wraps it
@@ -68,6 +90,10 @@ func SetupEnv(t *testing.T) *Env {
 	loginLimiter := auth.NewLoginLimiter(1000, time.Second)
 	authSvc := service.NewAuth(gormDB, issuer, refreshIssuer, loginLimiter)
 	userSvc := service.NewUsers(gormDB)
+	supplierSvc := service.NewSuppliers(gormDB)
+	medicineSvc := service.NewMedicines(gormDB)
+	batchSvc := service.NewBatches(gormDB)
+	stocktakeSvc := service.NewStocktakes(gormDB)
 
 	if cfg.Bootstrap.OwnerEmail == "" {
 		t.Fatalf("config.bootstrap.owner_email is empty; set it in config.yaml so tests have a known user")
@@ -79,15 +105,23 @@ func SetupEnv(t *testing.T) *Env {
 	mux := http.NewServeMux()
 	mux.Handle(userifacev1connect.NewAuthServiceHandler(authSvc, interceptors))
 	mux.Handle(userifacev1connect.NewUserServiceHandler(userSvc, interceptors))
+	mux.Handle(inventoryifacev1connect.NewSupplierServiceHandler(supplierSvc, interceptors))
+	mux.Handle(inventoryifacev1connect.NewMedicineServiceHandler(medicineSvc, interceptors))
+	mux.Handle(inventoryifacev1connect.NewBatchServiceHandler(batchSvc, interceptors))
+	mux.Handle(stocktakeifacev1connect.NewStocktakeServiceHandler(stocktakeSvc, interceptors))
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
 	return &Env{
-		Server: srv,
-		DB:     gormDB,
-		Auth:   userifacev1connect.NewAuthServiceClient(srv.Client(), srv.URL),
-		Users:  userifacev1connect.NewUserServiceClient(srv.Client(), srv.URL),
+		Server:    srv,
+		DB:        gormDB,
+		Auth:      userifacev1connect.NewAuthServiceClient(srv.Client(), srv.URL),
+		Users:     userifacev1connect.NewUserServiceClient(srv.Client(), srv.URL),
+		Suppliers:  inventoryifacev1connect.NewSupplierServiceClient(srv.Client(), srv.URL),
+		Medicines:  inventoryifacev1connect.NewMedicineServiceClient(srv.Client(), srv.URL),
+		Batches:    inventoryifacev1connect.NewBatchServiceClient(srv.Client(), srv.URL),
+		Stocktakes: stocktakeifacev1connect.NewStocktakeServiceClient(srv.Client(), srv.URL),
 		Owner: TestUser{
 			Email:    cfg.Bootstrap.OwnerEmail,
 			Password: cfg.Bootstrap.OwnerPassword,

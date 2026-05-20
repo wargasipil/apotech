@@ -48,6 +48,9 @@ const (
 	// SupplierServiceArchiveSupplierProcedure is the fully-qualified name of the SupplierService's
 	// ArchiveSupplier RPC.
 	SupplierServiceArchiveSupplierProcedure = "/inventory_iface.v1.SupplierService/ArchiveSupplier"
+	// SupplierServiceSearchSuppliersProcedure is the fully-qualified name of the SupplierService's
+	// SearchSuppliers RPC.
+	SupplierServiceSearchSuppliersProcedure = "/inventory_iface.v1.SupplierService/SearchSuppliers"
 )
 
 // SupplierServiceClient is a client for the inventory_iface.v1.SupplierService service.
@@ -57,6 +60,7 @@ type SupplierServiceClient interface {
 	CreateSupplier(context.Context, *connect.Request[v1.CreateSupplierRequest]) (*connect.Response[v1.CreateSupplierResponse], error)
 	UpdateSupplier(context.Context, *connect.Request[v1.UpdateSupplierRequest]) (*connect.Response[v1.UpdateSupplierResponse], error)
 	ArchiveSupplier(context.Context, *connect.Request[v1.ArchiveSupplierRequest]) (*connect.Response[v1.ArchiveSupplierResponse], error)
+	SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error)
 }
 
 // NewSupplierServiceClient constructs a client for the inventory_iface.v1.SupplierService service.
@@ -100,6 +104,12 @@ func NewSupplierServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(supplierServiceMethods.ByName("ArchiveSupplier")),
 			connect.WithClientOptions(opts...),
 		),
+		searchSuppliers: connect.NewClient[v1.SearchSuppliersRequest, v1.SearchSuppliersResponse](
+			httpClient,
+			baseURL+SupplierServiceSearchSuppliersProcedure,
+			connect.WithSchema(supplierServiceMethods.ByName("SearchSuppliers")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -110,6 +120,7 @@ type supplierServiceClient struct {
 	createSupplier  *connect.Client[v1.CreateSupplierRequest, v1.CreateSupplierResponse]
 	updateSupplier  *connect.Client[v1.UpdateSupplierRequest, v1.UpdateSupplierResponse]
 	archiveSupplier *connect.Client[v1.ArchiveSupplierRequest, v1.ArchiveSupplierResponse]
+	searchSuppliers *connect.Client[v1.SearchSuppliersRequest, v1.SearchSuppliersResponse]
 }
 
 // ListSuppliers calls inventory_iface.v1.SupplierService.ListSuppliers.
@@ -137,6 +148,11 @@ func (c *supplierServiceClient) ArchiveSupplier(ctx context.Context, req *connec
 	return c.archiveSupplier.CallUnary(ctx, req)
 }
 
+// SearchSuppliers calls inventory_iface.v1.SupplierService.SearchSuppliers.
+func (c *supplierServiceClient) SearchSuppliers(ctx context.Context, req *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error) {
+	return c.searchSuppliers.CallUnary(ctx, req)
+}
+
 // SupplierServiceHandler is an implementation of the inventory_iface.v1.SupplierService service.
 type SupplierServiceHandler interface {
 	ListSuppliers(context.Context, *connect.Request[v1.ListSuppliersRequest]) (*connect.Response[v1.ListSuppliersResponse], error)
@@ -144,6 +160,7 @@ type SupplierServiceHandler interface {
 	CreateSupplier(context.Context, *connect.Request[v1.CreateSupplierRequest]) (*connect.Response[v1.CreateSupplierResponse], error)
 	UpdateSupplier(context.Context, *connect.Request[v1.UpdateSupplierRequest]) (*connect.Response[v1.UpdateSupplierResponse], error)
 	ArchiveSupplier(context.Context, *connect.Request[v1.ArchiveSupplierRequest]) (*connect.Response[v1.ArchiveSupplierResponse], error)
+	SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error)
 }
 
 // NewSupplierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -183,6 +200,12 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 		connect.WithSchema(supplierServiceMethods.ByName("ArchiveSupplier")),
 		connect.WithHandlerOptions(opts...),
 	)
+	supplierServiceSearchSuppliersHandler := connect.NewUnaryHandler(
+		SupplierServiceSearchSuppliersProcedure,
+		svc.SearchSuppliers,
+		connect.WithSchema(supplierServiceMethods.ByName("SearchSuppliers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/inventory_iface.v1.SupplierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SupplierServiceListSuppliersProcedure:
@@ -195,6 +218,8 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 			supplierServiceUpdateSupplierHandler.ServeHTTP(w, r)
 		case SupplierServiceArchiveSupplierProcedure:
 			supplierServiceArchiveSupplierHandler.ServeHTTP(w, r)
+		case SupplierServiceSearchSuppliersProcedure:
+			supplierServiceSearchSuppliersHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -222,4 +247,8 @@ func (UnimplementedSupplierServiceHandler) UpdateSupplier(context.Context, *conn
 
 func (UnimplementedSupplierServiceHandler) ArchiveSupplier(context.Context, *connect.Request[v1.ArchiveSupplierRequest]) (*connect.Response[v1.ArchiveSupplierResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.SupplierService.ArchiveSupplier is not implemented"))
+}
+
+func (UnimplementedSupplierServiceHandler) SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.SupplierService.SearchSuppliers is not implemented"))
 }

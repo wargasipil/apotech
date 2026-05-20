@@ -4,12 +4,13 @@ import {
   Button,
   HStack,
   Heading,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
+
+import SearchableSelect from "../../components/SearchableSelect";
 import { Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -28,7 +29,7 @@ import DateRangeFilter, {
 } from "../../components/DateRangeFilter";
 import { downloadCsv } from "../../lib/csv";
 import { formatMoney } from "../../lib/format";
-import { useSuppliersQuery } from "../../queries/suppliers";
+import { searchSuppliers } from "../../queries/suppliers";
 import {
   useMarginPerMedicineQuery,
   useSupplierCostTrendQuery,
@@ -50,7 +51,6 @@ export default function MarginsAnalytics() {
     toUnix: BigInt(range.toUnix),
     limit: 10,
   });
-  const suppliersQ = useSuppliersQuery(false);
   const trendQ = useSupplierCostTrendQuery({ supplierId }, !!supplierId);
 
   return (
@@ -143,20 +143,16 @@ export default function MarginsAnalytics() {
       <Section
         title={t("analytics.margin.supplierCostTrend")}
         actions={
-          <NativeSelect.Root size="sm" width="auto">
-            <NativeSelect.Field
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">{t("analytics.margin.selectSupplier")}</option>
-              {(suppliersQ.data ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <SearchableSelect
+            size="sm"
+            width="220px"
+            value={supplierId}
+            onChange={setSupplierId}
+            loadOptions={searchSuppliers}
+            itemToString={(s) => s.name}
+            itemToValue={(s) => s.id}
+            placeholder={t("analytics.margin.selectSupplier")}
+          />
         }
       >
         {!supplierId ? (

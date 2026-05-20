@@ -189,6 +189,34 @@ func (m *Medicines) ArchiveMedicine(
 	return connect.NewResponse(&inventoryifacev1.ArchiveMedicineResponse{Medicine: medicineToProto(med)}), nil
 }
 
+func (m *Medicines) SearchMedicines(
+	ctx context.Context,
+	req *connect.Request[inventoryifacev1.SearchMedicinesRequest],
+) (*connect.Response[inventoryifacev1.SearchMedicinesResponse], error) {
+	query := strings.TrimSpace(req.Msg.Query)
+	limit := int(req.Msg.Limit)
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	q := m.db.WithContext(ctx).Order("name").Limit(limit)
+	if !req.Msg.IncludeInactive {
+		q = q.Where("active = ?", true)
+	}
+	if query != "" {
+		pattern := "%" + query + "%"
+		q = q.Where("name ILIKE ? OR sku ILIKE ? OR manufacturer ILIKE ?", pattern, pattern, pattern)
+	}
+	var rows []model.Medicine
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*inventoryifacev1.Medicine, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, medicineToProto(&r))
+	}
+	return connect.NewResponse(&inventoryifacev1.SearchMedicinesResponse{Medicines: out}), nil
+}
+
 func (m *Medicines) ListMedicinePrices(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListMedicinePricesRequest],

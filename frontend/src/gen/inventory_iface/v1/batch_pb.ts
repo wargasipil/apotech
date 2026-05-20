@@ -459,3 +459,91 @@ export class UpdateBatchResponse extends Message<UpdateBatchResponse> {
   }
 }
 
+/**
+ * @generated from message inventory_iface.v1.SearchBatchesRequest
+ */
+export class SearchBatchesRequest extends Message<SearchBatchesRequest> {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * optional scope: search within a single medicine's batches
+   *
+   * @generated from field: string medicine_id = 3;
+   */
+  medicineId = "";
+
+  constructor(data?: PartialMessage<SearchBatchesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchBatchesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchBatchesRequest {
+    return new SearchBatchesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchBatchesRequest {
+    return new SearchBatchesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchBatchesRequest {
+    return new SearchBatchesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchBatchesRequest | PlainMessage<SearchBatchesRequest> | undefined, b: SearchBatchesRequest | PlainMessage<SearchBatchesRequest> | undefined): boolean {
+    return proto3.util.equals(SearchBatchesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.SearchBatchesResponse
+ */
+export class SearchBatchesResponse extends Message<SearchBatchesResponse> {
+  /**
+   * @generated from field: repeated inventory_iface.v1.Batch batches = 1;
+   */
+  batches: Batch[] = [];
+
+  constructor(data?: PartialMessage<SearchBatchesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SearchBatchesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "batches", kind: "message", T: Batch, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchBatchesResponse {
+    return new SearchBatchesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchBatchesResponse {
+    return new SearchBatchesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchBatchesResponse {
+    return new SearchBatchesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchBatchesResponse | PlainMessage<SearchBatchesResponse> | undefined, b: SearchBatchesResponse | PlainMessage<SearchBatchesResponse> | undefined): boolean {
+    return proto3.util.equals(SearchBatchesResponse, a, b);
+  }
+}
+

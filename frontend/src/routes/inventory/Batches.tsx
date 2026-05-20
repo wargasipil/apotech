@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   HStack,
-  NativeSelect,
   Spinner,
   Stack,
   Table,
@@ -18,11 +17,13 @@ import { z } from "zod";
 
 import EntityDrawer from "../../components/EntityDrawer";
 import FormField from "../../components/FormField";
+import SearchableSelect from "../../components/SearchableSelect";
+import { searchMedicines } from "../../queries/medicines";
+import { searchSuppliers } from "../../queries/suppliers";
 import { formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
 import { useBatchesQuery, useCreateBatchMutation } from "../../queries/batches";
 import { useMedicinesQuery } from "../../queries/medicines";
-import { useSuppliersQuery } from "../../queries/suppliers";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -49,8 +50,9 @@ export default function Batches() {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const batchesQ = useBatchesQuery();
+  // Kept for the medicine-name column display on the batches table; the
+  // selects inside CreateDrawer use server-side search via loadOptions.
   const medicinesQ = useMedicinesQuery();
-  const suppliersQ = useSuppliersQuery();
 
   const medById = useMemo(
     () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m])),
@@ -112,27 +114,12 @@ export default function Batches() {
         </Table.Root>
       )}
 
-      <CreateDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        medicines={medicinesQ.data ?? []}
-        suppliers={suppliersQ.data ?? []}
-      />
+      <CreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </Stack>
   );
 }
 
-function CreateDrawer({
-  open,
-  onClose,
-  medicines,
-  suppliers,
-}: {
-  open: boolean;
-  onClose: () => void;
-  medicines: { id: string; sku: string; name: string }[];
-  suppliers: { id: string; name: string }[];
-}) {
+function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const create = useCreateBatchMutation();
   const form = useForm<FormValues>({
@@ -181,39 +168,27 @@ function CreateDrawer({
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("inventory.batches.medicine")} *
             </Text>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                value={form.watch("medicineId")}
-                onChange={(e) => form.setValue("medicineId", e.target.value)}
-              >
-                <option value="">{t("inventory.batches.selectMedicine")}</option>
-                {medicines.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.sku} · {m.name}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <SearchableSelect
+              value={form.watch("medicineId")}
+              onChange={(v) => form.setValue("medicineId", v)}
+              loadOptions={searchMedicines}
+              itemToString={(m) => `${m.sku} · ${m.name}`}
+              itemToValue={(m) => m.id}
+              placeholder={t("inventory.batches.selectMedicine")}
+            />
           </Stack>
           <Stack gap={1}>
             <Text fontSize="sm" fontWeight="medium" color="fg.muted">
               {t("inventory.batches.supplier")}
             </Text>
-            <NativeSelect.Root>
-              <NativeSelect.Field
-                value={form.watch("supplierId")}
-                onChange={(e) => form.setValue("supplierId", e.target.value)}
-              >
-                <option value="">{t("inventory.batches.supplierNone")}</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <SearchableSelect
+              value={form.watch("supplierId")}
+              onChange={(v) => form.setValue("supplierId", v)}
+              loadOptions={searchSuppliers}
+              itemToString={(s) => s.name}
+              itemToValue={(s) => s.id}
+              placeholder={t("inventory.batches.supplierNone")}
+            />
           </Stack>
           <FormField
             control={form.control}

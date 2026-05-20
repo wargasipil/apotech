@@ -12,6 +12,7 @@ export const supplierKeys = {
   all: ["suppliers"] as const,
   list: (includeInactive: boolean) =>
     [...supplierKeys.all, "list", { includeInactive }] as const,
+  search: (query: string) => [...supplierKeys.all, "search", query] as const,
 };
 
 export function useSuppliersQuery(includeInactive = false) {
@@ -22,6 +23,14 @@ export function useSuppliersQuery(includeInactive = false) {
       return res.suppliers;
     },
   });
+}
+
+// Imperative search — call directly from <SearchableSelect loadOptions={...}>
+// rather than via a hook (one call per debounced keystroke, no need to memoize
+// in React Query). Returns the slice of matching suppliers (max 20).
+export async function searchSuppliers(query: string) {
+  const res = await supplierClient.searchSuppliers({ query, limit: 20 });
+  return res.suppliers;
 }
 
 export function useCreateSupplierMutation() {

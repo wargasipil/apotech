@@ -1,0 +1,32 @@
+<!--
+  WinSW service definition for the Apotech application server.
+  setup.ps1 renders the @@TOKENS@@ at install time and copies this next to
+  the WinSW executable (renamed apotech-server.exe), then runs `install`.
+  WinSW reads the XML whose basename matches its own exe name.
+
+  %BASE% = the folder containing apotech-server.exe (...\Apotech\winsw).
+  The PostgreSQL service (apotech-postgres) is registered separately via
+  `pg_ctl register`; <depend> makes Windows start it before the app.
+-->
+<service>
+  <id>apotech-server</id>
+  <name>Apotech Server</name>
+  <description>Apotech pharmacy management server (web UI + API on one port).</description>
+
+  <executable>%BASE%\..\apotech.exe</executable>
+  <workingdirectory>%BASE%\..</workingdirectory>
+
+  <!-- Point the binary at the generated config in ProgramData. -->
+  <env name="APOTECH_CONFIG" value="@@CONFIG@@"/>
+  <env name="TZ" value="@@TZ@@"/>
+
+  <startmode>Automatic</startmode>
+  <depend>apotech-postgres</depend>
+  <onfailure action="restart" delay="5 sec"/>
+
+  <log mode="roll-by-size">
+    <logpath>@@LOGDIR@@</logpath>
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

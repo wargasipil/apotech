@@ -54,6 +54,11 @@ service MedicineService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  rpc SearchMedicines(SearchMedicinesRequest) returns (SearchMedicinesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
 }
 
 message ListMedicinesRequest {
@@ -92,4 +97,13 @@ message ArchiveMedicineResponse { Medicine medicine = 1; }
 message ListMedicinePricesRequest { string medicine_id = 1; }
 message ListMedicinePricesResponse {
   repeated MedicinePrice prices = 1;
+}
+
+message SearchMedicinesRequest {
+  string query = 1;
+  int32 limit = 2;
+  bool include_inactive = 3;
+}
+message SearchMedicinesResponse {
+  repeated Medicine medicines = 1;
 }

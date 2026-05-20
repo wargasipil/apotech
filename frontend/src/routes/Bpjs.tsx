@@ -6,13 +6,14 @@ import {
   Flex,
   HStack,
   Input,
-  NativeSelect,
   Portal,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
+
+import EnumSelect from "../components/EnumSelect";
 import { Send, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -54,20 +55,18 @@ export default function Bpjs() {
           <Text fontSize="xs" color="fg.muted" mb={1}>
             {t("bpjs.filterStatus")}
           </Text>
-          <NativeSelect.Root size="sm">
-            <NativeSelect.Field
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">{t("bpjs.filterAll")}</option>
-              {Object.keys(STATUS_BADGE).map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </NativeSelect.Field>
-            <NativeSelect.Indicator />
-          </NativeSelect.Root>
+          <EnumSelect
+            size="sm"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder={t("bpjs.filterAll")}
+            items={[
+              { value: "", label: t("bpjs.filterAll") },
+              ...Object.keys(STATUS_BADGE).map((s) => ({ value: s, label: s })),
+            ]}
+            itemToString={(o) => o.label}
+            itemToValue={(o) => o.value}
+          />
         </Box>
       </HStack>
 
@@ -182,14 +181,17 @@ function ResolveDialog({ id, onClose }: { id: string | null; onClose: () => void
                   <Text fontSize="xs" color="fg.muted" mb={1}>
                     {t("bpjs.status")}
                   </Text>
-                  <NativeSelect.Root>
-                    <NativeSelect.Field value={status} onChange={(e) => setStatus(e.target.value)}>
-                      <option value="APPROVED">APPROVED</option>
-                      <option value="REJECTED">REJECTED</option>
-                      <option value="PAID">PAID</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
+                  <EnumSelect
+                    value={status}
+                    onChange={setStatus}
+                    items={[
+                      { value: "APPROVED", label: "APPROVED" },
+                      { value: "REJECTED", label: "REJECTED" },
+                      { value: "PAID", label: "PAID" },
+                    ]}
+                    itemToString={(o) => o.label}
+                    itemToValue={(o) => o.value}
+                  />
                 </Box>
                 <Box>
                   <Text fontSize="xs" color="fg.muted" mb={1}>

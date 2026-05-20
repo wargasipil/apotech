@@ -37,6 +37,11 @@ service BatchService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  rpc SearchBatches(SearchBatchesRequest) returns (SearchBatchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
 }
 
 message ListBatchesRequest {
@@ -70,3 +75,12 @@ message UpdateBatchRequest {
   string received_at = 6;
 }
 message UpdateBatchResponse { Batch batch = 1; }
+
+message SearchBatchesRequest {
+  string query = 1;
+  int32 limit = 2;
+  string medicine_id = 3;   // optional scope: search within a single medicine's batches
+}
+message SearchBatchesResponse {
+  repeated Batch batches = 1;
+}

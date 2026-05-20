@@ -34,19 +34,25 @@ test.describe("analytics", () => {
     await page.goto("/analytics/sales");
     await expect(page.getByRole("heading", { name: "Revenue trend" })).toBeVisible();
 
-    // This combobox is the DateRangeFilter — its onChange sends new
-    // fromUnix/toUnix BigInt values into queryKey. Before the queryKeyHashFn
-    // fix in lib/queryClient.ts, TanStack Query would throw "Do not know how
-    // to serialize a BigInt" the moment we touched this control.
-    const range = page.getByRole("combobox").first();
-    await range.selectOption("7d");
-    await range.selectOption("today");
-    await range.selectOption("30d");
+    // The DateRangeFilter is now a Chakra Select widget (button-based combobox,
+    // not a real <select>). Drive it via click + option text. The reason the
+    // test exists at all: this control's onChange sends new fromUnix/toUnix
+    // BigInt values into queryKey. Before the queryKeyHashFn fix in
+    // lib/queryClient.ts, TanStack Query would throw "Do not know how to
+    // serialize a BigInt" the moment we touched this control.
+    const cycle = async (label: string) => {
+      // First combobox on the page is the date-range picker.
+      await page.getByRole("combobox").first().click();
+      await page.getByRole("option", { name: label }).click();
+    };
+    await cycle("7 days");
+    await cycle("Today");
+    await cycle("30 days");
 
-    // No assertion needed — the page fixture in _helpers.ts fails any test
-    // that produced a console error. If the BigInt bug ever returns, this
-    // test goes red. The waitForLoadState is just to make sure refetches had
-    // a chance to fire before the fixture's teardown checks errors.
+    // No further assertion needed — the page fixture in _helpers.ts fails
+    // any test that produced a console error. If the BigInt bug ever
+    // returns, this test goes red. waitForLoadState lets refetches finish
+    // before the fixture's teardown checks errors.
     await page.waitForLoadState("networkidle");
   });
 });

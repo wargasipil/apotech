@@ -5,6 +5,7 @@ Living doc for Claude. Update this file whenever the stack, layout, or conventio
 ## Project overview
 - **What**: Management app for an apotek (pharmacy) store.
 - **Current phase**: Phases 7–9 shipped. The app is feature-complete vs the original roadmap: Indonesia integrations (ESC/POS printer ✓, e-Faktur tax invoice ✓, BPJS claim tracking ✓ stub), multi-branch ✓, production hardening ✓ (Login rate limit, audit log, owner-issued password reset, slog structured logs, `make backup`, `DEPLOYMENT.md`).
+- **Packaging**: shipped two turnkey distribution flavors — a **Docker image** (`Dockerfile` + `docker-compose.prod.yml`) and a **Windows installer** (`packaging/windows/`). Both build the same **single self-contained binary** that embeds the SPA + migrations and auto-migrates on boot. See "Packaging & distribution" below and `DEPLOYMENT.md`.
 - **Next phase**: open to user direction — the roadmap is closed. Live-API integrations (real BPJS HTTP client, real DJP e-Faktur web service) are the most obvious unfinished items; both require external credentials.
 
 ## Roadmap
@@ -66,21 +67,24 @@ apotech/
 │   ├── prescription_iface/v1/ # Prescription + PrescriptionItem + PrescriptionService
 │   ├── tax_iface/v1/       # NSFP pool + TaxInvoice (e-Faktur bookkeeping; no DJP API)
 │   ├── bpjs_iface/v1/      # BpjsClaim (stub: local claim tracking, no live BPJS API)
-│   └── branch_iface/v1/    # Branch + UserBranchMembership + BranchService
+│   ├── branch_iface/v1/    # Branch + UserBranchMembership + BranchService
+│   └── stocktake_iface/v1/ # StocktakeSession + StocktakeLine + StocktakeService
 ├── buf.yaml                # buf v2 module config (root)
 ├── buf.gen.yaml            # buf v2 codegen config (root)
 ├── backend/                # Go service
-│   ├── cmd/server/         # main API entrypoint
-│   ├── cmd/migrate/        # goose wrapper (CWD-aware: uses backend/migrations)
+│   ├── cmd/server/         # main entrypoint (serves UI + /api, auto-migrates on boot)
+│   ├── cmd/migrate/        # goose wrapper (uses embedded migrations; `create` writes to disk)
 │   ├── internal/
 │   │   ├── auth/           # JWT issuer, password hash, ctx Principal, interceptor
-│   │   ├── config/         # YAML loader (Server, Database, Auth, Bootstrap)
+│   │   ├── config/         # YAML loader (Server{Host,Port}, Database{…,AutoMigrate}, Auth, Bootstrap, Printer) + env overrides
 │   │   ├── db/             # GORM open + ping
+│   │   ├── dbmigrate/      # runs embedded goose migrations on boot
 │   │   ├── model/          # GORM models (User, …)
 │   │   ├── printer/        # ESC/POS receipt rendering + raw-TCP dispatch
+│   │   ├── web/            # embeds frontend dist (//go:embed) + SPA handler; dist/.gitkeep stub
 │   │   └── service/        # ConnectRPC service implementations (Auth, Users, Health)
 │   ├── gen/                # GENERATED — do not hand-edit
-│   ├── migrations/         # goose .sql files
+│   ├── migrations/         # goose .sql files + embed.go (//go:embed *.sql)
 │   └── e2e/                # integration tests (in-process httptest + real dev DB)
 ├── frontend/               # React app
 │   └── src/
@@ -109,21 +113,32 @@ apotech/
 │       │   ├── PageHeader.tsx        # title + breadcrumbs + actions
 │       │   ├── EntityDrawer.tsx      # slide-over for create/edit
 │       │   ├── FormField.tsx         # RHF Controller + Chakra Field
+│       │   ├── SearchableSelect.tsx  # Combobox wrapper (long lists, type-to-filter)
+│       │   ├── EnumSelect.tsx        # Select wrapper (short fixed enums)
+│       │   ├── RouteTabs.tsx         # Chakra Tabs + react-router NavLink triggers (URL-driven tabs)
 │       │   ├── ErrorBoundary.tsx
 │       │   └── ProtectedRoute.tsx
 │       ├── routes/{Login,Dashboard,Users,Inventory}.tsx
-│       ├── routes/inventory/{Medicines,Suppliers,Batches,Movements}.tsx
+│       ├── routes/inventory/{Medicines,Suppliers,Batches,Movements,Stocktake,StocktakeDetail}.tsx
 │       ├── routes/purchasing/{Purchasing,PurchaseOrdersList,SuppliersLedger,NewPurchaseOrder,PurchaseOrderDetail}.tsx
 │       ├── routes/Prescriptions.tsx
 │       ├── App.tsx           # picks AppShell vs bare layout (login)
 │       └── main.tsx          # ErrorBoundary > QueryClient > Chakra > Auth > Router + AppToaster
 │   ├── playwright.config.ts  # Playwright config (headless Chromium, single worker)
 │   └── tests/e2e/            # Browser E2E specs (auth, analytics, popups)
-├── docker-compose.yml      # postgres:latest
+├── Dockerfile              # multi-stage: build SPA -> embed -> single binary -> distroless
+├── .dockerignore
+├── docker-compose.yml      # DEV: postgres:latest only (bind-mounted data/)
+├── docker-compose.prod.yml # PROD: app image + pinned postgres:18 (named volume, healthcheck)
 ├── config.example.yaml     # template; copy to config.yaml (gitignored)
+├── config.docker.yaml      # baked into the image; secrets via env overrides
 ├── config.yaml             # local runtime config (gitignored, lives at root)
+├── .env.example            # secrets for docker-compose.prod.yml (copy to .env, gitignored)
+├── packaging/windows/      # Windows installer: apotech.iss (Inno Setup), setup/uninstall.ps1,
+│                           #   WinSW service template, build-windows.ps1, backup .bat, README
+├── dist/                   # gitignored; build outputs (apotech, apotech.exe, ApotechSetup-*.exe)
 ├── backups/                # gitignored; populated by `make backup`
-├── DEPLOYMENT.md           # production runbook (Phase 9)
+├── DEPLOYMENT.md           # deployment runbook (Docker + Windows flavors)
 └── README.md
 ```
 
@@ -137,10 +152,11 @@ apotech/
 - **TS plugins are pinned to v1** in `buf.gen.yaml` (`bufbuild/es:v1.10.0`, `connectrpc/es:v1.6.1`). Reason: the v2 plugins for Connect-ES are not published as remote buf plugins yet; mixing v1+v2 plugins causes type mismatches. Frontend deps (`@bufbuild/protobuf`, `@connectrpc/connect*`) must stay on `^1.x` until the v2 remote plugin lands.
 
 ## Database
-- **goose owns the schema.** Migration files live in `backend/migrations/`.
+- **goose owns the schema.** Migration files live in `backend/migrations/` and are **embedded** into the binary via `backend/migrations/embed.go` (`//go:embed *.sql`).
 - **GORM is query-only.** Do NOT use `AutoMigrate` — it causes drift with goose.
 - DSN is built from `config.yaml` (`database.{host,port,user,password,name,sslmode}`).
-- Make targets `migrate-up` / `migrate-down` read `config.yaml` and call goose.
+- **Auto-migrate on boot**: the server runs the embedded migrations on startup via `internal/dbmigrate` unless `database.auto_migrate: false`. This is what makes the packaged binary turnkey (no separate migrate step in Docker / Windows). `internal/db` must NOT call `AutoMigrate`; that's GORM's, not goose's.
+- Make targets `migrate-up` / `migrate-down` still drive goose explicitly; `cmd/migrate` reads the embedded FS for all commands except `create` (which writes a new `.sql` to disk).
 
 ## Config
 - Default file: `./config.yaml` (relative to the binary's CWD). Repo-canonical location: `config.yaml` at the repo root (copy from `config.example.yaml`).
@@ -163,16 +179,30 @@ make run             # API server on :8080
 make test-e2e        # run Go integration tests against the dev DB
 make web-install     # npm install (frontend)
 make web             # Vite dev server on :5173
+make build           # single self-contained binary -> dist/apotech (SPA + migrations embedded)
+make dist-windows    # cross-compile dist/apotech.exe (input to the Windows installer)
+make docker-build    # docker build -t apotech:latest .
+make docker-up       # docker compose -f docker-compose.prod.yml up -d --build
+make docker-down     # tear down the prod stack
+make installer       # build dist-windows + assemble the Windows installer (needs Inno Setup)
 ```
 
 ## Conventions
 - **New RPC method**: add it to a `.proto` file under `proto/<pkg>/v1/`, run `make generate`, implement the handler in `backend/internal/service/`, register it in `backend/cmd/server/main.go`.
 - **New domain**: create a new `proto/<domain>_iface/v1/` folder and proto files; generated Go lands in `backend/gen/<domain>_iface/v1/` and TS in `frontend/src/gen/<domain>_iface/v1/`.
-- **Frontend dev API calls**: hit `/api/...` — Vite proxies to `http://localhost:8080`.
+- **Frontend dev API calls**: hit `/api/...`. The backend serves Connect handlers **under `/api`** (it strips the prefix internally via `http.StripPrefix`), and the embedded SPA is served from `/`. In dev, Vite proxies `/api` → `:8080` **without rewriting** (matching prod). In production the single binary serves both UI and `/api` on one origin — no proxy, no CORS.
 - **Chakra UI v3**: use **`defaultSystem`** (no custom system, no custom palette, no custom semantic tokens). Compose with other components via `asChild` (e.g. `<ChakraLink asChild><RouterLink to="/">...</RouterLink></ChakraLink>`). Brand accent is expressed via `colorPalette="blue"` on interactive components; surface and text tokens (`bg`, `bg.subtle`, `bg.muted`, `fg`, `fg.muted`, `border`, `border.muted`) come straight from `defaultSystem`.
 - **Module path**: `github.com/apotech/backend` (placeholder — rename after pushing to a real Git host).
-- **Migrations dir**: `cmd/migrate/main.go` passes the literal string `"migrations"` to goose, resolved relative to the binary's CWD. The Makefile invokes the binary via `go -C backend run ./cmd/migrate ...`, so CWD = `backend/` and goose finds `backend/migrations/`. If you run it directly, do so from `backend/` (or change that string).
-- **Postgres volume mount**: `docker-compose.yml` mounts `./data/postgres` at `/var/lib/postgresql` (NOT `/var/lib/postgresql/data`). Required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. Do not "fix" the mount target back.
+- **Migrations**: embedded via `backend/migrations/embed.go`. `cmd/migrate` calls `goose.SetBaseFS(migrations.FS)` for all commands except `create`, which still writes a new `.sql` to the on-disk `backend/migrations/` (run via `make migrate-create`, CWD = `backend/`). The server auto-applies them on boot (`internal/dbmigrate`).
+- **Postgres volume mount**: dev `docker-compose.yml` mounts `./data/postgres` at `/var/lib/postgresql` (NOT `/var/lib/postgresql/data`). Required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. Do not "fix" the mount target back. (Prod `docker-compose.prod.yml` uses a named volume instead.)
+
+## Packaging & distribution
+The app ships as **one self-contained binary** that serves the SPA + `/api` on a single port and auto-migrates on boot. Both flavors build from this binary. Full ops in [DEPLOYMENT.md](DEPLOYMENT.md); Windows specifics in [packaging/windows/README.md](packaging/windows/README.md).
+- **Single binary anatomy**: `internal/web` embeds `frontend/dist` (`//go:embed all:dist`) and serves it with SPA fallback; Connect handlers mount under `/api`; migrations embed via `backend/migrations/embed.go` and run on boot; `server.host` (config) controls the bind interface (`0.0.0.0` default; `127.0.0.1` single-PC). A `/healthz` route answers liveness probes outside `/api`. `time/tzdata` is imported so `TZ` works on minimal base images (the "today" boundary uses `time.Local`).
+- **Embed compile dependency (gotcha)**: `//go:embed all:dist` needs at least one file present, so `backend/internal/web/dist/.gitkeep` is committed and the rest is gitignored. A plain `go build` on a fresh checkout works but serves a "frontend not built" stub; `make build` copies the real `frontend/dist` in first. Never delete the stub.
+- **Config for packaging**: secrets can come from env (`APOTECH_JWT_SECRET`, `APOTECH_DB_PASSWORD`, `APOTECH_DB_HOST`, `APOTECH_OWNER_EMAIL`, `APOTECH_OWNER_PASSWORD`) overriding the YAML — so the Docker image bakes only non-secret defaults (`config.docker.yaml`).
+- **Docker**: `Dockerfile` (node build → go build with embed → distroless) + `docker-compose.prod.yml` (app + pinned `postgres:18`, named volume, healthcheck, `.env` secrets). Dev `docker-compose.yml` (Postgres-only) is unchanged.
+- **Windows**: `packaging/windows/` — Inno Setup (`apotech.iss`) bundles `apotech.exe` + PostgreSQL Windows binaries + WinSW; `setup.ps1` inits the DB, writes `config.yaml`, registers `apotech-postgres` (native `pg_ctl register`, NetworkService) + `apotech-server` (WinSW) services, optional firewall rule, shortcut. Built via `build-windows.ps1` (`make installer`). **Scripts must stay ASCII** — Windows PowerShell 5.1 reads `-File` as Windows-1252, so non-ASCII (em dashes, curly quotes) corrupts parsing.
 
 ## Testing
 
@@ -201,7 +231,38 @@ make web             # Vite dev server on :5173
 ## Frontend conventions
 
 ### ChakraUI-first (HARD RULE)
-**Before writing any custom JSX or hand-rolled UI primitive, search the Chakra v3 component catalog (https://chakra-ui.com) and use the built-in equivalent.** Chakra ships rich components for nearly every common need: `Field` (form fields), `Input`, `NativeSelect`/`Select`, `Switch`, `Checkbox`, `RadioGroup`, `Slider`, `Editable`, `Tabs`, `Table`, `Card`, `Tag`, `Badge`, `Avatar`, `Accordion`, `Tooltip`, `Popover`, `Menu`, `Drawer`, `Dialog`, `Toast`, `Steps`, `Progress`, `Stat`, `Skeleton`, `Spinner`, `Pagination`, `Pin Input`, `File Upload`, `Number Input`, `Date Picker`, `Combobox`, `Tree View`, etc. **Compose Chakra components rather than rebuilding them.** Custom JSX is only acceptable when the requirement is genuinely outside Chakra's catalog. This rule supersedes any urge to hand-roll a UI primitive.
+**Before writing any custom JSX or hand-rolled UI primitive, search the Chakra v3 component catalog (https://chakra-ui.com) and use the built-in equivalent.** Chakra ships rich components for nearly every common need: `Field` (form fields), `Input`, `Select`/`Combobox`/`NativeSelect`, `Switch`, `Checkbox`, `RadioGroup`, `Slider`, `Editable`, `Tabs`, `Table`, `Card`, `Tag`, `Badge`, `Avatar`, `Accordion`, `Tooltip`, `Popover`, `Menu`, `Drawer`, `Dialog`, `Toast`, `Steps`, `Progress`, `Stat`, `Skeleton`, `Spinner`, `Pagination`, `Pin Input`, `File Upload`, `Number Input`, `Date Picker`, `Tree View`, etc. **Compose Chakra components rather than rebuilding them.** Custom JSX is only acceptable when the requirement is genuinely outside Chakra's catalog. This rule supersedes any urge to hand-roll a UI primitive.
+
+### Selects (HARD RULE)
+**Prefer richer Chakra select widgets over `NativeSelect`.** The native `<select>` element renders with OS-default chrome which looks inconsistent against the rest of the Chakra UI. Two reusable wrappers live in `frontend/src/components/`:
+
+- **`<SearchableSelect>`** (wraps Chakra `Combobox`) — use for dynamic or long lists: medicines, customers, suppliers, batches, anything that can grow past ~10 items or benefits from type-to-filter.
+- **`<EnumSelect>`** (wraps Chakra `Select`) — use for short fixed-enum option sets: status filters, role pickers, payment source, date-range presets, branch switcher.
+
+Both expose the same prop API: `value`, `onChange(value)`, `itemToString`, `itemToValue`, `placeholder`, `disabled`, `size`, `width`. Both wrap in `<Portal>` so popovers escape drawer/dialog stacking contexts.
+
+**`NativeSelect` is allowed only as a documented exception** — when the option set is ≤3 hardcoded items AND a popover feels heavyweight (rare). Add an inline comment explaining the choice. Today the codebase has zero `NativeSelect` usages — keep it that way unless you have a strong, justified reason.
+
+#### Dynamic data MUST search server-side (HARD RULE)
+When the options for a `<SearchableSelect>` come from a queryable domain that can grow with user activity — medicines, customers, suppliers, batches, prescriptions, sales, POs, anything similar — the select **MUST use the `loadOptions` (async) mode**, backed by a `Search<Domain>` RPC on the backend. **Do NOT** preload the full list via `useXxxQuery()` and pass it as `items`. The wrapper debounces input by 250ms, fires `loadOptions(query)`, and renders the result with a stale-result guard. No keystroke-per-RPC fan-out, no client-side filter pass over a giant array, no page-mount payload bloat.
+
+The only carve-out for `items` (preload) mode: **≤20 hardcoded options** — status enums, payment sources, role pickers, date-range presets, branch switcher. Those use `items` or `<EnumSelect>`.
+
+**To add a new dynamic select**:
+1. Confirm or add a `Search<Domain>(query: string, limit: int32) → []<Domain>` RPC on the backend (model after `Customers.SearchCustomers` in [service/customers.go](backend/internal/service/customers.go)).
+2. Add a `search<Domain>(query: string)` adapter in `frontend/src/queries/<domain>.ts` (model after `searchCustomers` / `searchSuppliers` / `searchMedicines` / `searchBatches`).
+3. Pass it as `loadOptions={search<Domain>}` to `<SearchableSelect>`.
+4. In edit-mode drawers (drawer mounts with `value` pre-set), pass `selectedLabel={record.name}` so the trigger immediately shows the right label instead of the raw UUID. The wrapper internally caches labels of picked items so subsequent renders stay correct.
+
+**Note on display maps**: list/table pages that currently use `useXxxQuery()` for a `customerNameById` / `medById` display map can keep that preload as a separate concern (it's for the **table cells**, not the select). Future work: denormalize the name into the parent record's response so the preload can go away. The hard rule is about the SELECT's option source, not about every page-level data fetch.
+
+### Tabs (HARD RULE)
+**Never hand-roll a tab UI.** All tab strips in the app use Chakra v3's `Tabs` primitive (default `variant="line"`). Two choices depending on whether each tab is a route:
+
+- **`<RouteTabs items={...}>`** ([components/RouteTabs.tsx](frontend/src/components/RouteTabs.tsx)) for **URL-driven** tabs — each tab is a sub-route under `<Outlet/>`. Wraps `Tabs.Root` + `Tabs.Trigger asChild` over `NavLink` so click semantics inherit react-router (no full reload), `aria-selected` is computed from `useLocation()` via longest-prefix match. The caller renders `<Outlet/>` separately below. Used by `/analytics`, `/inventory`, `/purchasing`.
+- **`Tabs.Root` directly** for **state-driven** tabs — one route, panels switch via internal Chakra state. Used by `/tax` (Issued invoices / NSFP pool).
+
+Do NOT reach for `NavLink` + manual `borderBottomWidth` styling for a tab strip. If a new tabbed surface lands and the tabs are routes → `<RouteTabs>`. If they're not routes → `Tabs.Root`. Sidebar's left-rail nav is not a tab and is exempt (it uses `borderLeftWidth` accent, different semantics).
 
 ### Visual identity & theme
 - **Chakra `defaultSystem` only.** No custom system, no custom palette, no custom semantic tokens, no custom font. Brand accent uses the default `blue` palette via `colorPalette="blue"` on interactive components. Surface/text tokens (`bg`, `bg.subtle`, `bg.muted`, `fg`, `fg.muted`, `border`, `border.muted`) come straight from `defaultSystem` and flip light/dark automatically.
@@ -257,7 +318,8 @@ make web             # Vite dev server on :5173
 - **Insufficient stock**: if any line can't be fully allocated, the whole `CompleteSale` tx rolls back with `FailedPrecondition`. The user retries after adjusting qty or restocking.
 - **`branch_id` placeholders**: added (nullable) to `sales`, `sale_items`, and `stock_movements` — all reserved for the multi-branch phase.
 - **Today's snapshot**: `SaleService.GetTodaySnapshot` aggregates revenue / sale count / items sold / top medicine for COMPLETED sales since `00:00 server-local`. The Dashboard page calls it and renders three tiles. Polls on each visit (`staleTime: 30s`).
-- **POS UI**: route `/pos`, available to CASHIER + PHARMACIST + OWNER. Opts out of `AppShell` — full-screen via the bare layout branch in [App.tsx](frontend/src/App.tsx). Split view: medicine search (~60%, auto-focused, barcode-scanner friendly — SKU-exact-match-on-Enter auto-adds), cart panel (~40%, qty inline-editable, payment radio, change calc). Keyboard shortcuts: **F2** search · **F4** customer · **F8** complete · **Esc** clear. Cart state lives in the backend `sales` row (DRAFT); the UI fetches/mutates via TanStack Query (no separate cart store).
+- **POS UI**: route `/pos`, available to CASHIER + PHARMACIST + OWNER. Opts out of `AppShell` — full-screen via the bare layout branch in [App.tsx](frontend/src/App.tsx). Split view: medicine search (~60%, auto-focused, barcode-scanner friendly — SKU-exact-match-on-Enter auto-adds), cart panel (~40%, qty inline-editable, payment radio, change calc). Keyboard shortcuts: **F2** search · **F4** customer · **F5** Rx · **F8** complete · **Esc** clear. Cart state lives in the backend `sales` row (DRAFT); the UI fetches/mutates via TanStack Query (no separate cart store).
+- **Rx-required auto-pick**: when the cashier clicks an Rx-required medicine and the sale has no prescription attached, POS does NOT call `AddItem`. Instead it opens the `PrescriptionPickerDialog` pre-filtered to ACTIVE prescriptions that include the clicked medicine with remaining qty, with a caption "Need prescription for: <medicine>". After the cashier picks an Rx, the wrapper calls `AttachPrescription` then immediately `AddItem` for the deferred medicine — a single user gesture lands both. If no covering Rx exists, the picker shows the localized empty state with a "Create a prescription" link to `/prescriptions`. The cashier never has to memorize F5 in the common case; the F5 shortcut still works for manual attaches and switching. Per-item remaining qty (`Paracetamol  3/10 remaining`) renders under each prescription card so the cashier sees coverage at a glance.
 - **Receipt**: on-screen Chakra Dialog after CompleteSale. ESC/POS thermal printer wiring deferred to Phase 7.
 
 ## Purchasing model (Phase 5)
@@ -376,6 +438,21 @@ make web             # Vite dev server on :5173
 - **FEFO consumption**: not enforced yet. `ListBatches` sorts by `expiry_date ASC` so the UI surfaces soon-to-expire first. The actual "which batch to consume when selling" rule will land with POS.
 - **Soft delete**: catalog entities use `active = false` rather than DELETE; rows referenced by movements or price history must persist.
 
+## Stocktake model
+- **Two new tables + two new columns on `stock_movements`** (migration `00018_stocktake.sql`):
+  - `stocktake_sessions(id, name, status, branch_id, created_by, created_at, completed_at, voided_at)` — status CHECK ∈ {`DRAFT`,`COMPLETED`,`VOIDED`}.
+  - `stocktake_lines(id, session_id, batch_id, expected_qty, counted_qty, disposition, write_off_kind, disposition_note, counted_at, counted_by, created_at)` — `counted_qty` nullable until counted; `disposition` ∈ {`ADJUSTMENT`,`WRITE_OFF`} default `ADJUSTMENT`; `write_off_kind` ∈ {`EXPIRED`,`DAMAGED`,`LOST`,`THEFT`,`OTHER`} nullable; `UNIQUE(session_id, batch_id)`.
+  - `stock_movements.stocktake_line_id UUID NULL REFERENCES stocktake_lines(id)` — populated by `CompleteStocktake`, NULL for ad-hoc adjustments. Enables auditing every stocktake-driven movement back to the count event.
+  - `stock_movements.write_off_kind TEXT NULL` — propagated from the line's `write_off_kind` when a stocktake produces a WRITE_OFF movement. NULL for ad-hoc Record-Movement write-offs. Enables `SUM by write_off_kind` analytics across all stocktake-generated write-offs.
+- **Proto package**: `stocktake_iface.v1` with a single `StocktakeService`. RPCs: `StartStocktake`, `AddBatchesToSession`, `AddAllInStockBatches`, `RecordCount`, `SetLineDisposition`, `RemoveLine`, `CompleteStocktake`, `VoidStocktake`, `ListStocktakes`, `GetStocktake`. Role guards: OWNER + PHARMACIST everywhere; `RecordCount` additionally accepts CASHIER (the floor-walking step — a helper can punch in counts but cannot start/complete sessions or change disposition).
+- **One DRAFT session at a time, globally.** `StartStocktake` rejects with `FailedPrecondition` if another DRAFT exists — prevents two pharmacists counting the same batch in parallel sessions. Loosen per-branch once Phase 8 traffic actually appears.
+- **Per-batch granularity.** Each line = one batch. `expected_qty` is **snapshotted at line creation** via the existing `batchCurrentQty()` helper in [service/batches.go](backend/internal/service/batches.go). Concurrent SALE movements between snapshot and Complete will reflect as variance; pharmacist runs stocktake outside operating hours or accepts the drift.
+- **Per-line disposition** covers broken goods inside the same workflow. Each line carries `disposition` ∈ {`ADJUSTMENT`,`WRITE_OFF`}, an optional structured `write_off_kind` (required when disposition is WRITE_OFF), and a free-text `disposition_note`. Defaults to `ADJUSTMENT` with no kind. Single shelf walk handles reconciliation + write-offs; structured kinds enable per-cause reporting (`SUM WHERE write_off_kind = 'EXPIRED'`).
+- **Completion** (`CompleteStocktake` in [service/stocktake.go](backend/internal/service/stocktake.go)) runs in one DB tx. (1) Validates every line: positive variance forbidden with `WRITE_OFF`; `WRITE_OFF` requires a `write_off_kind`. Fails the entire tx with `FailedPrecondition` if any line violates. (2) For each counted line with `counted_qty != expected_qty`, inserts one `stock_movements` row: `qty = counted_qty - expected_qty` (signed), `type = line.disposition`, `reason = "Stocktake: <name> — <KIND> — <note>"`, `stocktake_line_id = line.id`, `write_off_kind = line.write_off_kind`. (3) Marks session `COMPLETED`. Lines never counted produce no movements.
+- **Negative-stock guard** runs after each insert inside the same tx: if applying the variance would drive a batch's stock below zero, the whole Complete rolls back.
+- **`VoidStocktake`** marks a DRAFT session `VOIDED` and writes no movements.
+- **Route**: `/inventory/stocktake` (list) + `/inventory/stocktake/:id` (detail). Sub-tab added to the Inventory tab strip. Detail page hides the tabs and shows a breadcrumb back to the list. Inline `counted_qty` input commits on blur/Enter; when variance < 0, a per-line `<EnumSelect>` for disposition appears, and when disposition flips to WRITE_OFF a second `<EnumSelect>` for `write_off_kind` + a free-text note field renders below. Positive variance hides the disposition controls entirely (always ADJUSTMENT).
+
 ## Known gaps (not yet implemented)
 - No CI runner — both `make test-e2e` (Go integration) and `make test-browser` (Playwright) run locally only. Wiring `.github/workflows/test.yml` is the planned next step.
 - Tests share the dev DB (read-mostly today). Once test suites grow write-heavy (full POS / Purchasing coverage), introduce a separate `apotech_test` database or transactional rollback per test.
@@ -388,7 +465,6 @@ make web             # Vite dev server on :5173
 - Per-list branch filtering is opt-in per RPC — only `Sales.StartSale` stamps `branch_id` on create today. Existing List* queries don't yet filter by `caller.BranchID`; add `WHERE branch_id = ?` as multi-branch traffic appears.
 - No discounts in POS (line and cart discounts are schema-ready but the `DiscountService` proto + UI controls are deferred).
 - No returns / refunds flow.
-- No stocktake / reconciliation workflow.
 - No barcode scanning hardware wiring (POS search input is scanner-friendly via SKU-exact-Enter, but no HID/serial layer).
 - No reprint from the Sales list (Print is wired on the receipt dialog only).
 - Admin "force logout user" RPC (data model supports it via `refresh_tokens.user_id`; ship later).

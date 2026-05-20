@@ -1,0 +1,22 @@
+# Keep the build context small + reproducible. The Dockerfile builds the SPA
+# and the Go binary from source inside the image, so host build artifacts must
+# not leak in.
+.git
+.gitignore
+*.md
+data/
+backups/
+dist/
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/test-results
+frontend/playwright-report
+frontend/tests/e2e/.auth
+backend/bin
+backend/tmp
+# The embedded SPA is rebuilt in-image; never copy a host build of it in.
+backend/internal/web/dist/assets
+# Local runtime config (secrets) — provided via env / compose, never baked in.
+config.yaml

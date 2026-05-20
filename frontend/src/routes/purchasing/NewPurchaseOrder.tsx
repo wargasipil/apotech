@@ -6,7 +6,6 @@ import {
   Heading,
   IconButton,
   Input,
-  NativeSelect,
   Stack,
   Table,
   Text,
@@ -16,11 +15,12 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import SearchableSelect from "../../components/SearchableSelect";
 import { formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
-import { useMedicinesQuery } from "../../queries/medicines";
+import { searchMedicines } from "../../queries/medicines";
 import { useCreatePurchaseOrderMutation } from "../../queries/purchasing";
-import { useSuppliersQuery } from "../../queries/suppliers";
+import { searchSuppliers } from "../../queries/suppliers";
 
 type Line = {
   medicineId: string;
@@ -31,8 +31,6 @@ type Line = {
 export default function NewPurchaseOrder() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const suppliersQ = useSuppliersQuery(false);
-  const medicinesQ = useMedicinesQuery(false);
   const createMut = useCreatePurchaseOrderMutation();
 
   const [supplierId, setSupplierId] = useState("");
@@ -88,17 +86,14 @@ export default function NewPurchaseOrder() {
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
               {t("purchasing.supplier")} *
             </Text>
-            <NativeSelect.Root>
-              <NativeSelect.Field value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-                <option value="">{t("purchasing.selectSupplier")}</option>
-                {(suppliersQ.data ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
+            <SearchableSelect
+              value={supplierId}
+              onChange={setSupplierId}
+              loadOptions={searchSuppliers}
+              itemToString={(s) => s.name}
+              itemToValue={(s) => s.id}
+              placeholder={t("purchasing.selectSupplier")}
+            />
           </Box>
           <Box flex="1" minW="200px">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
@@ -136,20 +131,15 @@ export default function NewPurchaseOrder() {
               {lines.map((l, idx) => (
                 <Table.Row key={idx}>
                   <Table.Cell>
-                    <NativeSelect.Root size="sm">
-                      <NativeSelect.Field
-                        value={l.medicineId}
-                        onChange={(e) => updateLine(idx, { medicineId: e.target.value })}
-                      >
-                        <option value="">—</option>
-                        {(medicinesQ.data ?? []).map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.sku} · {m.name}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                    <SearchableSelect
+                      size="sm"
+                      value={l.medicineId}
+                      onChange={(v) => updateLine(idx, { medicineId: v })}
+                      loadOptions={searchMedicines}
+                      itemToString={(m) => `${m.sku} · ${m.name}`}
+                      itemToValue={(m) => m.id}
+                      placeholder={t("purchasing.selectMedicine")}
+                    />
                   </Table.Cell>
                   <Table.Cell>
                     <Input
