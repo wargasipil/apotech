@@ -241,6 +241,9 @@ type ListMovementsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BatchId       string                 `protobuf:"bytes,1,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
 	Type          MovementType           `protobuf:"varint,2,opt,name=type,proto3,enum=inventory_iface.v1.MovementType" json:"type,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	MedicineId    string                 `protobuf:"bytes,5,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"` // optional: all movements for a medicine's batches
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,9 +292,31 @@ func (x *ListMovementsRequest) GetType() MovementType {
 	return MovementType_MOVEMENT_TYPE_UNSPECIFIED
 }
 
+func (x *ListMovementsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListMovementsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *ListMovementsRequest) GetMedicineId() string {
+	if x != nil {
+		return x.MedicineId
+	}
+	return ""
+}
+
 type ListMovementsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Movements     []*StockMovement       `protobuf:"bytes,1,rep,name=movements,proto3" json:"movements,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -331,6 +356,13 @@ func (x *ListMovementsResponse) GetMovements() []*StockMovement {
 		return x.Movements
 	}
 	return nil
+}
+
+func (x *ListMovementsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type RecordMovementRequest struct {
@@ -554,12 +586,17 @@ const file_inventory_iface_v1_stock_proto_rawDesc = "" +
 	"medicineId\x12\x1f\n" +
 	"\vexpiry_date\x18\x03 \x01(\tR\n" +
 	"expiryDate\x12)\n" +
-	"\x10current_quantity\x18\x04 \x01(\x03R\x0fcurrentQuantity\"g\n" +
+	"\x10current_quantity\x18\x04 \x01(\x03R\x0fcurrentQuantity\"\xb6\x01\n" +
 	"\x14ListMovementsRequest\x12\x19\n" +
 	"\bbatch_id\x18\x01 \x01(\tR\abatchId\x124\n" +
-	"\x04type\x18\x02 \x01(\x0e2 .inventory_iface.v1.MovementTypeR\x04type\"X\n" +
+	"\x04type\x18\x02 \x01(\x0e2 .inventory_iface.v1.MovementTypeR\x04type\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12\x1f\n" +
+	"\vmedicine_id\x18\x05 \x01(\tR\n" +
+	"medicineId\"n\n" +
 	"\x15ListMovementsResponse\x12?\n" +
-	"\tmovements\x18\x01 \x03(\v2!.inventory_iface.v1.StockMovementR\tmovements\"\x92\x01\n" +
+	"\tmovements\x18\x01 \x03(\v2!.inventory_iface.v1.StockMovementR\tmovements\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x92\x01\n" +
 	"\x15RecordMovementRequest\x12\x19\n" +
 	"\bbatch_id\x18\x01 \x01(\tR\abatchId\x12\x10\n" +
 	"\x03qty\x18\x02 \x01(\x05R\x03qty\x124\n" +

@@ -20,6 +20,8 @@ import { TaxInvoiceService } from "../gen/tax_iface/v1/tax_connect";
 import { BpjsClaimService } from "../gen/bpjs_iface/v1/bpjs_connect";
 import { BranchService } from "../gen/branch_iface/v1/branch_connect";
 import { StocktakeService } from "../gen/stocktake_iface/v1/stocktake_connect";
+import { WarehouseService } from "../gen/warehouse_iface/v1/warehouse_connect";
+import { StockTransferService } from "../gen/warehouse_iface/v1/transfer_connect";
 import { transport } from "./transport";
 
 export const healthClient = createPromiseClient(HealthService, transport);
@@ -42,3 +44,5 @@ export const taxInvoiceClient = createPromiseClient(TaxInvoiceService, transport
 export const bpjsClaimClient = createPromiseClient(BpjsClaimService, transport);
 export const branchClient = createPromiseClient(BranchService, transport);
 export const stocktakeClient = createPromiseClient(StocktakeService, transport);
+export const warehouseClient = createPromiseClient(WarehouseService, transport);
+export const stockTransferClient = createPromiseClient(StockTransferService, transport);

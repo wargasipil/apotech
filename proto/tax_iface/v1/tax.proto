@@ -63,19 +63,23 @@ message ListNsfpRequest {
   int32 fiscal_year = 1;
   bool unused_only = 2;
   int32 limit = 3;
+  int32 offset = 4;
 }
 message ListNsfpResponse {
   repeated NsfpEntry entries = 1;
   int32 unused_total = 2;
+  int32 total = 3;
 }
 
 message ListTaxInvoicesRequest {
   int64 from_unix = 1;
   int64 to_unix = 2;
   int32 limit = 3;
+  int32 offset = 4;
 }
 message ListTaxInvoicesResponse {
   repeated TaxInvoice invoices = 1;
+  int32 total = 2;
 }
 
 message GetTaxInvoiceRequest { string sale_id = 1; }

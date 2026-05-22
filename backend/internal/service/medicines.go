@@ -25,30 +25,165 @@ func (m *Medicines) ListMedicines(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListMedicinesRequest],
 ) (*connect.Response[inventoryifacev1.ListMedicinesResponse], error) {
-	q := m.db.WithContext(ctx).Order("name")
-	if !req.Msg.IncludeInactive {
-		q = q.Where("active = ?", true)
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	query := strings.TrimSpace(req.Msg.Query)
+
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if !req.Msg.IncludeInactive {
+			q = q.Where("active = ?", true)
+		}
+		if query != "" {
+			pattern := "%" + query + "%"
+			q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		}
+		return q
+	}
+
+	var total int64
+	if err := applyFilters(m.db.WithContext(ctx).Model(&model.Medicine{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	var rows []model.Medicine
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(m.db.WithContext(ctx).Model(&model.Medicine{})).
+		Order("name").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*inventoryifacev1.Medicine, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, medicineToProto(&r))
+	for i := range rows {
+		out = append(out, medicineToProto(&rows[i]))
 	}
-	return connect.NewResponse(&inventoryifacev1.ListMedicinesResponse{Medicines: out}), nil
+	if err := m.enrichStock(ctx, caller, out); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&inventoryifacev1.ListMedicinesResponse{
+		Medicines: out,
+		Total:     int32(total),
+	}), nil
+}
+
+// enrichStock fills ready_stock (on-hand in the active warehouse) + on_order_stock
+// (incoming on open POs) for a page of medicines. Two batched grouped queries.
+func (m *Medicines) enrichStock(
+	ctx context.Context,
+	caller auth.Principal,
+	meds []*inventoryifacev1.Medicine,
+) error {
+	if len(meds) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(meds))
+	for _, md := range meds {
+		ids = append(ids, md.Id)
+	}
+	warehouseID, err := resolveWarehouse(ctx, m.db, caller)
+	if err != nil {
+		return err
+	}
+
+	// Ready: SUM(stock_movements.qty) per medicine in the active warehouse.
+	type readyRow struct {
+		MedicineID string `gorm:"column:medicine_id"`
+		Qty        int64  `gorm:"column:qty"`
+	}
+	var readyRows []readyRow
+	if err := m.db.WithContext(ctx).
+		Table("batches AS b").
+		Select("b.medicine_id AS medicine_id, COALESCE(SUM(sm.qty), 0) AS qty").
+		Joins("LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?", warehouseID).
+		Where("b.medicine_id IN ?", ids).
+		Group("b.medicine_id").Scan(&readyRows).Error; err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	ready := make(map[string]int64, len(readyRows))
+	for _, r := range readyRows {
+		ready[r.MedicineID] = r.Qty
+	}
+
+	// On-order: SUM(ordered_qty - received_qty) per medicine on open POs.
+	type orderRow struct {
+		MedicineID string `gorm:"column:medicine_id"`
+		Qty        int64  `gorm:"column:qty"`
+	}
+	var orderRows []orderRow
+	if err := m.db.WithContext(ctx).
+		Table("purchase_order_items AS poi").
+		Select("poi.medicine_id AS medicine_id, COALESCE(SUM(poi.ordered_qty - poi.received_qty), 0) AS qty").
+		Joins("JOIN purchase_orders po ON po.id = poi.purchase_order_id").
+		Where("poi.medicine_id IN ? AND po.status NOT IN ?", ids,
+			[]string{poStatusVoided, poStatusClosed, poStatusReceived}).
+		Group("poi.medicine_id").Scan(&orderRows).Error; err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	onOrder := make(map[string]int64, len(orderRows))
+	for _, r := range orderRows {
+		onOrder[r.MedicineID] = r.Qty
+	}
+
+	for _, md := range meds {
+		md.ReadyStock = ready[md.Id]
+		md.OnOrderStock = onOrder[md.Id]
+	}
+	return nil
 }
 
 func (m *Medicines) GetMedicine(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.GetMedicineRequest],
 ) (*connect.Response[inventoryifacev1.GetMedicineResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
 	med, err := m.load(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&inventoryifacev1.GetMedicineResponse{Medicine: medicineToProto(med)}), nil
+	out := medicineToProto(med)
+	// Fill ready_stock (active warehouse) + on_order_stock so the detail page
+	// shows the same figures as the list.
+	if err := m.enrichStock(ctx, caller, []*inventoryifacev1.Medicine{out}); err != nil {
+		return nil, err
+	}
+	// Last restock = the most recent batch received for this medicine, with that
+	// batch's supplier. Detail-only (kept out of the list's enrichStock).
+	var rr struct {
+		ReceivedAt   time.Time `gorm:"column:received_at"`
+		SupplierName string    `gorm:"column:supplier_name"`
+	}
+	if err := m.db.WithContext(ctx).
+		Table("batches b").
+		Select("b.received_at AS received_at, COALESCE(s.name, '') AS supplier_name").
+		Joins("LEFT JOIN suppliers s ON s.id = b.supplier_id").
+		Where("b.medicine_id = ?", med.ID).
+		Order("b.received_at DESC, b.created_at DESC").
+		Limit(1).Scan(&rr).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !rr.ReceivedAt.IsZero() {
+		out.LastRestockDate = rr.ReceivedAt.Format(dateLayout)
+		out.LastRestockSupplier = rr.SupplierName
+	}
+	// Total stock (global on-hand across all warehouses) + valuation at cost.
+	// Σ(qty × cost) over movements == Σ_batch(qty)×cost (cost is per-batch).
+	var v struct {
+		TotalStock int64 `gorm:"column:total_stock"`
+		Valuation  int64 `gorm:"column:valuation"`
+	}
+	if err := m.db.WithContext(ctx).
+		Table("stock_movements sm").
+		Joins("JOIN batches b ON b.id = sm.batch_id").
+		Where("b.medicine_id = ?", med.ID).
+		Select("COALESCE(SUM(sm.qty), 0) AS total_stock, COALESCE(SUM(sm.qty * b.cost_price), 0) AS valuation").
+		Scan(&v).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out.TotalStock = v.TotalStock
+	out.StockValuation = v.Valuation
+	return connect.NewResponse(&inventoryifacev1.GetMedicineResponse{Medicine: out}), nil
 }
 
 func (m *Medicines) CreateMedicine(

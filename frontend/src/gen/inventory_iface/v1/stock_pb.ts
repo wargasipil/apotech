@@ -186,6 +186,23 @@ export class ListMovementsRequest extends Message<ListMovementsRequest> {
    */
   type = MovementType.UNSPECIFIED;
 
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
+  /**
+   * optional: all movements for a medicine's batches
+   *
+   * @generated from field: string medicine_id = 5;
+   */
+  medicineId = "";
+
   constructor(data?: PartialMessage<ListMovementsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -196,6 +213,9 @@ export class ListMovementsRequest extends Message<ListMovementsRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "batch_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "type", kind: "enum", T: proto3.getEnumType(MovementType) },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMovementsRequest {
@@ -224,6 +244,11 @@ export class ListMovementsResponse extends Message<ListMovementsResponse> {
    */
   movements: StockMovement[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListMovementsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -233,6 +258,7 @@ export class ListMovementsResponse extends Message<ListMovementsResponse> {
   static readonly typeName = "inventory_iface.v1.ListMovementsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "movements", kind: "message", T: StockMovement, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMovementsResponse {

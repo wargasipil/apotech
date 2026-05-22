@@ -156,6 +156,7 @@ type ListClaimsRequest struct {
 	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	CustomerId    string                 `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -211,9 +212,17 @@ func (x *ListClaimsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListClaimsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListClaimsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Claims        []*BpjsClaim           `protobuf:"bytes,1,rep,name=claims,proto3" json:"claims,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -253,6 +262,13 @@ func (x *ListClaimsResponse) GetClaims() []*BpjsClaim {
 		return x.Claims
 	}
 	return nil
+}
+
+func (x *ListClaimsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetClaimRequest struct {
@@ -659,14 +675,16 @@ const file_bpjs_iface_v1_bpjs_proto_rawDesc = "" +
 	" \x01(\x03R\n" +
 	"resolvedAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\v \x01(\x03R\tcreatedAt\"b\n" +
+	"created_at\x18\v \x01(\x03R\tcreatedAt\"z\n" +
 	"\x11ListClaimsRequest\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
 	"customerId\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"F\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"\\\n" +
 	"\x12ListClaimsResponse\x120\n" +
-	"\x06claims\x18\x01 \x03(\v2\x18.bpjs_iface.v1.BpjsClaimR\x06claims\"!\n" +
+	"\x06claims\x18\x01 \x03(\v2\x18.bpjs_iface.v1.BpjsClaimR\x06claims\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"!\n" +
 	"\x0fGetClaimRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"B\n" +
 	"\x10GetClaimResponse\x12.\n" +

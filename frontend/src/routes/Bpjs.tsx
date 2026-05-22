@@ -19,7 +19,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
 import { formatMoney, formatUnix } from "../lib/format";
+import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
 import {
   useBpjsClaimsQuery,
@@ -39,7 +41,8 @@ export default function Bpjs() {
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState("");
   const [resolving, setResolving] = useState<string | null>(null);
-  const claimsQ = useBpjsClaimsQuery({ status: statusFilter });
+  const { page, setPage, pageSize, setPageSize } = usePageState(statusFilter);
+  const claimsQ = useBpjsClaimsQuery({ status: statusFilter, limit: pageSize, offset: page * pageSize });
   const submitMut = useSubmitBpjsClaimMutation();
 
   return (
@@ -88,7 +91,7 @@ export default function Bpjs() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {(claimsQ.data ?? []).map((c) => (
+            {claimsQ.rows.map((c) => (
               <Table.Row key={c.id}>
                 <Table.Cell fontFamily="mono">{c.bpjsNo}</Table.Cell>
                 <Table.Cell fontFamily="mono">{c.saleId.slice(0, 8)}</Table.Cell>
@@ -127,7 +130,7 @@ export default function Bpjs() {
                 </Table.Cell>
               </Table.Row>
             ))}
-            {(claimsQ.data?.length ?? 0) === 0 && (
+            {claimsQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={7}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -139,6 +142,16 @@ export default function Bpjs() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Box mt={3}>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={claimsQ.total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      </Box>
 
       <ResolveDialog id={resolving} onClose={() => setResolving(null)} />
     </Box>

@@ -15,6 +15,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import DatePickerField from "../../components/DatePicker";
 import SearchableSelect from "../../components/SearchableSelect";
 import { formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
@@ -25,8 +26,13 @@ import { searchSuppliers } from "../../queries/suppliers";
 type Line = {
   medicineId: string;
   orderedQty: number;
-  unitCostPrice: number;
+  lineTotal: number; // total cost for the line (Harga modal total); unit cost is derived
 };
+
+// Unit cost is derived from the line total / qty (rounded to whole rupiah).
+function unitCostOf(l: Line): number {
+  return l.orderedQty > 0 ? Math.round(l.lineTotal / l.orderedQty) : 0;
+}
 
 export default function NewPurchaseOrder() {
   const { t } = useTranslation();
@@ -36,24 +42,21 @@ export default function NewPurchaseOrder() {
   const [supplierId, setSupplierId] = useState("");
   const [expectedAt, setExpectedAt] = useState("");
   const [note, setNote] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ medicineId: "", orderedQty: 1, unitCostPrice: 0 }]);
+  const [lines, setLines] = useState<Line[]>([{ medicineId: "", orderedQty: 1, lineTotal: 0 }]);
 
-  const total = useMemo(
-    () => lines.reduce((sum, l) => sum + l.orderedQty * l.unitCostPrice, 0),
-    [lines],
-  );
+  const total = useMemo(() => lines.reduce((sum, l) => sum + l.lineTotal, 0), [lines]);
 
   const updateLine = (idx: number, patch: Partial<Line>) => {
     setLines((cur) => cur.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
   const removeLine = (idx: number) => setLines((cur) => cur.filter((_, i) => i !== idx));
   const addLine = () =>
-    setLines((cur) => [...cur, { medicineId: "", orderedQty: 1, unitCostPrice: 0 }]);
+    setLines((cur) => [...cur, { medicineId: "", orderedQty: 1, lineTotal: 0 }]);
 
   const canSubmit =
     !!supplierId &&
     lines.length > 0 &&
-    lines.every((l) => l.medicineId && l.orderedQty > 0 && l.unitCostPrice >= 0);
+    lines.every((l) => l.medicineId && l.orderedQty > 0 && l.lineTotal >= 0);
 
   const submit = async () => {
     try {
@@ -64,7 +67,7 @@ export default function NewPurchaseOrder() {
         items: lines.map((l) => ({
           medicineId: l.medicineId,
           orderedQty: l.orderedQty,
-          unitCostPrice: BigInt(l.unitCostPrice),
+          unitCostPrice: BigInt(unitCostOf(l)),
         })),
       });
       toast.success(t("common.create") + " ✓");
@@ -90,7 +93,7 @@ export default function NewPurchaseOrder() {
               value={supplierId}
               onChange={setSupplierId}
               loadOptions={searchSuppliers}
-              itemToString={(s) => s.name}
+              itemToString={(s) => `${s.code} · ${s.name}`}
               itemToValue={(s) => s.id}
               placeholder={t("purchasing.selectSupplier")}
             />
@@ -99,7 +102,7 @@ export default function NewPurchaseOrder() {
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
               {t("purchasing.expectedAt")}
             </Text>
-            <Input type="date" value={expectedAt} onChange={(e) => setExpectedAt(e.target.value)} />
+            <DatePickerField value={expectedAt} onChange={setExpectedAt} />
           </Box>
           <Box flex="2" minW="240px">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
@@ -122,8 +125,8 @@ export default function NewPurchaseOrder() {
               <Table.Row>
                 <Table.ColumnHeader minW="240px">{t("purchasing.selectMedicine")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("purchasing.qty")}</Table.ColumnHeader>
-                <Table.ColumnHeader>{t("purchasing.unitCost")}</Table.ColumnHeader>
-                <Table.ColumnHeader>{t("purchasing.lineTotal")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("purchasing.lineTotalInput")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("purchasing.unitCostDerived")}</Table.ColumnHeader>
                 <Table.ColumnHeader />
               </Table.Row>
             </Table.Header>
@@ -154,15 +157,15 @@ export default function NewPurchaseOrder() {
                     <Input
                       size="sm"
                       type="number"
-                      value={l.unitCostPrice}
+                      value={l.lineTotal}
                       onChange={(e) =>
-                        updateLine(idx, { unitCostPrice: parseInt(e.target.value, 10) || 0 })
+                        updateLine(idx, { lineTotal: parseInt(e.target.value, 10) || 0 })
                       }
-                      w="120px"
+                      w="140px"
                     />
                   </Table.Cell>
-                  <Table.Cell fontFamily="mono">
-                    {formatMoney(l.orderedQty * l.unitCostPrice)}
+                  <Table.Cell fontFamily="mono" color="fg.muted">
+                    {formatMoney(unitCostOf(l))}
                   </Table.Cell>
                   <Table.Cell>
                     <IconButton

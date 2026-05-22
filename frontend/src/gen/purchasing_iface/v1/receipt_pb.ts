@@ -52,6 +52,13 @@ export class PurchaseReceipt extends Message<PurchaseReceipt> {
    */
   items: PurchaseReceiptItem[] = [];
 
+  /**
+   * supplier invoice / nomor faktur
+   *
+   * @generated from field: string invoice_no = 9;
+   */
+  invoiceNo = "";
+
   constructor(data?: PartialMessage<PurchaseReceipt>) {
     super();
     proto3.util.initPartial(data, this);
@@ -68,6 +75,7 @@ export class PurchaseReceipt extends Message<PurchaseReceipt> {
     { no: 6, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "items", kind: "message", T: PurchaseReceiptItem, repeated: true },
+    { no: 9, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseReceipt {
@@ -267,6 +275,13 @@ export class CreateReceiptRequest extends Message<CreateReceiptRequest> {
    */
   lines: ReceiveLineInput[] = [];
 
+  /**
+   * supplier invoice / nomor faktur
+   *
+   * @generated from field: string invoice_no = 5;
+   */
+  invoiceNo = "";
+
   constructor(data?: PartialMessage<CreateReceiptRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -279,6 +294,7 @@ export class CreateReceiptRequest extends Message<CreateReceiptRequest> {
     { no: 2, name: "received_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "lines", kind: "message", T: ReceiveLineInput, repeated: true },
+    { no: 5, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateReceiptRequest {

@@ -100,6 +100,8 @@ type PurchaseOrder struct {
 	SentAt        int64                  `protobuf:"varint,13,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
 	ClosedAt      int64                  `protobuf:"varint,14,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"`
 	Items         []*PurchaseOrderItem   `protobuf:"bytes,15,rep,name=items,proto3" json:"items,omitempty"`
+	ReceivedAt    int64                  `protobuf:"varint,16,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"` // most recent receipt date (0 if none)
+	InvoiceNo     string                 `protobuf:"bytes,17,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`     // most recent receipt's supplier faktur
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -239,6 +241,20 @@ func (x *PurchaseOrder) GetItems() []*PurchaseOrderItem {
 	return nil
 }
 
+func (x *PurchaseOrder) GetReceivedAt() int64 {
+	if x != nil {
+		return x.ReceivedAt
+	}
+	return 0
+}
+
+func (x *PurchaseOrder) GetInvoiceNo() string {
+	if x != nil {
+		return x.InvoiceNo
+	}
+	return ""
+}
+
 type PurchaseOrderItem struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -247,7 +263,9 @@ type PurchaseOrderItem struct {
 	OrderedQty      int32                  `protobuf:"varint,4,opt,name=ordered_qty,json=orderedQty,proto3" json:"ordered_qty,omitempty"`
 	ReceivedQty     int32                  `protobuf:"varint,5,opt,name=received_qty,json=receivedQty,proto3" json:"received_qty,omitempty"`
 	UnitCostPrice   int64                  `protobuf:"varint,6,opt,name=unit_cost_price,json=unitCostPrice,proto3" json:"unit_cost_price,omitempty"`
-	Subtotal        int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"` // ordered_qty * unit_cost_price
+	Subtotal        int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`                            // ordered_qty * unit_cost_price
+	MedicineName    string                 `protobuf:"bytes,8,opt,name=medicine_name,json=medicineName,proto3" json:"medicine_name,omitempty"` // denormalized for list display
+	MedicineSku     string                 `protobuf:"bytes,9,opt,name=medicine_sku,json=medicineSku,proto3" json:"medicine_sku,omitempty"`    // denormalized for list display
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -331,6 +349,20 @@ func (x *PurchaseOrderItem) GetSubtotal() int64 {
 	return 0
 }
 
+func (x *PurchaseOrderItem) GetMedicineName() string {
+	if x != nil {
+		return x.MedicineName
+	}
+	return ""
+}
+
+func (x *PurchaseOrderItem) GetMedicineSku() string {
+	if x != nil {
+		return x.MedicineSku
+	}
+	return ""
+}
+
 type PurchaseOrderItemInput struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MedicineId    string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
@@ -397,6 +429,11 @@ type ListPurchaseOrdersRequest struct {
 	SupplierId      string                 `protobuf:"bytes,2,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	OnlyOutstanding bool                   `protobuf:"varint,3,opt,name=only_outstanding,json=onlyOutstanding,proto3" json:"only_outstanding,omitempty"` // outstanding > 0 AND status != VOIDED
 	Limit           int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Query           string                 `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`                          // ILIKE po_no / supplier name / supplier code / medicine name
+	FromUnix        int64                  `protobuf:"varint,6,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`   // date-range lower bound (0 = unbounded)
+	ToUnix          int64                  `protobuf:"varint,7,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`         // date-range upper bound (exclusive; 0 = unbounded)
+	DateField       string                 `protobuf:"bytes,8,opt,name=date_field,json=dateField,proto3" json:"date_field,omitempty"` // which date the range filters: "created" | "received"
+	Offset          int32                  `protobuf:"varint,9,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -459,9 +496,45 @@ func (x *ListPurchaseOrdersRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListPurchaseOrdersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListPurchaseOrdersRequest) GetFromUnix() int64 {
+	if x != nil {
+		return x.FromUnix
+	}
+	return 0
+}
+
+func (x *ListPurchaseOrdersRequest) GetToUnix() int64 {
+	if x != nil {
+		return x.ToUnix
+	}
+	return 0
+}
+
+func (x *ListPurchaseOrdersRequest) GetDateField() string {
+	if x != nil {
+		return x.DateField
+	}
+	return ""
+}
+
+func (x *ListPurchaseOrdersRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListPurchaseOrdersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Orders        []*PurchaseOrder       `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -501,6 +574,13 @@ func (x *ListPurchaseOrdersResponse) GetOrders() []*PurchaseOrder {
 		return x.Orders
 	}
 	return nil
+}
+
+func (x *ListPurchaseOrdersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetPurchaseOrderRequest struct {
@@ -996,7 +1076,7 @@ var File_purchasing_iface_v1_order_proto protoreflect.FileDescriptor
 
 const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xf8\x03\n" +
+	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xb8\x04\n" +
 	"\rPurchaseOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x13\n" +
 	"\x05po_no\x18\x02 \x01(\tR\x04poNo\x12\x1f\n" +
@@ -1018,7 +1098,11 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"created_at\x18\f \x01(\x03R\tcreatedAt\x12\x17\n" +
 	"\asent_at\x18\r \x01(\x03R\x06sentAt\x12\x1b\n" +
 	"\tclosed_at\x18\x0e \x01(\x03R\bclosedAt\x12<\n" +
-	"\x05items\x18\x0f \x03(\v2&.purchasing_iface.v1.PurchaseOrderItemR\x05items\"\xf8\x01\n" +
+	"\x05items\x18\x0f \x03(\v2&.purchasing_iface.v1.PurchaseOrderItemR\x05items\x12\x1f\n" +
+	"\vreceived_at\x18\x10 \x01(\x03R\n" +
+	"receivedAt\x12\x1d\n" +
+	"\n" +
+	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\"\xc0\x02\n" +
 	"\x11PurchaseOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11purchase_order_id\x18\x02 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +
@@ -1028,21 +1112,30 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"orderedQty\x12!\n" +
 	"\freceived_qty\x18\x05 \x01(\x05R\vreceivedQty\x12&\n" +
 	"\x0funit_cost_price\x18\x06 \x01(\x03R\runitCostPrice\x12\x1a\n" +
-	"\bsubtotal\x18\a \x01(\x03R\bsubtotal\"\x82\x01\n" +
+	"\bsubtotal\x18\a \x01(\x03R\bsubtotal\x12#\n" +
+	"\rmedicine_name\x18\b \x01(\tR\fmedicineName\x12!\n" +
+	"\fmedicine_sku\x18\t \x01(\tR\vmedicineSku\"\x82\x01\n" +
 	"\x16PurchaseOrderItemInput\x12\x1f\n" +
 	"\vmedicine_id\x18\x01 \x01(\tR\n" +
 	"medicineId\x12\x1f\n" +
 	"\vordered_qty\x18\x02 \x01(\x05R\n" +
 	"orderedQty\x12&\n" +
-	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\"\xb4\x01\n" +
+	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\"\xb7\x02\n" +
 	"\x19ListPurchaseOrdersRequest\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.purchasing_iface.v1.POStatusR\x06status\x12\x1f\n" +
 	"\vsupplier_id\x18\x02 \x01(\tR\n" +
 	"supplierId\x12)\n" +
 	"\x10only_outstanding\x18\x03 \x01(\bR\x0fonlyOutstanding\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"X\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x14\n" +
+	"\x05query\x18\x05 \x01(\tR\x05query\x12\x1b\n" +
+	"\tfrom_unix\x18\x06 \x01(\x03R\bfromUnix\x12\x17\n" +
+	"\ato_unix\x18\a \x01(\x03R\x06toUnix\x12\x1d\n" +
+	"\n" +
+	"date_field\x18\b \x01(\tR\tdateField\x12\x16\n" +
+	"\x06offset\x18\t \x01(\x05R\x06offset\"n\n" +
 	"\x1aListPurchaseOrdersResponse\x12:\n" +
-	"\x06orders\x18\x01 \x03(\v2\".purchasing_iface.v1.PurchaseOrderR\x06orders\")\n" +
+	"\x06orders\x18\x01 \x03(\v2\".purchasing_iface.v1.PurchaseOrderR\x06orders\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\")\n" +
 	"\x17GetPurchaseOrderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"T\n" +
 	"\x18GetPurchaseOrderResponse\x128\n" +

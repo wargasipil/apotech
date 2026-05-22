@@ -40,6 +40,13 @@ export class Supplier extends Message<Supplier> {
    */
   createdAt = protoInt64.zero;
 
+  /**
+   * unique business code, e.g. "SUP-0001"
+   *
+   * @generated from field: string code = 7;
+   */
+  code = "";
+
   constructor(data?: PartialMessage<Supplier>) {
     super();
     proto3.util.initPartial(data, this);
@@ -54,6 +61,7 @@ export class Supplier extends Message<Supplier> {
     { no: 4, name: "phone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 6, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Supplier {
@@ -82,6 +90,23 @@ export class ListSuppliersRequest extends Message<ListSuppliersRequest> {
    */
   includeInactive = false;
 
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
+
+  /**
+   * optional ILIKE name / code
+   *
+   * @generated from field: string query = 4;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListSuppliersRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -91,6 +116,9 @@ export class ListSuppliersRequest extends Message<ListSuppliersRequest> {
   static readonly typeName = "inventory_iface.v1.ListSuppliersRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "include_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSuppliersRequest {
@@ -119,6 +147,11 @@ export class ListSuppliersResponse extends Message<ListSuppliersResponse> {
    */
   suppliers: Supplier[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListSuppliersResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -128,6 +161,7 @@ export class ListSuppliersResponse extends Message<ListSuppliersResponse> {
   static readonly typeName = "inventory_iface.v1.ListSuppliersResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "suppliers", kind: "message", T: Supplier, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSuppliersResponse {
@@ -240,6 +274,11 @@ export class CreateSupplierRequest extends Message<CreateSupplierRequest> {
    */
   phone = "";
 
+  /**
+   * @generated from field: string code = 4;
+   */
+  code = "";
+
   constructor(data?: PartialMessage<CreateSupplierRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -251,6 +290,7 @@ export class CreateSupplierRequest extends Message<CreateSupplierRequest> {
     { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "contact_email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "phone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSupplierRequest {
@@ -331,6 +371,11 @@ export class UpdateSupplierRequest extends Message<UpdateSupplierRequest> {
    */
   phone = "";
 
+  /**
+   * @generated from field: string code = 5;
+   */
+  code = "";
+
   constructor(data?: PartialMessage<UpdateSupplierRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -343,6 +388,7 @@ export class UpdateSupplierRequest extends Message<UpdateSupplierRequest> {
     { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "contact_email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "phone", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateSupplierRequest {

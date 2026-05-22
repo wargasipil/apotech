@@ -277,6 +277,11 @@ export class ListPrescriptionsRequest extends Message<ListPrescriptionsRequest> 
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListPrescriptionsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -288,6 +293,7 @@ export class ListPrescriptionsRequest extends Message<ListPrescriptionsRequest> 
     { no: 1, name: "customer_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListPrescriptionsRequest {
@@ -316,6 +322,11 @@ export class ListPrescriptionsResponse extends Message<ListPrescriptionsResponse
    */
   prescriptions: Prescription[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListPrescriptionsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -325,6 +336,7 @@ export class ListPrescriptionsResponse extends Message<ListPrescriptionsResponse
   static readonly typeName = "prescription_iface.v1.ListPrescriptionsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "prescriptions", kind: "message", T: Prescription, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListPrescriptionsResponse {

@@ -1,54 +1,91 @@
-import { Box, HStack, IconButton, Stack, Text } from "@chakra-ui/react";
+import { Box, HStack, IconButton, Spacer, Stack, Text } from "@chakra-ui/react";
 import {
+  ArrowLeftRight,
   BarChart3,
+  Boxes,
   Building2,
+  ChevronDown,
+  ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ClipboardList,
   FileText,
   LayoutDashboard,
   LogOut,
   Package,
   Percent,
   Pill,
+  Receipt,
+  Repeat,
   ShoppingCart,
   Truck,
   UserRound,
   Users as UsersIcon,
+  Warehouse as WarehouseIcon,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { Role } from "../gen/auth_iface/v1/policy_pb";
 import { useAuth } from "../lib/auth";
 import { usePreferencesStore } from "../stores/preferences";
 
-type NavItem = {
+type NavLeaf = {
   to: string;
   label: string;
   icon: typeof Pill;
   roles?: Role[];
 };
 
-function buildItems(t: (k: string) => string): NavItem[] {
+type NavGroup = {
+  kind: "group";
+  label: string;
+  icon: typeof Pill;
+  roles?: Role[];
+  children: NavLeaf[];
+};
+
+type NavEntry = NavLeaf | NavGroup;
+
+function isGroup(e: NavEntry): e is NavGroup {
+  return "kind" in e && e.kind === "group";
+}
+
+function buildItems(t: (k: string) => string): NavEntry[] {
   return [
     { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
     { to: "/pos", label: t("nav.pos"), icon: ShoppingCart },
     {
-      to: "/inventory",
-      label: t("nav.inventory"),
-      icon: Package,
+      to: "/medicines",
+      label: t("nav.medicines"),
+      icon: Pill,
       roles: [Role.OWNER, Role.PHARMACIST],
     },
     {
-      to: "/purchasing",
-      label: t("nav.purchasing"),
-      icon: Truck,
+      kind: "group",
+      label: t("nav.inventory"),
+      icon: Package,
       roles: [Role.OWNER, Role.PHARMACIST],
+      children: [
+        { to: "/purchasing", label: t("nav.purchasing"), icon: Truck },
+        { to: "/inventory/suppliers", label: t("inventory.tabs.suppliers"), icon: Building2 },
+        { to: "/inventory/batches", label: t("inventory.tabs.batches"), icon: Boxes },
+        { to: "/inventory/movements", label: t("inventory.tabs.movements"), icon: ArrowLeftRight },
+        { to: "/inventory/stocktake", label: t("inventory.tabs.stocktake"), icon: ClipboardList },
+        { to: "/inventory/transfers", label: t("inventory.tabs.transfers"), icon: Repeat },
+      ],
     },
     {
       to: "/customers",
       label: t("nav.customers"),
       icon: UserRound,
+    },
+    {
+      to: "/orders",
+      label: t("nav.orders"),
+      icon: Receipt,
+      roles: [Role.OWNER, Role.PHARMACIST, Role.CASHIER],
     },
     {
       to: "/prescriptions",
@@ -69,7 +106,7 @@ function buildItems(t: (k: string) => string): NavItem[] {
       icon: FileText,
       roles: [Role.OWNER, Role.PHARMACIST],
     },
-    { to: "/branches", label: t("nav.branches"), icon: Building2, roles: [Role.OWNER] },
+    { to: "/warehouses", label: t("nav.warehouses"), icon: WarehouseIcon, roles: [Role.OWNER] },
     { to: "/users", label: t("nav.users"), icon: UsersIcon, roles: [Role.OWNER] },
   ];
 }
@@ -115,9 +152,13 @@ export default function Sidebar() {
 
       {/* Nav items */}
       <Stack gap={1} px={2} py={3} flex="1" overflowY="auto">
-        {items.map((item) => (
-          <NavItemLink key={item.to} item={item} collapsed={collapsed} />
-        ))}
+        {items.map((item) =>
+          isGroup(item) ? (
+            <NavGroupItem key={item.label} group={item} collapsed={collapsed} />
+          ) : (
+            <NavItemLink key={item.to} item={item} collapsed={collapsed} />
+          ),
+        )}
       </Stack>
 
       {/* Footer: user + sign out + collapse */}
@@ -162,7 +203,7 @@ export default function Sidebar() {
   );
 }
 
-function NavItemLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function NavItemLink({ item, collapsed }: { item: NavLeaf; collapsed: boolean }) {
   const Icon = item.icon;
   return (
     <NavLink to={item.to} end={item.to === "/"}>
@@ -184,5 +225,63 @@ function NavItemLink({ item, collapsed }: { item: NavItem; collapsed: boolean })
         </HStack>
       )}
     </NavLink>
+  );
+}
+
+// Expandable sidebar group (e.g. Inventaris). Auto-expands when any child route
+// is active. When the rail is collapsed (icon-only) the children render as flat
+// icon links so every destination stays reachable.
+function NavGroupItem({ group, collapsed }: { group: NavGroup; collapsed: boolean }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  const Icon = group.icon;
+
+  const children = group.children.filter(
+    (c) => !c.roles || (user && c.roles.includes(user.role)),
+  );
+  const anyChildActive = children.some((c) => location.pathname.startsWith(c.to));
+  const [open, setOpen] = useState(anyChildActive);
+
+  useEffect(() => {
+    if (anyChildActive) setOpen(true);
+  }, [anyChildActive]);
+
+  if (collapsed) {
+    return (
+      <>
+        {children.map((c) => (
+          <NavItemLink key={c.to} item={c} collapsed />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <Box>
+      <HStack
+        as="button"
+        width="100%"
+        gap={3}
+        px={3}
+        py={2}
+        borderRadius="md"
+        color={anyChildActive ? "colorPalette.solid" : "fg"}
+        _hover={{ bg: "bg.muted" }}
+        cursor="pointer"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon size={18} />
+        <Text fontSize="sm">{group.label}</Text>
+        <Spacer />
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      </HStack>
+      {open && (
+        <Stack gap={1} pl={4} mt={1}>
+          {children.map((c) => (
+            <NavItemLink key={c.to} item={c} collapsed={false} />
+          ))}
+        </Stack>
+      )}
+    </Box>
   );
 }

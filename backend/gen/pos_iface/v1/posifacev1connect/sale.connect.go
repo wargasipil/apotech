@@ -63,6 +63,9 @@ const (
 	// SaleServiceGetTodaySnapshotProcedure is the fully-qualified name of the SaleService's
 	// GetTodaySnapshot RPC.
 	SaleServiceGetTodaySnapshotProcedure = "/pos_iface.v1.SaleService/GetTodaySnapshot"
+	// SaleServiceGetSalesSummaryProcedure is the fully-qualified name of the SaleService's
+	// GetSalesSummary RPC.
+	SaleServiceGetSalesSummaryProcedure = "/pos_iface.v1.SaleService/GetSalesSummary"
 	// SaleServicePrintReceiptProcedure is the fully-qualified name of the SaleService's PrintReceipt
 	// RPC.
 	SaleServicePrintReceiptProcedure = "/pos_iface.v1.SaleService/PrintReceipt"
@@ -82,6 +85,7 @@ type SaleServiceClient interface {
 	CompleteSale(context.Context, *connect.Request[v1.CompleteSaleRequest]) (*connect.Response[v1.CompleteSaleResponse], error)
 	VoidSale(context.Context, *connect.Request[v1.VoidSaleRequest]) (*connect.Response[v1.VoidSaleResponse], error)
 	GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error)
+	GetSalesSummary(context.Context, *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error)
 	PrintReceipt(context.Context, *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error)
 }
 
@@ -168,6 +172,12 @@ func NewSaleServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(saleServiceMethods.ByName("GetTodaySnapshot")),
 			connect.WithClientOptions(opts...),
 		),
+		getSalesSummary: connect.NewClient[v1.GetSalesSummaryRequest, v1.GetSalesSummaryResponse](
+			httpClient,
+			baseURL+SaleServiceGetSalesSummaryProcedure,
+			connect.WithSchema(saleServiceMethods.ByName("GetSalesSummary")),
+			connect.WithClientOptions(opts...),
+		),
 		printReceipt: connect.NewClient[v1.PrintReceiptRequest, v1.PrintReceiptResponse](
 			httpClient,
 			baseURL+SaleServicePrintReceiptProcedure,
@@ -191,6 +201,7 @@ type saleServiceClient struct {
 	completeSale       *connect.Client[v1.CompleteSaleRequest, v1.CompleteSaleResponse]
 	voidSale           *connect.Client[v1.VoidSaleRequest, v1.VoidSaleResponse]
 	getTodaySnapshot   *connect.Client[v1.GetTodaySnapshotRequest, v1.GetTodaySnapshotResponse]
+	getSalesSummary    *connect.Client[v1.GetSalesSummaryRequest, v1.GetSalesSummaryResponse]
 	printReceipt       *connect.Client[v1.PrintReceiptRequest, v1.PrintReceiptResponse]
 }
 
@@ -254,6 +265,11 @@ func (c *saleServiceClient) GetTodaySnapshot(ctx context.Context, req *connect.R
 	return c.getTodaySnapshot.CallUnary(ctx, req)
 }
 
+// GetSalesSummary calls pos_iface.v1.SaleService.GetSalesSummary.
+func (c *saleServiceClient) GetSalesSummary(ctx context.Context, req *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error) {
+	return c.getSalesSummary.CallUnary(ctx, req)
+}
+
 // PrintReceipt calls pos_iface.v1.SaleService.PrintReceipt.
 func (c *saleServiceClient) PrintReceipt(ctx context.Context, req *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error) {
 	return c.printReceipt.CallUnary(ctx, req)
@@ -273,6 +289,7 @@ type SaleServiceHandler interface {
 	CompleteSale(context.Context, *connect.Request[v1.CompleteSaleRequest]) (*connect.Response[v1.CompleteSaleResponse], error)
 	VoidSale(context.Context, *connect.Request[v1.VoidSaleRequest]) (*connect.Response[v1.VoidSaleResponse], error)
 	GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error)
+	GetSalesSummary(context.Context, *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error)
 	PrintReceipt(context.Context, *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error)
 }
 
@@ -355,6 +372,12 @@ func NewSaleServiceHandler(svc SaleServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(saleServiceMethods.ByName("GetTodaySnapshot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	saleServiceGetSalesSummaryHandler := connect.NewUnaryHandler(
+		SaleServiceGetSalesSummaryProcedure,
+		svc.GetSalesSummary,
+		connect.WithSchema(saleServiceMethods.ByName("GetSalesSummary")),
+		connect.WithHandlerOptions(opts...),
+	)
 	saleServicePrintReceiptHandler := connect.NewUnaryHandler(
 		SaleServicePrintReceiptProcedure,
 		svc.PrintReceipt,
@@ -387,6 +410,8 @@ func NewSaleServiceHandler(svc SaleServiceHandler, opts ...connect.HandlerOption
 			saleServiceVoidSaleHandler.ServeHTTP(w, r)
 		case SaleServiceGetTodaySnapshotProcedure:
 			saleServiceGetTodaySnapshotHandler.ServeHTTP(w, r)
+		case SaleServiceGetSalesSummaryProcedure:
+			saleServiceGetSalesSummaryHandler.ServeHTTP(w, r)
 		case SaleServicePrintReceiptProcedure:
 			saleServicePrintReceiptHandler.ServeHTTP(w, r)
 		default:
@@ -444,6 +469,10 @@ func (UnimplementedSaleServiceHandler) VoidSale(context.Context, *connect.Reques
 
 func (UnimplementedSaleServiceHandler) GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pos_iface.v1.SaleService.GetTodaySnapshot is not implemented"))
+}
+
+func (UnimplementedSaleServiceHandler) GetSalesSummary(context.Context, *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pos_iface.v1.SaleService.GetSalesSummary is not implemented"))
 }
 
 func (UnimplementedSaleServiceHandler) PrintReceipt(context.Context, *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error) {

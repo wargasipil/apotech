@@ -154,6 +154,18 @@ export class Sale extends Message<Sale> {
    */
   prescriptionId = "";
 
+  /**
+   * @generated from field: string warehouse_id = 17;
+   */
+  warehouseId = "";
+
+  /**
+   * denormalized for the order-history list
+   *
+   * @generated from field: string customer_name = 18;
+   */
+  customerName = "";
+
   constructor(data?: PartialMessage<Sale>) {
     super();
     proto3.util.initPartial(data, this);
@@ -178,6 +190,8 @@ export class Sale extends Message<Sale> {
     { no: 14, name: "completed_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 15, name: "items", kind: "message", T: SaleItem, repeated: true },
     { no: 16, name: "prescription_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 17, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 18, name: "customer_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Sale {
@@ -241,6 +255,13 @@ export class SaleItem extends Message<SaleItem> {
    */
   lineTotal = protoInt64.zero;
 
+  /**
+   * denormalized for the order-history list
+   *
+   * @generated from field: string medicine_name = 9;
+   */
+  medicineName = "";
+
   constructor(data?: PartialMessage<SaleItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -257,6 +278,7 @@ export class SaleItem extends Message<SaleItem> {
     { no: 6, name: "unit_price_snapshot", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "line_discount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "line_total", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 9, name: "medicine_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SaleItem {
@@ -442,6 +464,18 @@ export class ListSalesRequest extends Message<ListSalesRequest> {
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 5;
+   */
+  offset = 0;
+
+  /**
+   * ILIKE sale_no / customer name / medicine name
+   *
+   * @generated from field: string query = 6;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListSalesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -454,6 +488,8 @@ export class ListSalesRequest extends Message<ListSalesRequest> {
     { no: 2, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 3, name: "status", kind: "enum", T: proto3.getEnumType(SaleStatus) },
     { no: 4, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSalesRequest {
@@ -482,6 +518,11 @@ export class ListSalesResponse extends Message<ListSalesResponse> {
    */
   sales: Sale[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListSalesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -491,6 +532,7 @@ export class ListSalesResponse extends Message<ListSalesResponse> {
   static readonly typeName = "pos_iface.v1.ListSalesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "sales", kind: "message", T: Sale, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSalesResponse {
@@ -1245,6 +1287,120 @@ export class GetTodaySnapshotResponse extends Message<GetTodaySnapshotResponse> 
 
   static equals(a: GetTodaySnapshotResponse | PlainMessage<GetTodaySnapshotResponse> | undefined, b: GetTodaySnapshotResponse | PlainMessage<GetTodaySnapshotResponse> | undefined): boolean {
     return proto3.util.equals(GetTodaySnapshotResponse, a, b);
+  }
+}
+
+/**
+ * Aggregate over the SAME filters as ListSales (status + date range + search),
+ * across ALL matching rows — not just one page. Backs the order-history
+ * summary bar; the list itself stays server-paginated via ListSales.
+ *
+ * @generated from message pos_iface.v1.GetSalesSummaryRequest
+ */
+export class GetSalesSummaryRequest extends Message<GetSalesSummaryRequest> {
+  /**
+   * @generated from field: int64 from_unix = 1;
+   */
+  fromUnix = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 to_unix = 2;
+   */
+  toUnix = protoInt64.zero;
+
+  /**
+   * @generated from field: pos_iface.v1.SaleStatus status = 3;
+   */
+  status = SaleStatus.UNSPECIFIED;
+
+  /**
+   * ILIKE sale_no / customer name / medicine name
+   *
+   * @generated from field: string query = 4;
+   */
+  query = "";
+
+  constructor(data?: PartialMessage<GetSalesSummaryRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.GetSalesSummaryRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "status", kind: "enum", T: proto3.getEnumType(SaleStatus) },
+    { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSalesSummaryRequest {
+    return new GetSalesSummaryRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSalesSummaryRequest {
+    return new GetSalesSummaryRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSalesSummaryRequest {
+    return new GetSalesSummaryRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetSalesSummaryRequest | PlainMessage<GetSalesSummaryRequest> | undefined, b: GetSalesSummaryRequest | PlainMessage<GetSalesSummaryRequest> | undefined): boolean {
+    return proto3.util.equals(GetSalesSummaryRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.GetSalesSummaryResponse
+ */
+export class GetSalesSummaryResponse extends Message<GetSalesSummaryResponse> {
+  /**
+   * @generated from field: int64 sale_count = 1;
+   */
+  saleCount = protoInt64.zero;
+
+  /**
+   * SUM(sale_items.qty)
+   *
+   * @generated from field: int64 items_sold = 2;
+   */
+  itemsSold = protoInt64.zero;
+
+  /**
+   * SUM(sales.total)
+   *
+   * @generated from field: int64 revenue = 3;
+   */
+  revenue = protoInt64.zero;
+
+  constructor(data?: PartialMessage<GetSalesSummaryResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.GetSalesSummaryResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale_count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "items_sold", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "revenue", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetSalesSummaryResponse {
+    return new GetSalesSummaryResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetSalesSummaryResponse {
+    return new GetSalesSummaryResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetSalesSummaryResponse {
+    return new GetSalesSummaryResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetSalesSummaryResponse | PlainMessage<GetSalesSummaryResponse> | undefined, b: GetSalesSummaryResponse | PlainMessage<GetSalesSummaryResponse> | undefined): boolean {
+    return proto3.util.equals(GetSalesSummaryResponse, a, b);
   }
 }
 

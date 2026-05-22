@@ -13,7 +13,9 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import Pagination from "../../components/Pagination";
 import { formatUnix } from "../../lib/format";
+import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import {
   useStartStocktakeMutation,
@@ -36,7 +38,8 @@ function statusPalette(status: string): string {
 export default function Stocktake() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const listQ = useStocktakesQuery();
+  const { page, setPage, pageSize, setPageSize } = usePageState("");
+  const listQ = useStocktakesQuery({ page, pageSize });
   const startMut = useStartStocktakeMutation();
   const [creating, setCreating] = useState(false);
 
@@ -89,7 +92,7 @@ export default function Stocktake() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {listQ.data?.map((s) => (
+            {listQ.rows.map((s) => (
               <Table.Row
                 key={s.id}
                 cursor="pointer"
@@ -108,7 +111,7 @@ export default function Stocktake() {
                 <Table.Cell>{formatUnix(s.createdAt)}</Table.Cell>
               </Table.Row>
             ))}
-            {(listQ.data?.length ?? 0) === 0 && (
+            {listQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={6}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -120,6 +123,14 @@ export default function Stocktake() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={listQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </Stack>
   );
 }

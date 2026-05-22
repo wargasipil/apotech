@@ -36,6 +36,12 @@ func (p *PurchaseReceipts) CreateReceipt(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one line required"))
 	}
 
+	// Stock lands in the caller's active warehouse.
+	warehouseID, err := resolveWarehouse(ctx, p.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
 	// Default receipt date to today.
 	receivedAt := time.Now()
 	if req.Msg.ReceivedAt != "" {
@@ -77,6 +83,7 @@ func (p *PurchaseReceipts) CreateReceipt(
 			ReceivedAt:      receivedAt,
 			ReceivedBy:      caller.UserID,
 			Note:            strings.TrimSpace(req.Msg.Note),
+			InvoiceNo:       strings.TrimSpace(req.Msg.InvoiceNo),
 		}
 		if err := tx.Create(&receipt).Error; err != nil {
 			return connect.NewError(connect.CodeInternal, err)
@@ -131,13 +138,14 @@ func (p *PurchaseReceipts) CreateReceipt(
 					fmt.Errorf("create batch: %w", err))
 			}
 
-			// PURCHASE stock_movement linked to this batch.
+			// PURCHASE stock_movement linked to this batch, into the active warehouse.
 			mv := model.StockMovement{
-				BatchID: batch.ID,
-				Qty:     line.Qty,
-				Type:    "PURCHASE",
-				Reason:  fmt.Sprintf("PO %s receipt %s", deref(po.PoNo), receiptNo),
-				UserID:  caller.UserID,
+				BatchID:     batch.ID,
+				Qty:         line.Qty,
+				Type:        "PURCHASE",
+				Reason:      fmt.Sprintf("PO %s receipt %s", deref(po.PoNo), receiptNo),
+				UserID:      caller.UserID,
+				WarehouseID: warehouseID,
 			}
 			if err := tx.Create(&mv).Error; err != nil {
 				return connect.NewError(connect.CodeInternal,
@@ -237,6 +245,7 @@ func receiptToProto(r *model.PurchaseReceipt) *purchasingifacev1.PurchaseReceipt
 		ReceivedAt:      r.ReceivedAt.Format("2006-01-02"),
 		ReceivedBy:      r.ReceivedBy,
 		Note:            r.Note,
+		InvoiceNo:       r.InvoiceNo,
 		CreatedAt:       r.CreatedAt.Unix(),
 	}
 	if r.ReceiptNo != nil {

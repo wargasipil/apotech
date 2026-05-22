@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddItemRequest, AddItemResponse, AttachPrescriptionRequest, AttachPrescriptionResponse, CompleteSaleRequest, CompleteSaleResponse, DetachPrescriptionRequest, DetachPrescriptionResponse, GetSaleRequest, GetSaleResponse, GetTodaySnapshotRequest, GetTodaySnapshotResponse, ListSalesRequest, ListSalesResponse, PrintReceiptRequest, PrintReceiptResponse, RemoveItemRequest, RemoveItemResponse, SetItemQuantityRequest, SetItemQuantityResponse, SetSaleCustomerRequest, SetSaleCustomerResponse, StartSaleRequest, StartSaleResponse, VoidSaleRequest, VoidSaleResponse } from "./sale_pb.js";
+import { AddItemRequest, AddItemResponse, AttachPrescriptionRequest, AttachPrescriptionResponse, CompleteSaleRequest, CompleteSaleResponse, DetachPrescriptionRequest, DetachPrescriptionResponse, GetSaleRequest, GetSaleResponse, GetSalesSummaryRequest, GetSalesSummaryResponse, GetTodaySnapshotRequest, GetTodaySnapshotResponse, ListSalesRequest, ListSalesResponse, PrintReceiptRequest, PrintReceiptResponse, RemoveItemRequest, RemoveItemResponse, SetItemQuantityRequest, SetItemQuantityResponse, SetSaleCustomerRequest, SetSaleCustomerResponse, StartSaleRequest, StartSaleResponse, VoidSaleRequest, VoidSaleResponse } from "./sale_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -118,6 +118,15 @@ export const SaleService = {
       name: "GetTodaySnapshot",
       I: GetTodaySnapshotRequest,
       O: GetTodaySnapshotResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc pos_iface.v1.SaleService.GetSalesSummary
+     */
+    getSalesSummary: {
+      name: "GetSalesSummary",
+      I: GetSalesSummaryRequest,
+      O: GetSalesSummaryResponse,
       kind: MethodKind.Unary,
     },
     /**

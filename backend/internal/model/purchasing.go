@@ -42,6 +42,7 @@ type PurchaseReceipt struct {
 	ReceivedAt      time.Time `gorm:"not null;type:date;column:received_at"`
 	ReceivedBy      string    `gorm:"not null;type:uuid;column:received_by"`
 	Note            string    `gorm:"not null;default:''"`
+	InvoiceNo       string    `gorm:"not null;default:'';column:invoice_no"`
 	CreatedAt       time.Time
 
 	Items []PurchaseReceiptItem `gorm:"foreignKey:PurchaseReceiptID"`

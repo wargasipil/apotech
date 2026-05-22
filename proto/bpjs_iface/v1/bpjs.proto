@@ -56,9 +56,11 @@ message ListClaimsRequest {
   string status = 1;
   string customer_id = 2;
   int32 limit = 3;
+  int32 offset = 4;
 }
 message ListClaimsResponse {
   repeated BpjsClaim claims = 1;
+  int32 total = 2;
 }
 
 message GetClaimRequest { string id = 1; }

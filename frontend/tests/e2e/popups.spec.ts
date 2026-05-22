@@ -27,8 +27,8 @@ test.describe("EntityDrawer (slide-over)", () => {
     await row.getByRole("button", { name: "Archive" }).click();
   });
 
-  test("Branches Add → Save is disabled until required fields are filled", async ({ page }) => {
-    await page.goto("/branches");
+  test("Warehouses Add → Save is disabled until required fields are filled", async ({ page }) => {
+    await page.goto("/warehouses");
     await page.getByRole("button", { name: "Add" }).click();
     const drawer = page.getByRole("dialog");
     const save = drawer.getByRole("button", { name: "Save" });
@@ -37,7 +37,7 @@ test.describe("EntityDrawer (slide-over)", () => {
     const inputs = drawer.locator("input");
     await inputs.nth(0).fill("E2E01"); // code
     await expect(save).toBeDisabled(); // name still empty
-    await inputs.nth(1).fill("E2E branch"); // name
+    await inputs.nth(1).fill("E2E warehouse"); // name
     await expect(save).toBeEnabled();
 
     await drawer.getByRole("button", { name: "Cancel" }).click();
@@ -139,6 +139,13 @@ test.describe("RouteTabs (Chakra Tabs + NavLink)", () => {
       "true",
     );
 
+    // Tag the live document. A full-page reload would wipe this; SPA navigation
+    // preserves it. Guards the RouteTabs full-reload regression (tabs must
+    // navigate client-side, not follow an <a href>).
+    await page.evaluate(() => {
+      (window as unknown as { __noReload?: boolean }).__noReload = true;
+    });
+
     // Clicking a tab updates the URL (no full reload) and shifts active state.
     await page.getByRole("tab", { name: "Inventory" }).click();
     await expect(page).toHaveURL(/\/analytics\/inventory$/);
@@ -146,6 +153,12 @@ test.describe("RouteTabs (Chakra Tabs + NavLink)", () => {
       "aria-selected",
       "true",
     );
+
+    // The marker survived → no full document reload occurred.
+    const survived = await page.evaluate(
+      () => (window as unknown as { __noReload?: boolean }).__noReload === true,
+    );
+    expect(survived).toBe(true);
   });
 });
 

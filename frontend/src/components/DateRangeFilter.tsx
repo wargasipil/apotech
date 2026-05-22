@@ -1,6 +1,7 @@
-import { HStack, Input } from "@chakra-ui/react";
+import { HStack } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
+import DatePickerField from "./DatePicker";
 import EnumSelect from "./EnumSelect";
 
 export type RangePreset = "today" | "7d" | "30d" | "90d" | "ytd" | "custom";
@@ -88,17 +89,15 @@ export default function DateRangeFilter({ value, onChange }: Props) {
       />
       {value.preset === "custom" && (
         <>
-          <Input
+          <DatePickerField
             size="sm"
-            type="date"
             value={value.customFrom ?? ""}
-            onChange={(e) => onChange(resolveRange("custom", e.target.value, value.customTo))}
+            onChange={(v) => onChange(resolveRange("custom", v, value.customTo))}
           />
-          <Input
+          <DatePickerField
             size="sm"
-            type="date"
             value={value.customTo ?? ""}
-            onChange={(e) => onChange(resolveRange("custom", value.customFrom, e.target.value))}
+            onChange={(v) => onChange(resolveRange("custom", value.customFrom, v))}
           />
         </>
       )}

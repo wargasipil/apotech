@@ -33,6 +33,12 @@ type Medicine struct {
 	PrescriptionRequired bool                   `protobuf:"varint,7,opt,name=prescription_required,json=prescriptionRequired,proto3" json:"prescription_required,omitempty"`
 	Active               bool                   `protobuf:"varint,8,opt,name=active,proto3" json:"active,omitempty"`
 	CreatedAt            int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ReadyStock           int64                  `protobuf:"varint,10,opt,name=ready_stock,json=readyStock,proto3" json:"ready_stock,omitempty"`                             // on-hand in the active warehouse (list enrich)
+	OnOrderStock         int64                  `protobuf:"varint,11,opt,name=on_order_stock,json=onOrderStock,proto3" json:"on_order_stock,omitempty"`                     // incoming on open POs (list enrich)
+	LastRestockDate      string                 `protobuf:"bytes,12,opt,name=last_restock_date,json=lastRestockDate,proto3" json:"last_restock_date,omitempty"`             // YYYY-MM-DD of most recent batch receive (GetMedicine only)
+	LastRestockSupplier  string                 `protobuf:"bytes,13,opt,name=last_restock_supplier,json=lastRestockSupplier,proto3" json:"last_restock_supplier,omitempty"` // supplier of that batch (GetMedicine only)
+	TotalStock           int64                  `protobuf:"varint,14,opt,name=total_stock,json=totalStock,proto3" json:"total_stock,omitempty"`                             // global on-hand across all warehouses (GetMedicine only)
+	StockValuation       int64                  `protobuf:"varint,15,opt,name=stock_valuation,json=stockValuation,proto3" json:"stock_valuation,omitempty"`                 // global value at cost = Σ qty × cost_price (GetMedicine only)
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -130,6 +136,48 @@ func (x *Medicine) GetCreatedAt() int64 {
 	return 0
 }
 
+func (x *Medicine) GetReadyStock() int64 {
+	if x != nil {
+		return x.ReadyStock
+	}
+	return 0
+}
+
+func (x *Medicine) GetOnOrderStock() int64 {
+	if x != nil {
+		return x.OnOrderStock
+	}
+	return 0
+}
+
+func (x *Medicine) GetLastRestockDate() string {
+	if x != nil {
+		return x.LastRestockDate
+	}
+	return ""
+}
+
+func (x *Medicine) GetLastRestockSupplier() string {
+	if x != nil {
+		return x.LastRestockSupplier
+	}
+	return ""
+}
+
+func (x *Medicine) GetTotalStock() int64 {
+	if x != nil {
+		return x.TotalStock
+	}
+	return 0
+}
+
+func (x *Medicine) GetStockValuation() int64 {
+	if x != nil {
+		return x.StockValuation
+	}
+	return 0
+}
+
 type MedicinePrice struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -217,6 +265,9 @@ func (x *MedicinePrice) GetChangedBy() string {
 type ListMedicinesRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	IncludeInactive bool                   `protobuf:"varint,1,opt,name=include_inactive,json=includeInactive,proto3" json:"include_inactive,omitempty"`
+	Limit           int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset          int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Query           string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"` // optional ILIKE name / sku
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -258,9 +309,31 @@ func (x *ListMedicinesRequest) GetIncludeInactive() bool {
 	return false
 }
 
+func (x *ListMedicinesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListMedicinesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *ListMedicinesRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
 type ListMedicinesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Medicines     []*Medicine            `protobuf:"bytes,1,rep,name=medicines,proto3" json:"medicines,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -300,6 +373,13 @@ func (x *ListMedicinesResponse) GetMedicines() []*Medicine {
 		return x.Medicines
 	}
 	return nil
+}
+
+func (x *ListMedicinesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetMedicineRequest struct {
@@ -930,7 +1010,7 @@ var File_inventory_iface_v1_medicine_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\n" +
-	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\x83\x02\n" +
+	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xf4\x03\n" +
 	"\bMedicine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03sku\x18\x02 \x01(\tR\x03sku\x12\x12\n" +
@@ -942,7 +1022,16 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x15prescription_required\x18\a \x01(\bR\x14prescriptionRequired\x12\x16\n" +
 	"\x06active\x18\b \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\x03R\tcreatedAt\"\xc8\x01\n" +
+	"created_at\x18\t \x01(\x03R\tcreatedAt\x12\x1f\n" +
+	"\vready_stock\x18\n" +
+	" \x01(\x03R\n" +
+	"readyStock\x12$\n" +
+	"\x0eon_order_stock\x18\v \x01(\x03R\fonOrderStock\x12*\n" +
+	"\x11last_restock_date\x18\f \x01(\tR\x0flastRestockDate\x122\n" +
+	"\x15last_restock_supplier\x18\r \x01(\tR\x13lastRestockSupplier\x12\x1f\n" +
+	"\vtotal_stock\x18\x0e \x01(\x03R\n" +
+	"totalStock\x12'\n" +
+	"\x0fstock_valuation\x18\x0f \x01(\x03R\x0estockValuation\"\xc8\x01\n" +
 	"\rMedicinePrice\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vmedicine_id\x18\x02 \x01(\tR\n" +
@@ -952,11 +1041,15 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x0eeffective_from\x18\x04 \x01(\x03R\reffectiveFrom\x12!\n" +
 	"\feffective_to\x18\x05 \x01(\x03R\veffectiveTo\x12\x1d\n" +
 	"\n" +
-	"changed_by\x18\x06 \x01(\tR\tchangedBy\"A\n" +
+	"changed_by\x18\x06 \x01(\tR\tchangedBy\"\x85\x01\n" +
 	"\x14ListMedicinesRequest\x12)\n" +
-	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\"S\n" +
+	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12\x14\n" +
+	"\x05query\x18\x04 \x01(\tR\x05query\"i\n" +
 	"\x15ListMedicinesResponse\x12:\n" +
-	"\tmedicines\x18\x01 \x03(\v2\x1c.inventory_iface.v1.MedicineR\tmedicines\"$\n" +
+	"\tmedicines\x18\x01 \x03(\v2\x1c.inventory_iface.v1.MedicineR\tmedicines\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"$\n" +
 	"\x12GetMedicineRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"O\n" +
 	"\x13GetMedicineResponse\x128\n" +

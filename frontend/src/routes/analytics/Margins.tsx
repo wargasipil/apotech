@@ -149,7 +149,7 @@ export default function MarginsAnalytics() {
             value={supplierId}
             onChange={setSupplierId}
             loadOptions={searchSuppliers}
-            itemToString={(s) => s.name}
+            itemToString={(s) => `${s.code} · ${s.name}`}
             itemToValue={(s) => s.id}
             placeholder={t("analytics.margin.selectSupplier")}
           />

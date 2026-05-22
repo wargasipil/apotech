@@ -1,0 +1,21 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - heading "Apotech sign in" [level=2] [ref=e11]
+    - generic [ref=e13]:
+      - group [ref=e14]:
+        - generic [ref=e15]:
+          - text: Email
+          - generic [ref=e16]: "*"
+        - textbox "Email" [active] [ref=e17]
+      - group [ref=e18]:
+        - generic [ref=e19]:
+          - text: Password
+          - generic [ref=e20]: "*"
+        - generic [ref=e21]:
+          - textbox "Password" [ref=e22]
+          - button "Show password" [ref=e24] [cursor=pointer]:
+            - img [ref=e25]
+      - button "Sign in" [ref=e28] [cursor=pointer]
+  - region "Notifications, top-end (alt+T)"

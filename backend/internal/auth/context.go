@@ -8,9 +8,10 @@ import (
 )
 
 type Principal struct {
-	UserID   string
-	Role     string
-	BranchID string // current branch, parsed from the X-Branch-Id request header
+	UserID      string
+	Role        string
+	BranchID    string // deprecated; superseded by WarehouseID
+	WarehouseID string // active warehouse, parsed from the X-Warehouse-Id request header
 }
 
 type ctxKey struct{}

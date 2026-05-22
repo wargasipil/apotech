@@ -100,21 +100,25 @@ func (t *TaxInvoices) ListNsfp(
 	ctx context.Context,
 	req *connect.Request[taxifacev1.ListNsfpRequest],
 ) (*connect.Response[taxifacev1.ListNsfpResponse], error) {
-	q := t.db.WithContext(ctx).Order("code ASC")
-	if req.Msg.FiscalYear > 0 {
-		q = q.Where("fiscal_year = ?", req.Msg.FiscalYear)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if req.Msg.FiscalYear > 0 {
+			q = q.Where("fiscal_year = ?", req.Msg.FiscalYear)
+		}
+		if req.Msg.UnusedOnly {
+			q = q.Where("used_at IS NULL")
+		}
+		return q
 	}
-	if req.Msg.UnusedOnly {
-		q = q.Where("used_at IS NULL")
+
+	var total int64
+	if err := applyFilters(t.db.WithContext(ctx).Model(&model.NsfpEntry{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 1000 {
-		limit = 200
-	}
-	q = q.Limit(limit)
 
 	var rows []model.NsfpEntry
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(t.db.WithContext(ctx).Model(&model.NsfpEntry{})).
+		Order("code ASC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -135,6 +139,7 @@ func (t *TaxInvoices) ListNsfp(
 	return connect.NewResponse(&taxifacev1.ListNsfpResponse{
 		Entries:     out,
 		UnusedTotal: int32(unusedTotal),
+		Total:       int32(total),
 	}), nil
 }
 
@@ -142,27 +147,30 @@ func (t *TaxInvoices) ListTaxInvoices(
 	ctx context.Context,
 	req *connect.Request[taxifacev1.ListTaxInvoicesRequest],
 ) (*connect.Response[taxifacev1.ListTaxInvoicesResponse], error) {
-	q := t.db.WithContext(ctx).
-		Where("tax_invoice_no IS NOT NULL AND tax_invoice_no <> ''").
-		Order("tax_invoice_issued_at DESC")
-	if req.Msg.FromUnix > 0 {
-		q = q.Where("tax_invoice_issued_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		q = q.Where("tax_invoice_no IS NOT NULL AND tax_invoice_no <> ''")
+		if req.Msg.FromUnix > 0 {
+			q = q.Where("tax_invoice_issued_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+		}
+		if req.Msg.ToUnix > 0 {
+			q = q.Where("tax_invoice_issued_at < ?", time.Unix(req.Msg.ToUnix, 0))
+		}
+		return q
 	}
-	if req.Msg.ToUnix > 0 {
-		q = q.Where("tax_invoice_issued_at < ?", time.Unix(req.Msg.ToUnix, 0))
+
+	var total int64
+	if err := applyFilters(t.db.WithContext(ctx).Model(&model.Sale{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 1000 {
-		limit = 200
-	}
-	q = q.Limit(limit)
 
 	var sales []model.Sale
-	if err := q.Find(&sales).Error; err != nil {
+	if err := applyFilters(t.db.WithContext(ctx).Model(&model.Sale{})).
+		Order("tax_invoice_issued_at DESC").Offset(offset).Limit(limit).Find(&sales).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if len(sales) == 0 {
-		return connect.NewResponse(&taxifacev1.ListTaxInvoicesResponse{}), nil
+		return connect.NewResponse(&taxifacev1.ListTaxInvoicesResponse{Total: int32(total)}), nil
 	}
 	custIDs := make([]string, 0, len(sales))
 	for _, s := range sales {
@@ -190,7 +198,10 @@ func (t *TaxInvoices) ListTaxInvoices(
 		}
 		out = append(out, taxInvoiceToProto(&sales[i], cust))
 	}
-	return connect.NewResponse(&taxifacev1.ListTaxInvoicesResponse{Invoices: out}), nil
+	return connect.NewResponse(&taxifacev1.ListTaxInvoicesResponse{
+		Invoices: out,
+		Total:    int32(total),
+	}), nil
 }
 
 func (t *TaxInvoices) GetTaxInvoice(

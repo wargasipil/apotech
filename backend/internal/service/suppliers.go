@@ -23,19 +23,35 @@ func (s *Suppliers) ListSuppliers(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListSuppliersRequest],
 ) (*connect.Response[inventoryifacev1.ListSuppliersResponse], error) {
-	q := s.db.WithContext(ctx).Order("name")
-	if !req.Msg.IncludeInactive {
-		q = q.Where("active = ?", true)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	query := strings.TrimSpace(req.Msg.Query)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if !req.Msg.IncludeInactive {
+			q = q.Where("active = ?", true)
+		}
+		if query != "" {
+			pattern := "%" + query + "%"
+			q = q.Where("name ILIKE ? OR code ILIKE ?", pattern, pattern)
+		}
+		return q
+	}
+	var total int64
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.Supplier{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	var rows []model.Supplier
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.Supplier{})).
+		Order("name").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*inventoryifacev1.Supplier, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, supplierToProto(&r))
 	}
-	return connect.NewResponse(&inventoryifacev1.ListSuppliersResponse{Suppliers: out}), nil
+	return connect.NewResponse(&inventoryifacev1.ListSuppliersResponse{
+		Suppliers: out,
+		Total:     int32(total),
+	}), nil
 }
 
 func (s *Suppliers) GetSupplier(
@@ -54,10 +70,12 @@ func (s *Suppliers) CreateSupplier(
 	req *connect.Request[inventoryifacev1.CreateSupplierRequest],
 ) (*connect.Response[inventoryifacev1.CreateSupplierResponse], error) {
 	name := strings.TrimSpace(req.Msg.Name)
-	if name == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
+	code := strings.ToUpper(strings.TrimSpace(req.Msg.Code))
+	if name == "" || code == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("code and name required"))
 	}
 	sup := model.Supplier{
+		Code:         code,
 		Name:         name,
 		ContactEmail: strings.TrimSpace(req.Msg.ContactEmail),
 		Phone:        strings.TrimSpace(req.Msg.Phone),
@@ -78,15 +96,16 @@ func (s *Suppliers) UpdateSupplier(
 		return nil, err
 	}
 	updates := map[string]any{
+		"code":          strings.ToUpper(strings.TrimSpace(req.Msg.Code)),
 		"name":          strings.TrimSpace(req.Msg.Name),
 		"contact_email": strings.TrimSpace(req.Msg.ContactEmail),
 		"phone":         strings.TrimSpace(req.Msg.Phone),
 	}
-	if updates["name"].(string) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name required"))
+	if updates["name"].(string) == "" || updates["code"].(string) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("code and name required"))
 	}
 	if err := s.db.WithContext(ctx).Model(sup).Updates(updates).Error; err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("update supplier: %w", err))
 	}
 	return connect.NewResponse(&inventoryifacev1.UpdateSupplierResponse{Supplier: supplierToProto(sup)}), nil
 }
@@ -103,7 +122,8 @@ func (s *Suppliers) SearchSuppliers(
 	q := s.db.WithContext(ctx).Where("active = ?", true).Order("name").Limit(limit)
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR contact_email ILIKE ? OR phone ILIKE ?", pattern, pattern, pattern)
+		q = q.Where("name ILIKE ? OR code ILIKE ? OR contact_email ILIKE ? OR phone ILIKE ?",
+			pattern, pattern, pattern, pattern)
 	}
 	var rows []model.Supplier
 	if err := q.Find(&rows).Error; err != nil {
@@ -149,6 +169,7 @@ func (s *Suppliers) load(ctx context.Context, id string) (*model.Supplier, error
 func supplierToProto(s *model.Supplier) *inventoryifacev1.Supplier {
 	return &inventoryifacev1.Supplier{
 		Id:           s.ID,
+		Code:         s.Code,
 		Name:         s.Name,
 		ContactEmail: s.ContactEmail,
 		Phone:        s.Phone,

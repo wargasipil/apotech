@@ -3,23 +3,26 @@ import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
-import RouteTabs from "../components/RouteTabs";
 
+// Thin layout for the Inventaris sub-pages. Sub-navigation now lives in the
+// sidebar (the expandable "Inventaris" group), so there is no in-page tab
+// strip — this just provides a consistent PageHeader + breadcrumb. Medicines
+// moved out to the top-level /medicines route.
 export default function Inventory() {
   const { t } = useTranslation();
   const location = useLocation();
-  const tabs = [
-    { value: "medicines", to: "/inventory/medicines", label: t("inventory.tabs.medicines") },
-    { value: "suppliers", to: "/inventory/suppliers", label: t("inventory.tabs.suppliers") },
-    { value: "batches", to: "/inventory/batches", label: t("inventory.tabs.batches") },
-    { value: "movements", to: "/inventory/movements", label: t("inventory.tabs.movements") },
-    { value: "stocktake", to: "/inventory/stocktake", label: t("inventory.tabs.stocktake") },
+  const sections = [
+    { value: "suppliers", to: "/inventory/suppliers" },
+    { value: "batches", to: "/inventory/batches" },
+    { value: "movements", to: "/inventory/movements" },
+    { value: "stocktake", to: "/inventory/stocktake" },
+    { value: "transfers", to: "/inventory/transfers" },
   ];
   const activeKey =
-    tabs.find((tab) => location.pathname.startsWith(tab.to))?.value ?? "medicines";
+    sections.find((s) => location.pathname.startsWith(s.to))?.value ?? "suppliers";
 
-  // Stocktake detail (e.g. /inventory/stocktake/<id>) hides the tab strip;
-  // it has its own breadcrumb back to the list.
+  // Stocktake detail (e.g. /inventory/stocktake/<id>) shows its own breadcrumb
+  // back to the list.
   const isSubpage = /^\/inventory\/stocktake\/[^/]+\/?$/.test(location.pathname);
 
   return (
@@ -28,7 +31,7 @@ export default function Inventory() {
         breadcrumbs={
           isSubpage
             ? [
-                { label: t("inventory.title"), to: "/inventory/medicines" },
+                { label: t("inventory.title"), to: "/inventory/suppliers" },
                 { label: t("inventory.tabs.stocktake"), to: "/inventory/stocktake" },
               ]
             : [{ label: t("inventory.title") }, { label: t(`inventory.tabs.${activeKey}`) }]
@@ -36,7 +39,6 @@ export default function Inventory() {
         title={t("inventory.title")}
       />
       <Stack gap={4}>
-        {!isSubpage && <RouteTabs items={tabs} />}
         <Outlet />
       </Stack>
     </Box>

@@ -39,9 +39,10 @@ test.describe("SearchableSelect (async loadOptions)", () => {
     expect(rpcs.filter((u) => SEARCH.test(u)).length).toBeGreaterThanOrEqual(1);
 
     // Type a query into the supplier combobox; debounced loadOptions fires
-    // another search. `role=combobox` is the input itself in Chakra v3.
+    // another search. A SearchableSelect renders an <input role=combobox>;
+    // target that (the TopBar warehouse selector is a <button role=combobox>).
     const beforeType = rpcs.filter((u) => SEARCH.test(u)).length;
-    await page.getByRole("combobox").first().fill("a");
+    await page.locator('input[role="combobox"]').first().fill("a");
     await page.waitForTimeout(700);
     expect(rpcs.filter((u) => SEARCH.test(u)).length).toBeGreaterThan(beforeType);
   });

@@ -14,14 +14,16 @@ export const prescriptionKeys = {
   one: (id: string) => [...prescriptionKeys.all, "one", id] as const,
 };
 
+// Server-paginated. Returns { rows, total }. Caller sets limit/offset on req.
 export function usePrescriptionsQuery(req: PartialMessage<ListPrescriptionsRequest> = {}) {
-  return useQuery({
+  const q = useQuery({
     queryKey: prescriptionKeys.list(req),
     queryFn: async () => {
       const res = await prescriptionClient.listPrescriptions(req);
-      return res.prescriptions;
+      return { rows: res.prescriptions, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
 }
 
 export function usePrescriptionQuery(id: string, enabled = true) {

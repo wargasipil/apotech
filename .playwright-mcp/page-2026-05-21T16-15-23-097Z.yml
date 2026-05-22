@@ -1,0 +1,335 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Medicines" [ref=e154] [cursor=pointer]:
+            - /url: /medicines
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - paragraph [ref=e159]: Medicines
+          - generic [ref=e160]:
+            - button "Inventory" [ref=e161] [cursor=pointer]:
+              - img [ref=e162]
+              - paragraph [ref=e166]: Inventory
+              - img [ref=e249]
+            - generic [ref=e251]:
+              - link "Restock" [active] [ref=e252] [cursor=pointer]:
+                - /url: /purchasing
+                - generic [ref=e253]:
+                  - img [ref=e254]
+                  - paragraph [ref=e259]: Restock
+              - link "Suppliers" [ref=e260] [cursor=pointer]:
+                - /url: /inventory/suppliers
+                - generic [ref=e261]:
+                  - img [ref=e262]
+                  - paragraph [ref=e266]: Suppliers
+              - link "Batches" [ref=e267] [cursor=pointer]:
+                - /url: /inventory/batches
+                - generic [ref=e268]:
+                  - img [ref=e269]
+                  - paragraph [ref=e279]: Batches
+              - link "Movements" [ref=e280] [cursor=pointer]:
+                - /url: /inventory/movements
+                - generic [ref=e281]:
+                  - img [ref=e282]
+                  - paragraph [ref=e285]: Movements
+              - link "Stocktake" [ref=e286] [cursor=pointer]:
+                - /url: /inventory/stocktake
+                - generic [ref=e287]:
+                  - img [ref=e288]
+                  - paragraph [ref=e291]: Stocktake
+              - link "Transfers" [ref=e292] [cursor=pointer]:
+                - /url: /inventory/transfers
+                - generic [ref=e293]:
+                  - img [ref=e294]
+                  - paragraph [ref=e299]: Transfers
+          - link "Customers" [ref=e27] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e32]: Customers
+          - link "Order history" [ref=e170] [cursor=pointer]:
+            - /url: /orders
+            - generic [ref=e171]:
+              - img [ref=e172]
+              - paragraph [ref=e175]: Order history
+          - link "Prescriptions" [ref=e176] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e177]:
+              - img [ref=e178]
+              - paragraph [ref=e181]: Prescriptions
+          - link "Analytics" [ref=e182] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e183]:
+              - img [ref=e184]
+              - paragraph [ref=e186]: Analytics
+          - link "Tax" [ref=e187] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e188]:
+              - img [ref=e189]
+              - paragraph [ref=e193]: Tax
+          - link "BPJS" [ref=e194] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e195]:
+              - img [ref=e196]
+              - paragraph [ref=e199]: BPJS
+          - link "Warehouses" [ref=e200] [cursor=pointer]:
+            - /url: /warehouses
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - paragraph [ref=e205]: Warehouses
+          - link "Users" [ref=e206] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e207]:
+              - img [ref=e208]
+              - paragraph [ref=e213]: Users
+        - generic [ref=e33]:
+          - generic [ref=e214]:
+            - paragraph [ref=e215]: Owner
+            - paragraph [ref=e216]: owner@apotech.local
+          - button "Sign out" [ref=e217] [cursor=pointer]:
+            - img [ref=e218]
+            - paragraph [ref=e221]: Sign out
+          - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e41]:
+            - generic [ref=e222]:
+              - combobox [ref=e223]
+              - generic [ref=e224]:
+                - combobox [ref=e225]:
+                  - generic [ref=e226]: MAIN · Gudang Utama
+                - generic:
+                  - generic:
+                    - img
+            - button "language" [ref=e42] [cursor=pointer]:
+              - generic [ref=e43]:
+                - img [ref=e44]
+                - paragraph [ref=e48]: ID
+            - button "toggle theme" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+            - button "user menu" [ref=e227] [cursor=pointer]:
+              - generic [ref=e228]: O
+        - main [ref=e52]:
+          - generic [ref=e300]:
+            - generic [ref=e301]:
+              - paragraph [ref=e304]: Restock
+              - heading "Restock" [level=2] [ref=e307]
+            - generic [ref=e308]:
+              - tablist [ref=e310]:
+                - tab "All" [selected] [ref=e311] [cursor=pointer]
+                - tab "Draft" [ref=e312] [cursor=pointer]
+                - tab "Sent" [ref=e313] [cursor=pointer]
+                - tab "Partially received" [ref=e314] [cursor=pointer]
+                - tab "Received" [ref=e315] [cursor=pointer]
+                - tab "Closed" [ref=e316] [cursor=pointer]
+                - tab "Voided" [ref=e317] [cursor=pointer]
+                - tab "Suppliers" [ref=e318] [cursor=pointer]
+              - generic [ref=e319]:
+                - generic [ref=e320]:
+                  - generic [ref=e321]:
+                    - generic [ref=e322]:
+                      - img [ref=e324]
+                      - textbox "Search PO / supplier / code / medicine" [ref=e327]
+                    - generic [ref=e329]:
+                      - combobox "Supplier —" [ref=e330]
+                      - button "Toggle suggestions" [ref=e332]:
+                        - img [ref=e333]
+                    - generic [ref=e335]:
+                      - combobox [ref=e336]
+                      - generic [ref=e337]:
+                        - combobox [ref=e338]:
+                          - generic [ref=e339]: "Date: off"
+                        - generic:
+                          - generic:
+                            - img
+                    - generic [ref=e340]:
+                      - checkbox "Outstanding only" [ref=e341]
+                      - generic [ref=e344]: Outstanding only
+                  - button "New PO" [ref=e345] [cursor=pointer]:
+                    - img [ref=e346]
+                    - text: New PO
+                - table [ref=e347]:
+                  - rowgroup [ref=e348]:
+                    - 'row "PO # Supplier Item Status Created Received Invoice no Total ordered Outstanding" [ref=e349]':
+                      - 'columnheader "PO #" [ref=e350]'
+                      - columnheader "Supplier" [ref=e351]
+                      - columnheader "Item" [ref=e352]
+                      - columnheader "Status" [ref=e353]
+                      - columnheader "Created" [ref=e354]
+                      - columnheader "Received" [ref=e355]
+                      - columnheader "Invoice no" [ref=e356]
+                      - columnheader "Total ordered" [ref=e357]
+                      - columnheader "Outstanding" [ref=e358]
+                  - rowgroup [ref=e359]:
+                    - row "PO-2026-0011 00cdf296 PO-Med-1779376588060636000 ×5 Received May 21, 2026 May 21, 2026 FAK-36000 IDR 5,000 IDR 5,000" [ref=e360] [cursor=pointer]:
+                      - cell "PO-2026-0011" [ref=e361]
+                      - cell "00cdf296" [ref=e362]
+                      - cell "PO-Med-1779376588060636000 ×5" [ref=e363]:
+                        - paragraph [ref=e365]: PO-Med-1779376588060636000 ×5
+                      - cell "Received" [ref=e366]:
+                        - generic [ref=e367]: Received
+                      - cell "May 21, 2026" [ref=e368]
+                      - cell "May 21, 2026" [ref=e369]
+                      - cell "FAK-36000" [ref=e370]
+                      - cell "IDR 5,000" [ref=e371]
+                      - cell "IDR 5,000" [ref=e372]
+                    - row "PO-2026-0010 39dd99ec Stock-Med-1779376584156996600 ×5 Sent May 21, 2026 — — IDR 2,500 IDR 2,500" [ref=e373] [cursor=pointer]:
+                      - cell "PO-2026-0010" [ref=e374]
+                      - cell "39dd99ec" [ref=e375]
+                      - cell "Stock-Med-1779376584156996600 ×5" [ref=e376]:
+                        - paragraph [ref=e378]: Stock-Med-1779376584156996600 ×5
+                      - cell "Sent" [ref=e379]:
+                        - generic [ref=e380]: Sent
+                      - cell "May 21, 2026" [ref=e381]
+                      - cell "—" [ref=e382]
+                      - cell "—" [ref=e383]
+                      - cell "IDR 2,500" [ref=e384]
+                      - cell "IDR 2,500" [ref=e385]
+                    - row "PO-2026-0009 2a403822 PO-Med-1779298346015012600 ×5 Received May 21, 2026 May 21, 2026 FAK-12600 IDR 5,000 IDR 5,000" [ref=e386] [cursor=pointer]:
+                      - cell "PO-2026-0009" [ref=e387]
+                      - cell "2a403822" [ref=e388]
+                      - cell "PO-Med-1779298346015012600 ×5" [ref=e389]:
+                        - paragraph [ref=e391]: PO-Med-1779298346015012600 ×5
+                      - cell "Received" [ref=e392]:
+                        - generic [ref=e393]: Received
+                      - cell "May 21, 2026" [ref=e394]
+                      - cell "May 21, 2026" [ref=e395]
+                      - cell "FAK-12600" [ref=e396]
+                      - cell "IDR 5,000" [ref=e397]
+                      - cell "IDR 5,000" [ref=e398]
+                    - row "PO-2026-0008 89355b0b Stock-Med-1779298343708157600 ×5 Sent May 21, 2026 — — IDR 2,500 IDR 2,500" [ref=e399] [cursor=pointer]:
+                      - cell "PO-2026-0008" [ref=e400]
+                      - cell "89355b0b" [ref=e401]
+                      - cell "Stock-Med-1779298343708157600 ×5" [ref=e402]:
+                        - paragraph [ref=e404]: Stock-Med-1779298343708157600 ×5
+                      - cell "Sent" [ref=e405]:
+                        - generic [ref=e406]: Sent
+                      - cell "May 21, 2026" [ref=e407]
+                      - cell "—" [ref=e408]
+                      - cell "—" [ref=e409]
+                      - cell "IDR 2,500" [ref=e410]
+                      - cell "IDR 2,500" [ref=e411]
+                    - row "PO-2026-0007 27edb62c PO-Med-1779296410114222900 ×5 Received May 21, 2026 May 21, 2026 FAK-22900 IDR 5,000 IDR 5,000" [ref=e412] [cursor=pointer]:
+                      - cell "PO-2026-0007" [ref=e413]
+                      - cell "27edb62c" [ref=e414]
+                      - cell "PO-Med-1779296410114222900 ×5" [ref=e415]:
+                        - paragraph [ref=e417]: PO-Med-1779296410114222900 ×5
+                      - cell "Received" [ref=e418]:
+                        - generic [ref=e419]: Received
+                      - cell "May 21, 2026" [ref=e420]
+                      - cell "May 21, 2026" [ref=e421]
+                      - cell "FAK-22900" [ref=e422]
+                      - cell "IDR 5,000" [ref=e423]
+                      - cell "IDR 5,000" [ref=e424]
+                    - row "PO-2026-0006 043f9f0b PO-Med-1779295472924913600 ×5 Closed May 20, 2026 May 20, 2026 FAK-13600 IDR 5,000 -IDR 5,000" [ref=e425] [cursor=pointer]:
+                      - cell "PO-2026-0006" [ref=e426]
+                      - cell "043f9f0b" [ref=e427]
+                      - cell "PO-Med-1779295472924913600 ×5" [ref=e428]:
+                        - paragraph [ref=e430]: PO-Med-1779295472924913600 ×5
+                      - cell "Closed" [ref=e431]:
+                        - generic [ref=e432]: Closed
+                      - cell "May 20, 2026" [ref=e433]
+                      - cell "May 20, 2026" [ref=e434]
+                      - cell "FAK-13600" [ref=e435]
+                      - cell "IDR 5,000" [ref=e436]
+                      - cell "-IDR 5,000" [ref=e437]
+                    - row "PO-2026-0005 bab5e603 PO-Med-1779295441041371500 ×5 Received May 20, 2026 May 20, 2026 FAK-71500 IDR 5,000 IDR 5,000" [ref=e438] [cursor=pointer]:
+                      - cell "PO-2026-0005" [ref=e439]
+                      - cell "bab5e603" [ref=e440]
+                      - cell "PO-Med-1779295441041371500 ×5" [ref=e441]:
+                        - paragraph [ref=e443]: PO-Med-1779295441041371500 ×5
+                      - cell "Received" [ref=e444]:
+                        - generic [ref=e445]: Received
+                      - cell "May 20, 2026" [ref=e446]
+                      - cell "May 20, 2026" [ref=e447]
+                      - cell "FAK-71500" [ref=e448]
+                      - cell "IDR 5,000" [ref=e449]
+                      - cell "IDR 5,000" [ref=e450]
+                    - row "PO-2026-0004 SUP-0007 · test Bodrex ×200 Amoxilin ×233 Received May 20, 2026 May 20, 2026 — IDR 10,020,326 IDR 0" [ref=e451] [cursor=pointer]:
+                      - cell "PO-2026-0004" [ref=e452]
+                      - cell "SUP-0007 · test" [ref=e453]
+                      - cell "Bodrex ×200 Amoxilin ×233" [ref=e454]:
+                        - generic [ref=e455]:
+                          - paragraph [ref=e456]: Bodrex ×200
+                          - paragraph [ref=e457]: Amoxilin ×233
+                      - cell "Received" [ref=e458]:
+                        - generic [ref=e459]: Received
+                      - cell "May 20, 2026" [ref=e460]
+                      - cell "May 20, 2026" [ref=e461]
+                      - cell "—" [ref=e462]
+                      - cell "IDR 10,020,326" [ref=e463]
+                      - cell "IDR 0" [ref=e464]
+                    - row "PO-2026-0003 SUP-0007 · test Amoxilin ×1000 Closed May 19, 2026 May 19, 2026 — IDR 2,000,000 -IDR 123" [ref=e465] [cursor=pointer]:
+                      - cell "PO-2026-0003" [ref=e466]
+                      - cell "SUP-0007 · test" [ref=e467]
+                      - cell "Amoxilin ×1000" [ref=e468]:
+                        - paragraph [ref=e470]: Amoxilin ×1000
+                      - cell "Closed" [ref=e471]:
+                        - generic [ref=e472]: Closed
+                      - cell "May 19, 2026" [ref=e473]
+                      - cell "May 19, 2026" [ref=e474]
+                      - cell "—" [ref=e475]
+                      - cell "IDR 2,000,000" [ref=e476]
+                      - cell "-IDR 123" [ref=e477]
+                    - row "PO-2026-0002 SUP-0001 · asd khlkhl ll;jl; ×68 Received May 17, 2026 May 17, 2026 — IDR 68,000 IDR 0" [ref=e478] [cursor=pointer]:
+                      - cell "PO-2026-0002" [ref=e479]
+                      - cell "SUP-0001 · asd" [ref=e480]
+                      - cell "khlkhl ll;jl; ×68" [ref=e481]:
+                        - paragraph [ref=e483]: khlkhl ll;jl; ×68
+                      - cell "Received" [ref=e484]:
+                        - generic [ref=e485]: Received
+                      - cell "May 17, 2026" [ref=e486]
+                      - cell "May 17, 2026" [ref=e487]
+                      - cell "—" [ref=e488]
+                      - cell "IDR 68,000" [ref=e489]
+                      - cell "IDR 0" [ref=e490]
+                    - row "PO-2026-0001 SUP-0001 · asd asdasdasd ×200 Received May 17, 2026 May 17, 2026 — IDR 2,005,400 IDR 0" [ref=e491] [cursor=pointer]:
+                      - cell "PO-2026-0001" [ref=e492]
+                      - cell "SUP-0001 · asd" [ref=e493]
+                      - cell "asdasdasd ×200" [ref=e494]:
+                        - paragraph [ref=e496]: asdasdasd ×200
+                      - cell "Received" [ref=e497]:
+                        - generic [ref=e498]: Received
+                      - cell "May 17, 2026" [ref=e499]
+                      - cell "May 17, 2026" [ref=e500]
+                      - cell "—" [ref=e501]
+                      - cell "IDR 2,005,400" [ref=e502]
+                      - cell "IDR 0" [ref=e503]
+                - generic [ref=e504]:
+                  - paragraph [ref=e505]: Showing 1–11 of 11
+                  - generic [ref=e506]:
+                    - generic [ref=e507]:
+                      - combobox [ref=e508]
+                      - generic [ref=e509]:
+                        - combobox [ref=e510]:
+                          - generic [ref=e511]: 25 / page
+                        - generic:
+                          - generic:
+                            - img
+                    - button "Prev" [disabled] [ref=e512]:
+                      - img [ref=e513]
+                      - text: Prev
+                    - button "Next" [disabled] [ref=e515]:
+                      - text: Next
+                      - img [ref=e516]
+    - generic [ref=e55]:
+      - img [ref=e57]
+      - button "Open Tanstack query devtools" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+  - region "Notifications, top-end (alt+T)"

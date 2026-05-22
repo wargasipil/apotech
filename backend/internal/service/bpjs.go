@@ -42,27 +42,33 @@ func (b *BpjsClaims) ListClaims(
 	ctx context.Context,
 	req *connect.Request[bpjsifacev1.ListClaimsRequest],
 ) (*connect.Response[bpjsifacev1.ListClaimsResponse], error) {
-	q := b.db.WithContext(ctx).Order("created_at DESC")
-	if s := strings.TrimSpace(strings.ToUpper(req.Msg.Status)); s != "" {
-		q = q.Where("status = ?", s)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if s := strings.TrimSpace(strings.ToUpper(req.Msg.Status)); s != "" {
+			q = q.Where("status = ?", s)
+		}
+		if req.Msg.CustomerId != "" {
+			q = q.Where("customer_id = ?", req.Msg.CustomerId)
+		}
+		return q
 	}
-	if req.Msg.CustomerId != "" {
-		q = q.Where("customer_id = ?", req.Msg.CustomerId)
+	var total int64
+	if err := applyFilters(b.db.WithContext(ctx).Model(&model.BpjsClaim{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-	q = q.Limit(limit)
 	var rows []model.BpjsClaim
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(b.db.WithContext(ctx).Model(&model.BpjsClaim{})).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*bpjsifacev1.BpjsClaim, 0, len(rows))
 	for i := range rows {
 		out = append(out, bpjsToProto(&rows[i]))
 	}
-	return connect.NewResponse(&bpjsifacev1.ListClaimsResponse{Claims: out}), nil
+	return connect.NewResponse(&bpjsifacev1.ListClaimsResponse{
+		Claims: out,
+		Total:  int32(total),
+	}), nil
 }
 
 func (b *BpjsClaims) GetClaim(

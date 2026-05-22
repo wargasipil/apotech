@@ -32,6 +32,8 @@ message PurchaseOrder {
   int64 sent_at = 13;
   int64 closed_at = 14;
   repeated PurchaseOrderItem items = 15;
+  int64 received_at = 16;          // most recent receipt date (0 if none)
+  string invoice_no = 17;         // most recent receipt's supplier faktur
 }
 
 message PurchaseOrderItem {
@@ -42,6 +44,8 @@ message PurchaseOrderItem {
   int32 received_qty = 5;
   int64 unit_cost_price = 6;
   int64 subtotal = 7;             // ordered_qty * unit_cost_price
+  string medicine_name = 8;       // denormalized for list display
+  string medicine_sku = 9;        // denormalized for list display
 }
 
 message PurchaseOrderItemInput {
@@ -82,9 +86,15 @@ message ListPurchaseOrdersRequest {
   string supplier_id = 2;
   bool only_outstanding = 3;   // outstanding > 0 AND status != VOIDED
   int32 limit = 4;
+  string query = 5;            // ILIKE po_no / supplier name / supplier code / medicine name
+  int64 from_unix = 6;         // date-range lower bound (0 = unbounded)
+  int64 to_unix = 7;           // date-range upper bound (exclusive; 0 = unbounded)
+  string date_field = 8;       // which date the range filters: "created" | "received"
+  int32 offset = 9;
 }
 message ListPurchaseOrdersResponse {
   repeated PurchaseOrder orders = 1;
+  int32 total = 2;
 }
 
 message GetPurchaseOrderRequest { string id = 1; }

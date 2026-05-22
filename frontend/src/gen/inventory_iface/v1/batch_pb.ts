@@ -105,6 +105,16 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
    */
   onlyInStock = false;
 
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListBatchesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -115,6 +125,8 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "only_in_stock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListBatchesRequest {
@@ -143,6 +155,11 @@ export class ListBatchesResponse extends Message<ListBatchesResponse> {
    */
   batches: Batch[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListBatchesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -152,6 +169,7 @@ export class ListBatchesResponse extends Message<ListBatchesResponse> {
   static readonly typeName = "inventory_iface.v1.ListBatchesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "batches", kind: "message", T: Batch, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListBatchesResponse {

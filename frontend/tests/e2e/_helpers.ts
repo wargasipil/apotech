@@ -89,6 +89,6 @@ export async function clearAuth(page: Page): Promise<void> {
   await page.evaluate(() => {
     localStorage.removeItem("apotech_access_token");
     localStorage.removeItem("apotech_refresh_token");
-    localStorage.removeItem("apotech_branch_id");
+    localStorage.removeItem("apotech_warehouse_id");
   });
 }

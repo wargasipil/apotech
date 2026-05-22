@@ -7,6 +7,7 @@ import type {
   AttachPrescriptionRequest,
   CompleteSaleRequest,
   DetachPrescriptionRequest,
+  GetSalesSummaryRequest,
   ListSalesRequest,
   RemoveItemRequest,
   SetItemQuantityRequest,
@@ -17,6 +18,7 @@ import type {
 export const saleKeys = {
   all: ["sales"] as const,
   list: (filters: object) => [...saleKeys.all, "list", filters] as const,
+  summary: (filters: object) => [...saleKeys.all, "summary", filters] as const,
   detail: (id: string) => [...saleKeys.all, "detail", id] as const,
   todaySnapshot: () => [...saleKeys.all, "today-snapshot"] as const,
 };
@@ -117,13 +119,26 @@ export function usePrintReceiptMutation() {
   });
 }
 
+// Server-paginated. Returns { rows, total }. Caller sets limit/offset on filters.
 export function useListSalesQuery(filters: PartialMessage<ListSalesRequest> = {}) {
-  return useQuery({
+  const q = useQuery({
     queryKey: saleKeys.list(filters),
     queryFn: async () => {
       const res = await saleClient.listSales(filters);
-      return res.sales;
+      return { rows: res.sales, total: res.total };
     },
+  });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
+}
+
+// Server-side aggregate over ALL rows matching the same filters as
+// useListSalesQuery (NOT a client-side sum of a page). Backs the order-history
+// summary bar.
+export function useSalesSummaryQuery(filters: PartialMessage<GetSalesSummaryRequest> = {}) {
+  return useQuery({
+    queryKey: saleKeys.summary(filters),
+    queryFn: () => saleClient.getSalesSummary(filters),
+    staleTime: 30_000,
   });
 }
 

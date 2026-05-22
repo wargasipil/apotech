@@ -35,32 +35,155 @@ func (p *PurchaseOrders) ListPurchaseOrders(
 	ctx context.Context,
 	req *connect.Request[purchasingifacev1.ListPurchaseOrdersRequest],
 ) (*connect.Response[purchasingifacev1.ListPurchaseOrdersResponse], error) {
-	q := p.db.WithContext(ctx).Preload("Items").Order("created_at DESC")
-	if statusStr := poStatusToString(req.Msg.Status); statusStr != "" {
-		q = q.Where("status = ?", statusStr)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if statusStr := poStatusToString(req.Msg.Status); statusStr != "" {
+			q = q.Where("status = ?", statusStr)
+		}
+		if req.Msg.SupplierId != "" {
+			q = q.Where("supplier_id = ?", req.Msg.SupplierId)
+		}
+		if req.Msg.OnlyOutstanding {
+			q = q.Where("status NOT IN ?", []string{poStatusVoided, poStatusDraft}).
+				Where("ordered_total > paid_amount")
+		}
+		// Free-text search: PO number, supplier name/code, or any ordered medicine.
+		if query := strings.TrimSpace(req.Msg.Query); query != "" {
+			pattern := "%" + query + "%"
+			sub := p.db.Table("purchase_orders AS po").
+				Select("po.id").
+				Joins("JOIN suppliers s ON s.id = po.supplier_id").
+				Joins("LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id").
+				Joins("LEFT JOIN medicines m ON m.id = poi.medicine_id").
+				Where("po.po_no ILIKE ? OR s.name ILIKE ? OR s.code ILIKE ? OR m.name ILIKE ?",
+					pattern, pattern, pattern, pattern)
+			q = q.Where("id IN (?)", sub)
+		}
+		// Date range over the created date or the (latest) received date.
+		if req.Msg.FromUnix > 0 || req.Msg.ToUnix > 0 {
+			if req.Msg.DateField == "received" {
+				sub := p.db.Table("purchase_receipts").Select("purchase_order_id")
+				if req.Msg.FromUnix > 0 {
+					sub = sub.Where("received_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+				}
+				if req.Msg.ToUnix > 0 {
+					sub = sub.Where("received_at < ?", time.Unix(req.Msg.ToUnix, 0))
+				}
+				q = q.Where("id IN (?)", sub)
+			} else {
+				if req.Msg.FromUnix > 0 {
+					q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+				}
+				if req.Msg.ToUnix > 0 {
+					q = q.Where("created_at < ?", time.Unix(req.Msg.ToUnix, 0))
+				}
+			}
+		}
+		return q
 	}
-	if req.Msg.SupplierId != "" {
-		q = q.Where("supplier_id = ?", req.Msg.SupplierId)
+
+	var total int64
+	if err := applyFilters(p.db.WithContext(ctx).Model(&model.PurchaseOrder{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if req.Msg.OnlyOutstanding {
-		q = q.Where("status NOT IN ?", []string{poStatusVoided, poStatusDraft}).
-			Where("ordered_total > paid_amount")
-	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-	q = q.Limit(limit)
 
 	var rows []model.PurchaseOrder
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(p.db.WithContext(ctx).Preload("Items")).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*purchasingifacev1.PurchaseOrder, 0, len(rows))
 	for i := range rows {
 		out = append(out, poToProto(&rows[i]))
 	}
-	return connect.NewResponse(&purchasingifacev1.ListPurchaseOrdersResponse{Orders: out}), nil
+	if err := p.enrichList(ctx, out); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&purchasingifacev1.ListPurchaseOrdersResponse{
+		Orders: out,
+		Total:  int32(total),
+	}), nil
+}
+
+// enrichList denormalizes display-only data onto a page of POs: medicine names
+// for each ordered item, plus the most recent receipt's date + invoice number.
+// Batched (two queries, bounded by the page limit) to avoid N+1.
+func (p *PurchaseOrders) enrichList(ctx context.Context, orders []*purchasingifacev1.PurchaseOrder) error {
+	if len(orders) == 0 {
+		return nil
+	}
+	poIDs := make([]string, 0, len(orders))
+	medIDSet := map[string]struct{}{}
+	for _, po := range orders {
+		poIDs = append(poIDs, po.Id)
+		for _, it := range po.Items {
+			if it.MedicineId != "" {
+				medIDSet[it.MedicineId] = struct{}{}
+			}
+		}
+	}
+
+	// Medicine names + SKUs.
+	if len(medIDSet) > 0 {
+		medIDs := make([]string, 0, len(medIDSet))
+		for id := range medIDSet {
+			medIDs = append(medIDs, id)
+		}
+		type nameRow struct {
+			ID   string `gorm:"column:id"`
+			Name string `gorm:"column:name"`
+			Sku  string `gorm:"column:sku"`
+		}
+		var names []nameRow
+		if err := p.db.WithContext(ctx).Table("medicines").
+			Select("id, name, sku").Where("id IN ?", medIDs).Scan(&names).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		nameByID := make(map[string]string, len(names))
+		skuByID := make(map[string]string, len(names))
+		for _, n := range names {
+			nameByID[n.ID] = n.Name
+			skuByID[n.ID] = n.Sku
+		}
+		for _, po := range orders {
+			for _, it := range po.Items {
+				it.MedicineName = nameByID[it.MedicineId]
+				it.MedicineSku = skuByID[it.MedicineId]
+			}
+		}
+	}
+
+	// Most recent receipt per PO (received_at + invoice_no).
+	type rcvRow struct {
+		PurchaseOrderID string    `gorm:"column:purchase_order_id"`
+		ReceivedAt      time.Time `gorm:"column:received_at"`
+		InvoiceNo       string    `gorm:"column:invoice_no"`
+	}
+	var rcvs []rcvRow
+	if err := p.db.WithContext(ctx).
+		Raw(`SELECT DISTINCT ON (purchase_order_id)
+		        purchase_order_id, received_at, invoice_no
+		     FROM purchase_receipts
+		     WHERE purchase_order_id IN ?
+		     ORDER BY purchase_order_id, received_at DESC, created_at DESC`, poIDs).
+		Scan(&rcvs).Error; err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	type rcvInfo struct {
+		at  int64
+		inv string
+	}
+	rcvByPO := make(map[string]rcvInfo, len(rcvs))
+	for _, r := range rcvs {
+		rcvByPO[r.PurchaseOrderID] = rcvInfo{at: r.ReceivedAt.Unix(), inv: r.InvoiceNo}
+	}
+	for _, po := range orders {
+		if info, ok := rcvByPO[po.Id]; ok {
+			po.ReceivedAt = info.at
+			po.InvoiceNo = info.inv
+		}
+	}
+	return nil
 }
 
 func (p *PurchaseOrders) GetPurchaseOrder(

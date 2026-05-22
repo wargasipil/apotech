@@ -901,6 +901,11 @@ export class ListStocktakesRequest extends Message<ListStocktakesRequest> {
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListStocktakesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -911,6 +916,7 @@ export class ListStocktakesRequest extends Message<ListStocktakesRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListStocktakesRequest {
@@ -939,6 +945,11 @@ export class ListStocktakesResponse extends Message<ListStocktakesResponse> {
    */
   sessions: StocktakeSession[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListStocktakesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -948,6 +959,7 @@ export class ListStocktakesResponse extends Message<ListStocktakesResponse> {
   static readonly typeName = "stocktake_iface.v1.ListStocktakesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "sessions", kind: "message", T: StocktakeSession, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListStocktakesResponse {

@@ -8,21 +8,48 @@ import type {
   UpdateSupplierRequest,
 } from "../gen/inventory_iface/v1/supplier_pb";
 
+import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
+
+export type SuppliersQueryOpts = {
+  includeInactive?: boolean;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 export const supplierKeys = {
   all: ["suppliers"] as const,
-  list: (includeInactive: boolean) =>
-    [...supplierKeys.all, "list", { includeInactive }] as const,
+  list: (opts: Required<SuppliersQueryOpts>) =>
+    [...supplierKeys.all, "list", opts] as const,
   search: (query: string) => [...supplierKeys.all, "search", query] as const,
 };
 
-export function useSuppliersQuery(includeInactive = false) {
-  return useQuery({
-    queryKey: supplierKeys.list(includeInactive),
+// Server-paginated. Returns { rows, total }. For page-level name maps /
+// preload selects pass { pageSize: ALL_LIMIT } or use useAllSuppliersQuery.
+export function useSuppliersQuery(opts: SuppliersQueryOpts = {}) {
+  const {
+    includeInactive = false,
+    query = "",
+    page = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } = opts;
+  const q = useQuery({
+    queryKey: supplierKeys.list({ includeInactive, query, page, pageSize }),
     queryFn: async () => {
-      const res = await supplierClient.listSuppliers({ includeInactive });
-      return res.suppliers;
+      const res = await supplierClient.listSuppliers({
+        includeInactive,
+        query,
+        limit: pageSize,
+        offset: page * pageSize,
+      });
+      return { rows: res.suppliers, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
+}
+
+export function useAllSuppliersQuery(includeInactive = false) {
+  return useSuppliersQuery({ includeInactive, pageSize: ALL_LIMIT });
 }
 
 // Imperative search — call directly from <SearchableSelect loadOptions={...}>

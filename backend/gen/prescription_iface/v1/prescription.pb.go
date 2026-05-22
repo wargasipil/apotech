@@ -327,6 +327,7 @@ type ListPrescriptionsRequest struct {
 	CustomerId    string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"` // filter (optional)
 	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`                           // filter (optional) — ACTIVE | DISPENSED | EXPIRED | VOIDED
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -382,9 +383,17 @@ func (x *ListPrescriptionsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListPrescriptionsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListPrescriptionsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Prescriptions []*Prescription        `protobuf:"bytes,1,rep,name=prescriptions,proto3" json:"prescriptions,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -424,6 +433,13 @@ func (x *ListPrescriptionsResponse) GetPrescriptions() []*Prescription {
 		return x.Prescriptions
 	}
 	return nil
+}
+
+func (x *ListPrescriptionsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetPrescriptionRequest struct {
@@ -897,14 +913,16 @@ const file_prescription_iface_v1_prescription_proto_rawDesc = "" +
 	"medicineId\x12%\n" +
 	"\x0eprescribed_qty\x18\x02 \x01(\x05R\rprescribedQty\x12/\n" +
 	"\x13dosage_instructions\x18\x03 \x01(\tR\x12dosageInstructions\x12\x12\n" +
-	"\x04note\x18\x04 \x01(\tR\x04note\"i\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"\x81\x01\n" +
 	"\x18ListPrescriptionsRequest\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"f\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"|\n" +
 	"\x19ListPrescriptionsResponse\x12I\n" +
-	"\rprescriptions\x18\x01 \x03(\v2#.prescription_iface.v1.PrescriptionR\rprescriptions\"(\n" +
+	"\rprescriptions\x18\x01 \x03(\v2#.prescription_iface.v1.PrescriptionR\rprescriptions\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"(\n" +
 	"\x16GetPrescriptionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"b\n" +
 	"\x17GetPrescriptionResponse\x12G\n" +

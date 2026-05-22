@@ -13,20 +13,35 @@ import type {
   VoidStocktakeRequest,
 } from "../gen/stocktake_iface/v1/stocktake_pb";
 
+import { DEFAULT_PAGE_SIZE } from "../lib/pagination";
+
+export type StocktakesQueryOpts = {
+  status?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 export const stocktakeKeys = {
   all: ["stocktakes"] as const,
-  list: (status: string) => [...stocktakeKeys.all, "list", { status }] as const,
+  list: (opts: Required<StocktakesQueryOpts>) => [...stocktakeKeys.all, "list", opts] as const,
   detail: (id: string) => [...stocktakeKeys.all, "detail", id] as const,
 };
 
-export function useStocktakesQuery(status = "") {
-  return useQuery({
-    queryKey: stocktakeKeys.list(status),
+// Server-paginated. Returns { rows, total }.
+export function useStocktakesQuery(opts: StocktakesQueryOpts = {}) {
+  const { status = "", page = 0, pageSize = DEFAULT_PAGE_SIZE } = opts;
+  const q = useQuery({
+    queryKey: stocktakeKeys.list({ status, page, pageSize }),
     queryFn: async () => {
-      const res = await stocktakeClient.listStocktakes({ status, limit: 100 });
-      return res.sessions;
+      const res = await stocktakeClient.listStocktakes({
+        status,
+        limit: pageSize,
+        offset: page * pageSize,
+      });
+      return { rows: res.sessions, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
 }
 
 export function useStocktakeQuery(id: string | undefined) {

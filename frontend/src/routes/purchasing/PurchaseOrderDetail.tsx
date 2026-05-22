@@ -20,6 +20,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import BackButton from "../../components/BackButton";
+import DatePickerField from "../../components/DatePicker";
 import {
   POStatus,
   type PurchaseOrder,
@@ -27,7 +29,7 @@ import {
 } from "../../gen/purchasing_iface/v1/order_pb";
 import { formatDate, formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
-import { useMedicinesQuery } from "../../queries/medicines";
+import { useAllMedicinesQuery } from "../../queries/medicines";
 import {
   useCreateReceiptMutation,
   usePayPurchaseMutation,
@@ -36,7 +38,7 @@ import {
   useSendPurchaseOrderMutation,
   useVoidPurchaseOrderMutation,
 } from "../../queries/purchasing";
-import { useSuppliersQuery } from "../../queries/suppliers";
+import { useAllSuppliersQuery } from "../../queries/suppliers";
 
 const STATUS_PALETTE: Record<POStatus, string> = {
   [POStatus.PO_STATUS_UNSPECIFIED]: "gray",
@@ -54,8 +56,8 @@ export default function PurchaseOrderDetail() {
   const { id = "" } = useParams();
 
   const poQ = usePurchaseOrderQuery(id);
-  const suppliersQ = useSuppliersQuery(true);
-  const medicinesQ = useMedicinesQuery(true);
+  const suppliersQ = useAllSuppliersQuery(true);
+  const medicinesQ = useAllMedicinesQuery(true);
   const receiptsQ = useReceiptsQuery({ purchaseOrderId: id });
 
   const sendMut = useSendPurchaseOrderMutation();
@@ -65,12 +67,12 @@ export default function PurchaseOrderDetail() {
   const [payOpen, setPayOpen] = useState(false);
 
   const supplierName = useMemo(
-    () => new Map((suppliersQ.data ?? []).map((s) => [s.id, s.name])),
-    [suppliersQ.data],
+    () => new Map(suppliersQ.rows.map((s) => [s.id, s.name])),
+    [suppliersQ.rows],
   );
   const medicineName = useMemo(
-    () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m.name])),
-    [medicinesQ.data],
+    () => new Map(medicinesQ.rows.map((m) => [m.id, m.name])),
+    [medicinesQ.rows],
   );
 
   if (poQ.isLoading || !poQ.data) {
@@ -107,6 +109,7 @@ export default function PurchaseOrderDetail() {
 
   return (
     <Stack gap={6}>
+      <BackButton to="/purchasing" />
       <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
         <HStack gap={3}>
           <Heading size="md" fontFamily="mono">
@@ -216,9 +219,16 @@ export default function PurchaseOrderDetail() {
             {receiptsQ.data!.map((r) => (
               <Box key={r.id} borderWidth="1px" borderRadius="md" p={3}>
                 <HStack justify="space-between" mb={2}>
-                  <Text fontFamily="mono" fontWeight="medium">
-                    {r.receiptNo}
-                  </Text>
+                  <HStack gap={3}>
+                    <Text fontFamily="mono" fontWeight="medium">
+                      {r.receiptNo}
+                    </Text>
+                    {r.invoiceNo && (
+                      <Text fontSize="sm" color="fg.muted">
+                        {t("purchasing.invoiceNo")}: {r.invoiceNo}
+                      </Text>
+                    )}
+                  </HStack>
                   <Text fontSize="sm" color="fg.muted">
                     {formatDate(r.receivedAt)}
                   </Text>
@@ -301,6 +311,7 @@ function ReceiveDialog({
   const today = new Date().toISOString().slice(0, 10);
   const [receivedAt, setReceivedAt] = useState(today);
   const [note, setNote] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
 
   type LineDraft = {
     purchaseOrderItemId: string;
@@ -338,6 +349,7 @@ function ReceiveDialog({
         purchaseOrderId: po.id,
         receivedAt,
         note,
+        invoiceNo,
         lines: lines
           .filter((l) => l.qty > 0)
           .map((l) => ({
@@ -379,11 +391,13 @@ function ReceiveDialog({
                     <Text fontSize="xs" color="fg.muted">
                       {t("purchasing.receivedAt")}
                     </Text>
-                    <Input
-                      type="date"
-                      value={receivedAt}
-                      onChange={(e) => setReceivedAt(e.target.value)}
-                    />
+                    <DatePickerField value={receivedAt} onChange={setReceivedAt} />
+                  </Box>
+                  <Box flex="1">
+                    <Text fontSize="xs" color="fg.muted">
+                      {t("purchasing.invoiceNo")}
+                    </Text>
+                    <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
                   </Box>
                   <Box flex="2">
                     <Text fontSize="xs" color="fg.muted">
@@ -448,11 +462,10 @@ function ReceiveDialog({
                             />
                           </Table.Cell>
                           <Table.Cell>
-                            <Input
+                            <DatePickerField
                               size="sm"
-                              type="date"
                               value={l.expiryDate}
-                              onChange={(e) => updateLine(idx, { expiryDate: e.target.value })}
+                              onChange={(v) => updateLine(idx, { expiryDate: v })}
                             />
                           </Table.Cell>
                         </Table.Row>

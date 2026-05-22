@@ -1,0 +1,197 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Medicines" [ref=e154] [cursor=pointer]:
+            - /url: /medicines
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - paragraph [ref=e159]: Medicines
+          - button "Inventory" [ref=e161] [cursor=pointer]:
+            - img [ref=e162]
+            - paragraph [ref=e166]: Inventory
+            - img [ref=e168]
+          - link "Customers" [ref=e27] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e32]: Customers
+          - link "Order history" [ref=e170] [cursor=pointer]:
+            - /url: /orders
+            - generic [ref=e171]:
+              - img [ref=e172]
+              - paragraph [ref=e175]: Order history
+          - link "Prescriptions" [ref=e176] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e177]:
+              - img [ref=e178]
+              - paragraph [ref=e181]: Prescriptions
+          - link "Analytics" [ref=e182] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e183]:
+              - img [ref=e184]
+              - paragraph [ref=e186]: Analytics
+          - link "Tax" [ref=e187] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e188]:
+              - img [ref=e189]
+              - paragraph [ref=e193]: Tax
+          - link "BPJS" [ref=e194] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e195]:
+              - img [ref=e196]
+              - paragraph [ref=e199]: BPJS
+          - link "Warehouses" [ref=e200] [cursor=pointer]:
+            - /url: /warehouses
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - paragraph [ref=e205]: Warehouses
+          - link "Users" [ref=e206] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e207]:
+              - img [ref=e208]
+              - paragraph [ref=e213]: Users
+        - generic [ref=e33]:
+          - generic [ref=e214]:
+            - paragraph [ref=e215]: Owner
+            - paragraph [ref=e216]: owner@apotech.local
+          - button "Sign out" [ref=e217] [cursor=pointer]:
+            - img [ref=e218]
+            - paragraph [ref=e221]: Sign out
+          - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e41]:
+            - generic [ref=e222]:
+              - combobox [ref=e223]
+              - generic [ref=e224]:
+                - combobox [ref=e225]:
+                  - generic [ref=e226]: MAIN · Gudang Utama
+                - generic:
+                  - generic:
+                    - img
+            - button "language" [ref=e42] [cursor=pointer]:
+              - generic [ref=e43]:
+                - img [ref=e44]
+                - paragraph [ref=e48]: ID
+            - button "toggle theme" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+            - button "user menu" [ref=e227] [cursor=pointer]:
+              - generic [ref=e228]: O
+        - main [ref=e52]:
+          - generic [ref=e309]:
+            - generic [ref=e310]:
+              - paragraph [ref=e313]: Medicines
+              - heading "Medicines" [level=2] [ref=e316]
+            - generic [ref=e317]:
+              - generic [ref=e318]:
+                - generic [ref=e319]:
+                  - img [ref=e321]
+                  - textbox "Search name or SKU…" [ref=e324]
+                - button "Add medicine" [ref=e325] [cursor=pointer]:
+                  - img [ref=e326]
+                  - text: Add medicine
+              - table [ref=e327]:
+                - rowgroup [ref=e328]:
+                  - row "SKU Name Unit Unit price (IDR) Ready Ongoing Rx" [ref=e329]:
+                    - columnheader "SKU" [ref=e330]
+                    - columnheader "Name" [ref=e331]
+                    - columnheader "Unit" [ref=e332]
+                    - columnheader "Unit price (IDR)" [ref=e333]
+                    - columnheader "Ready" [ref=e334]
+                    - columnheader "Ongoing" [ref=e335]
+                    - columnheader "Rx" [ref=e336]
+                - rowgroup [ref=e337]:
+                  - row "sdasd adasd tablet IDR 13,000 0 — Yes" [ref=e338] [cursor=pointer]:
+                    - cell "sdasd" [ref=e339]
+                    - cell "adasd" [ref=e340]
+                    - cell "tablet" [ref=e341]
+                    - cell "IDR 13,000" [ref=e342]
+                    - cell "0" [ref=e343]
+                    - cell "—" [ref=e344]
+                    - cell "Yes" [ref=e345]
+                  - row "amx Amoxilin tablet IDR 12,000 356 — No" [ref=e346] [cursor=pointer]:
+                    - cell "amx" [ref=e347]
+                    - cell "Amoxilin" [ref=e348]
+                    - cell "tablet" [ref=e349]
+                    - cell "IDR 12,000" [ref=e350]
+                    - cell "356" [ref=e351]
+                    - cell "—" [ref=e352]
+                    - cell "No" [ref=e353]
+                  - row "asdasd asdasd tablet IDR 1,232,312 0 — No" [ref=e354] [cursor=pointer]:
+                    - cell "asdasd" [ref=e355]
+                    - cell "asdasd" [ref=e356]
+                    - cell "tablet" [ref=e357]
+                    - cell "IDR 1,232,312" [ref=e358]
+                    - cell "0" [ref=e359]
+                    - cell "—" [ref=e360]
+                    - cell "No" [ref=e361]
+                  - row "asdasadas asdasdasd tablet IDR 12,322 2524 — No" [ref=e362] [cursor=pointer]:
+                    - cell "asdasadas" [ref=e363]
+                    - cell "asdasdasd" [ref=e364]
+                    - cell "tablet" [ref=e365]
+                    - cell "IDR 12,322" [ref=e366]
+                    - cell "2524" [ref=e367]
+                    - cell "—" [ref=e368]
+                    - cell "No" [ref=e369]
+                  - row "Antibiotik asdasdasd tablet IDR 123,323,123 0 — No" [ref=e370] [cursor=pointer]:
+                    - cell "Antibiotik" [ref=e371]
+                    - cell "asdasdasd" [ref=e372]
+                    - cell "tablet" [ref=e373]
+                    - cell "IDR 123,323,123" [ref=e374]
+                    - cell "0" [ref=e375]
+                    - cell "—" [ref=e376]
+                    - cell "No" [ref=e377]
+                  - row "ddasd Bodrex tablet IDR 13,000 199 — No" [ref=e378] [cursor=pointer]:
+                    - cell "ddasd" [ref=e379]
+                    - cell "Bodrex" [ref=e380]
+                    - cell "tablet" [ref=e381]
+                    - cell "IDR 13,000" [ref=e382]
+                    - cell "199" [ref=e383]
+                    - cell "—" [ref=e384]
+                    - cell "No" [ref=e385]
+                  - row "tiuitiui khlkhl ll;jl; tablet IDR 7,677 68 — Yes" [ref=e386] [cursor=pointer]:
+                    - cell "tiuitiui" [ref=e387]
+                    - cell "khlkhl ll;jl;" [ref=e388]
+                    - cell "tablet" [ref=e389]
+                    - cell "IDR 7,677" [ref=e390]
+                    - cell "68" [ref=e391]
+                    - cell "—" [ref=e392]
+                    - cell "Yes" [ref=e393]
+              - generic [ref=e394]:
+                - paragraph [ref=e395]: Showing 1–7 of 7
+                - generic [ref=e396]:
+                  - generic [ref=e397]:
+                    - combobox [ref=e398]
+                    - generic [ref=e399]:
+                      - combobox [ref=e400]:
+                        - generic [ref=e401]: 25 / page
+                      - generic:
+                        - generic:
+                          - img
+                  - button "Prev" [disabled] [ref=e402]:
+                    - img [ref=e403]
+                    - text: Prev
+                  - button "Next" [disabled] [ref=e405]:
+                    - text: Next
+                    - img [ref=e406]
+    - generic [ref=e55]:
+      - img [ref=e57]
+      - button "Open Tanstack query devtools" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+  - region "Notifications, top-end (alt+T)"

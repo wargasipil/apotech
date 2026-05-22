@@ -18,6 +18,7 @@ import { Ban, Check, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
+import BackButton from "../../components/BackButton";
 import EnumSelect from "../../components/EnumSelect";
 import SearchableSelect from "../../components/SearchableSelect";
 import type { StocktakeLine } from "../../gen/stocktake_iface/v1/stocktake_pb";
@@ -109,6 +110,7 @@ export default function StocktakeDetail() {
 
   return (
     <Stack gap={4}>
+      <BackButton to="/inventory/stocktake" />
       <HStack justify="space-between" align="flex-start">
         <Stack gap={1}>
           <HStack gap={3}>

@@ -32,6 +32,7 @@ type PurchaseReceipt struct {
 	Note            string                 `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
 	CreatedAt       int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	Items           []*PurchaseReceiptItem `protobuf:"bytes,8,rep,name=items,proto3" json:"items,omitempty"`
+	InvoiceNo       string                 `protobuf:"bytes,9,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"` // supplier invoice / nomor faktur
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -120,6 +121,13 @@ func (x *PurchaseReceipt) GetItems() []*PurchaseReceiptItem {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *PurchaseReceipt) GetInvoiceNo() string {
+	if x != nil {
+		return x.InvoiceNo
+	}
+	return ""
 }
 
 type PurchaseReceiptItem struct {
@@ -312,6 +320,7 @@ type CreateReceiptRequest struct {
 	ReceivedAt      string                 `protobuf:"bytes,2,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"` // YYYY-MM-DD (defaults to today if empty)
 	Note            string                 `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
 	Lines           []*ReceiveLineInput    `protobuf:"bytes,4,rep,name=lines,proto3" json:"lines,omitempty"`
+	InvoiceNo       string                 `protobuf:"bytes,5,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"` // supplier invoice / nomor faktur
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -372,6 +381,13 @@ func (x *CreateReceiptRequest) GetLines() []*ReceiveLineInput {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *CreateReceiptRequest) GetInvoiceNo() string {
+	if x != nil {
+		return x.InvoiceNo
+	}
+	return ""
 }
 
 type CreateReceiptResponse struct {
@@ -598,7 +614,7 @@ var File_purchasing_iface_v1_receipt_proto protoreflect.FileDescriptor
 
 const file_purchasing_iface_v1_receipt_proto_rawDesc = "" +
 	"\n" +
-	"!purchasing_iface/v1/receipt.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xa1\x02\n" +
+	"!purchasing_iface/v1/receipt.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xc0\x02\n" +
 	"\x0fPurchaseReceipt\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -611,7 +627,9 @@ const file_purchasing_iface_v1_receipt_proto_rawDesc = "" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\a \x01(\x03R\tcreatedAt\x12>\n" +
-	"\x05items\x18\b \x03(\v2(.purchasing_iface.v1.PurchaseReceiptItemR\x05items\"\xc4\x02\n" +
+	"\x05items\x18\b \x03(\v2(.purchasing_iface.v1.PurchaseReceiptItemR\x05items\x12\x1d\n" +
+	"\n" +
+	"invoice_no\x18\t \x01(\tR\tinvoiceNo\"\xc4\x02\n" +
 	"\x13PurchaseReceiptItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x13purchase_receipt_id\x18\x02 \x01(\tR\x11purchaseReceiptId\x123\n" +
@@ -630,13 +648,15 @@ const file_purchasing_iface_v1_receipt_proto_rawDesc = "" +
 	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\x12!\n" +
 	"\fbatch_number\x18\x04 \x01(\tR\vbatchNumber\x12\x1f\n" +
 	"\vexpiry_date\x18\x05 \x01(\tR\n" +
-	"expiryDate\"\xb4\x01\n" +
+	"expiryDate\"\xd3\x01\n" +
 	"\x14CreateReceiptRequest\x12*\n" +
 	"\x11purchase_order_id\x18\x01 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +
 	"\vreceived_at\x18\x02 \x01(\tR\n" +
 	"receivedAt\x12\x12\n" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12;\n" +
-	"\x05lines\x18\x04 \x03(\v2%.purchasing_iface.v1.ReceiveLineInputR\x05lines\"W\n" +
+	"\x05lines\x18\x04 \x03(\v2%.purchasing_iface.v1.ReceiveLineInputR\x05lines\x12\x1d\n" +
+	"\n" +
+	"invoice_no\x18\x05 \x01(\tR\tinvoiceNo\"W\n" +
 	"\x15CreateReceiptResponse\x12>\n" +
 	"\areceipt\x18\x01 \x01(\v2$.purchasing_iface.v1.PurchaseReceiptR\areceipt\"A\n" +
 	"\x13ListReceiptsRequest\x12*\n" +

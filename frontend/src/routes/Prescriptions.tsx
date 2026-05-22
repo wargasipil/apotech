@@ -17,15 +17,18 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import DatePickerField from "../components/DatePicker";
 import EntityDrawer from "../components/EntityDrawer";
 import EnumSelect from "../components/EnumSelect";
 import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
 import SearchableSelect from "../components/SearchableSelect";
 import type { Prescription } from "../gen/prescription_iface/v1/prescription_pb";
 import { formatDate } from "../lib/format";
+import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
-import { searchCustomers, useCustomersQuery } from "../queries/customers";
-import { searchMedicines, useMedicinesQuery } from "../queries/medicines";
+import { searchCustomers, useAllCustomersQuery } from "../queries/customers";
+import { searchMedicines, useAllMedicinesQuery } from "../queries/medicines";
 import {
   useCreatePrescriptionMutation,
   usePrescriptionsQuery,
@@ -67,18 +70,23 @@ export default function Prescriptions() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Prescription | null>(null);
 
-  const customersQ = useCustomersQuery(false);
+  const customersQ = useAllCustomersQuery(false);
+  const { page, setPage, pageSize, setPageSize } = usePageState(
+    `${statusFilter}|${customerFilter}`,
+  );
   const rxQ = usePrescriptionsQuery({
     status: statusFilter,
     customerId: customerFilter,
+    limit: pageSize,
+    offset: page * pageSize,
   });
   const voidMut = useVoidPrescriptionMutation();
 
   const customerNameById = useMemo(() => {
     const m = new Map<string, string>();
-    (customersQ.data ?? []).forEach((c) => m.set(c.id, c.name));
+    customersQ.rows.forEach((c) => m.set(c.id, c.name));
     return m;
-  }, [customersQ.data]);
+  }, [customersQ.rows]);
 
   return (
     <Box>
@@ -150,7 +158,7 @@ export default function Prescriptions() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {(rxQ.data ?? []).map((rx) => {
+            {rxQ.rows.map((rx) => {
               const dispensedAny = rx.items.some((it) => it.dispensedQty > 0);
               return (
                 <Table.Row key={rx.id}>
@@ -192,7 +200,7 @@ export default function Prescriptions() {
                 </Table.Row>
               );
             })}
-            {(rxQ.data?.length ?? 0) === 0 && (
+            {rxQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={8}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -204,6 +212,16 @@ export default function Prescriptions() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Box mt={3}>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={rxQ.total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      </Box>
 
       <PrescriptionDrawer
         open={createOpen}
@@ -229,8 +247,8 @@ function PrescriptionDrawer({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const customersQ = useCustomersQuery(false);
-  const medicinesQ = useMedicinesQuery(false);
+  const customersQ = useAllCustomersQuery(false);
+  const medicinesQ = useAllMedicinesQuery(false);
   const createMut = useCreatePrescriptionMutation();
   const updateMut = useUpdatePrescriptionMutation();
 
@@ -340,7 +358,7 @@ function PrescriptionDrawer({
             itemToString={(c) => c.name}
             itemToValue={(c) => c.id}
             selectedLabel={
-              (customersQ.data ?? []).find((c) => c.id === customerId)?.name
+              customersQ.rows.find((c) => c.id === customerId)?.name
             }
             placeholder={t("prescriptions.selectCustomer")}
           />
@@ -358,13 +376,13 @@ function PrescriptionDrawer({
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
               {t("prescriptions.issuedAt")} *
             </Text>
-            <Input type="date" value={issuedAt} onChange={(e) => setIssuedAt(e.target.value)} />
+            <DatePickerField value={issuedAt} onChange={setIssuedAt} />
           </Box>
           <Box flex="1">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
               {t("prescriptions.expiresAt")}
             </Text>
-            <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            <DatePickerField value={expiresAt} onChange={setExpiresAt} />
             <Text fontSize="xs" color="fg.muted" mt={1}>
               {t("prescriptions.expiresAtHelp")}
             </Text>
@@ -389,7 +407,7 @@ function PrescriptionDrawer({
           <Stack gap={3}>
             {lines.map((l, idx) => {
               const dispensed = editing?.items[idx]?.dispensedQty ?? 0;
-              const isRx = (medicinesQ.data ?? []).find((m) => m.id === l.medicineId)
+              const isRx = medicinesQ.rows.find((m) => m.id === l.medicineId)
                 ?.prescriptionRequired;
               return (
                 <Box
@@ -415,7 +433,7 @@ function PrescriptionDrawer({
                         }
                         itemToValue={(m) => m.id}
                         selectedLabel={(() => {
-                          const m = (medicinesQ.data ?? []).find((x) => x.id === l.medicineId);
+                          const m = medicinesQ.rows.find((x) => x.id === l.medicineId);
                           return m
                             ? `${m.sku} · ${m.name}${m.prescriptionRequired ? " (Rx)" : ""}`
                             : undefined;

@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e7]
+        - paragraph [ref=e10]: Apotech
+      - generic [ref=e11]:
+        - link "Dashboard" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e13]:
+            - img [ref=e14]
+            - paragraph [ref=e19]: Dashboard
+        - link "POS" [ref=e20] [cursor=pointer]:
+          - /url: /pos
+          - generic [ref=e21]:
+            - img [ref=e22]
+            - paragraph [ref=e26]: POS
+        - link "Customers" [ref=e27] [cursor=pointer]:
+          - /url: /customers
+          - generic [ref=e28]:
+            - img [ref=e29]
+            - paragraph [ref=e32]: Customers
+      - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+    - generic [ref=e38]:
+      - banner [ref=e39]:
+        - generic [ref=e41]:
+          - button "language" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]:
+              - img [ref=e44]
+              - paragraph [ref=e48]: ID
+          - button "toggle theme" [ref=e49] [cursor=pointer]:
+            - img [ref=e50]
+      - main [ref=e52]
+  - region "Notifications, top-end (alt+T)"

@@ -134,6 +134,8 @@ type ListBatchesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MedicineId    string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
 	OnlyInStock   bool                   `protobuf:"varint,2,opt,name=only_in_stock,json=onlyInStock,proto3" json:"only_in_stock,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -182,9 +184,24 @@ func (x *ListBatchesRequest) GetOnlyInStock() bool {
 	return false
 }
 
+func (x *ListBatchesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListBatchesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListBatchesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Batches       []*Batch               `protobuf:"bytes,1,rep,name=batches,proto3" json:"batches,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -224,6 +241,13 @@ func (x *ListBatchesResponse) GetBatches() []*Batch {
 		return x.Batches
 	}
 	return nil
+}
+
+func (x *ListBatchesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetBatchRequest struct {
@@ -702,13 +726,16 @@ const file_inventory_iface_v1_batch_proto_rawDesc = "" +
 	"receivedAt\x12)\n" +
 	"\x10current_quantity\x18\b \x01(\x03R\x0fcurrentQuantity\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\x03R\tcreatedAt\"Y\n" +
+	"created_at\x18\t \x01(\x03R\tcreatedAt\"\x87\x01\n" +
 	"\x12ListBatchesRequest\x12\x1f\n" +
 	"\vmedicine_id\x18\x01 \x01(\tR\n" +
 	"medicineId\x12\"\n" +
-	"\ronly_in_stock\x18\x02 \x01(\bR\vonlyInStock\"J\n" +
+	"\ronly_in_stock\x18\x02 \x01(\bR\vonlyInStock\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"`\n" +
 	"\x13ListBatchesResponse\x123\n" +
-	"\abatches\x18\x01 \x03(\v2\x19.inventory_iface.v1.BatchR\abatches\"!\n" +
+	"\abatches\x18\x01 \x03(\v2\x19.inventory_iface.v1.BatchR\abatches\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"!\n" +
 	"\x0fGetBatchRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"C\n" +
 	"\x10GetBatchResponse\x12/\n" +

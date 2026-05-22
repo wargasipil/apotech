@@ -17,13 +17,15 @@ import { z } from "zod";
 import EntityDrawer from "../../components/EntityDrawer";
 import EnumSelect from "../../components/EnumSelect";
 import FormField from "../../components/FormField";
+import Pagination from "../../components/Pagination";
 import SearchableSelect from "../../components/SearchableSelect";
 import { searchBatches } from "../../queries/batches";
 import { MovementType } from "../../gen/inventory_iface/v1/stock_pb";
 import { formatUnix } from "../../lib/format";
+import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
-import { useBatchesQuery } from "../../queries/batches";
-import { useMedicinesQuery } from "../../queries/medicines";
+import { useAllBatchesQuery } from "../../queries/batches";
+import { useAllMedicinesQuery } from "../../queries/medicines";
 import { useMovementsQuery, useRecordMovementMutation } from "../../queries/stock";
 
 const Schema = z.object({
@@ -53,17 +55,18 @@ export default function Movements() {
   const { t } = useTranslation();
   const [filterBatch, setFilterBatch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const movementsQ = useMovementsQuery({ batchId: filterBatch || undefined });
-  const batchesQ = useBatchesQuery();
-  const medicinesQ = useMedicinesQuery();
+  const { page, setPage, pageSize, setPageSize } = usePageState(filterBatch);
+  const movementsQ = useMovementsQuery({ batchId: filterBatch || undefined, page, pageSize });
+  const batchesQ = useAllBatchesQuery();
+  const medicinesQ = useAllMedicinesQuery();
 
   const medById = useMemo(
-    () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m])),
-    [medicinesQ.data],
+    () => new Map(medicinesQ.rows.map((m) => [m.id, m])),
+    [medicinesQ.rows],
   );
   const batchById = useMemo(
-    () => new Map((batchesQ.data ?? []).map((b) => [b.id, b])),
-    [batchesQ.data],
+    () => new Map(batchesQ.rows.map((b) => [b.id, b])),
+    [batchesQ.rows],
   );
 
   return (
@@ -114,7 +117,7 @@ export default function Movements() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {movementsQ.data?.map((m) => {
+            {movementsQ.rows.map((m) => {
               const batch = batchById.get(m.batchId);
               const medName = batch ? medById.get(batch.medicineId)?.name : undefined;
               return (
@@ -129,7 +132,7 @@ export default function Movements() {
                 </Table.Row>
               );
             })}
-            {(movementsQ.data?.length ?? 0) === 0 && (
+            {movementsQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={5}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -141,6 +144,14 @@ export default function Movements() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={movementsQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <RecordDrawer
         open={drawerOpen}

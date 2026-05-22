@@ -4,6 +4,7 @@ import "time"
 
 type Supplier struct {
 	ID           string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	Code         string `gorm:"uniqueIndex;not null"`
 	Name         string `gorm:"not null"`
 	ContactEmail string `gorm:"column:contact_email"`
 	Phone        string

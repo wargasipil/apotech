@@ -10,7 +10,9 @@ type StockMovement struct {
 	Reason          string    `gorm:"not null;default:''"`
 	UserID          string    `gorm:"not null;type:uuid;column:user_id"`
 	SaleItemID      *string   `gorm:"type:uuid;column:sale_item_id"`
-	BranchID        *string   `gorm:"type:uuid;column:branch_id"`
+	BranchID        *string   `gorm:"type:uuid;column:branch_id"` // deprecated; superseded by warehouse_id
+	WarehouseID     string    `gorm:"not null;type:uuid;column:warehouse_id"`
+	TransferID      *string   `gorm:"type:uuid;column:transfer_id"`
 	StocktakeLineID *string   `gorm:"type:uuid;column:stocktake_line_id"`
 	WriteOffKind    *string   `gorm:"column:write_off_kind"`
 	CreatedAt       time.Time

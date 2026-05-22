@@ -12,5 +12,23 @@ export const STORAGE_STATE = "tests/e2e/.auth/owner.json";
 
 setup("authenticate owner", async ({ page }) => {
   await loginAs(page, OWNER);
+  // Pre-select the default warehouse so the POS warehouse gate is satisfied for
+  // specs that drive POS directly (the gate only prompts when nothing is chosen).
+  await page.evaluate(async () => {
+    const token = localStorage.getItem("apotech_access_token");
+    const res = await fetch(
+      "/api/warehouse_iface.v1.WarehouseService/ListUserWarehouses",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: "" }),
+      },
+    );
+    const data = await res.json();
+    const def = (data.memberships || []).find((m: { isDefault?: boolean }) => m.isDefault);
+    const id =
+      def?.warehouseId ?? (data.warehouses && data.warehouses[0] && data.warehouses[0].id);
+    if (id) localStorage.setItem("apotech_warehouse_id", id);
+  });
   await page.context().storageState({ path: STORAGE_STATE });
 });

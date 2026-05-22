@@ -20,7 +20,8 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { FileText, LogOut, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { FileText, Lock, LogOut, Plus, Search, Trash2, UserRound, Warehouse as WarehouseIcon, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -30,8 +31,11 @@ import { Customer } from "../gen/customer_iface/v1/customer_pb";
 import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toaster";
 import { useAuth } from "../lib/auth";
-import { useMedicinesQuery } from "../queries/medicines";
+import { WAREHOUSE_KEY } from "../lib/transport";
+import { useMyWarehousesQuery } from "../queries/warehouses";
+import { useAllMedicinesQuery } from "../queries/medicines";
 import { usePrescriptionsQuery } from "../queries/prescriptions";
+import { ALL_LIMIT } from "../lib/pagination";
 import { useStockLevelsQuery } from "../queries/stock";
 import { useCustomerSearchQuery } from "../queries/customers";
 import {
@@ -50,6 +54,7 @@ import {
 export default function Pos() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   // Sale lifecycle ----
@@ -88,13 +93,66 @@ export default function Pos() {
     }
   }, [sale, startSale]);
 
+  // --- Warehouse gate: pick the selling warehouse before POS opens ----
+  // POS is full-screen (no TopBar selector), so the cashier chooses the active
+  // warehouse here. Auto-skipped when they have <=1 warehouse or one is already
+  // chosen. The choice drives the X-Warehouse-Id header (FEFO sells from this
+  // warehouse only). "Change warehouse" clears the choice to re-open the gate.
+  const myWarehousesQ = useMyWarehousesQuery();
+  const [gateDone, setGateDone] = useState(false);
+  const warehouses = myWarehousesQ.data?.warehouses ?? [];
+
+  useEffect(() => {
+    const data = myWarehousesQ.data;
+    if (!data) return;
+    if (data.warehouses.length === 0) {
+      // No membership — proceed; the backend resolves the default warehouse.
+      setGateDone(true);
+      return;
+    }
+    const persisted = localStorage.getItem(WAREHOUSE_KEY);
+    if (persisted && data.warehouses.some((w) => w.id === persisted)) {
+      setGateDone(true);
+      return;
+    }
+    if (data.warehouses.length === 1) {
+      localStorage.setItem(WAREHOUSE_KEY, data.warehouses[0].id);
+      setGateDone(true);
+    }
+    // else: multiple warehouses + nothing chosen yet -> show the gate.
+  }, [myWarehousesQ.data]);
+
+  const confirmWarehouse = useCallback((id: string) => {
+    const prev = localStorage.getItem(WAREHOUSE_KEY);
+    localStorage.setItem(WAREHOUSE_KEY, id);
+    // Refetch warehouse-scoped data with the new header — no full reload.
+    if (prev !== id) void queryClient.invalidateQueries();
+    setGateDone(true);
+  }, [queryClient]);
+
+  const activeWarehouseName =
+    warehouses.find((w) => w.id === localStorage.getItem(WAREHOUSE_KEY))?.name ?? "";
+
+  const changeWarehouse = useCallback(async () => {
+    if (sale) {
+      try {
+        await voidSale.mutateAsync({ saleId: sale.id });
+      } catch {
+        /* */
+      }
+      setSale(null);
+    }
+    localStorage.removeItem(WAREHOUSE_KEY);
+    setGateDone(false);
+  }, [sale, voidSale]);
+
   useEffect(() => {
     void ensureSale();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Search ----
-  const medicinesQ = useMedicinesQuery();
+  const medicinesQ = useAllMedicinesQuery();
   const stockQ = useStockLevelsQuery();
   const stockByMedicine = useMemo(() => {
     const out = new Map<string, bigint>();
@@ -104,8 +162,8 @@ export default function Pos() {
     return out;
   }, [stockQ.data]);
   const medById = useMemo(
-    () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m])),
-    [medicinesQ.data],
+    () => new Map(medicinesQ.rows.map((m) => [m.id, m])),
+    [medicinesQ.rows],
   );
 
   const [query, setQuery] = useState("");
@@ -113,7 +171,7 @@ export default function Pos() {
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = useMemo(() => {
-    const all = medicinesQ.data ?? [];
+    const all = medicinesQ.rows;
     if (!query.trim()) return all.slice(0, 30);
     const q = query.toLowerCase();
     return all
@@ -121,7 +179,7 @@ export default function Pos() {
         [m.sku, m.name, m.manufacturer].some((s) => s.toLowerCase().includes(q)),
       )
       .slice(0, 30);
-  }, [query, medicinesQ.data]);
+  }, [query, medicinesQ.rows]);
 
   useEffect(() => {
     setHighlight(0);
@@ -171,7 +229,7 @@ export default function Pos() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       // Barcode scanner: if exact SKU match, add it directly.
-      const skuExact = (medicinesQ.data ?? []).find(
+      const skuExact = medicinesQ.rows.find(
         (m) => m.sku.toLowerCase() === query.trim().toLowerCase(),
       );
       const target = skuExact ?? filtered[highlight];
@@ -348,6 +406,47 @@ export default function Pos() {
     searchRef.current?.focus();
   };
 
+  // Warehouse gate: block POS until a selling warehouse is chosen.
+  if (!gateDone) {
+    return (
+      <Flex direction="column" align="center" justify="center" h="100vh" bg="bg" gap={5} p={6}>
+        <HStack gap={2} color="fg.muted">
+          <WarehouseIcon size={20} />
+          <Text fontSize="lg" fontWeight="semibold">
+            {t("pos.selectWarehouse")}
+          </Text>
+        </HStack>
+        <Text fontSize="sm" color="fg.muted">
+          {t("pos.selectWarehouseHint")}
+        </Text>
+        <Stack gap={2} minW="320px" maxH="60vh" overflowY="auto" px={1}>
+          {warehouses.map((w) => (
+            <Button
+              key={w.id}
+              variant="outline"
+              justifyContent="flex-start"
+              colorPalette="blue"
+              flexShrink={0}
+              onClick={() => confirmWarehouse(w.id)}
+            >
+              <WarehouseIcon size={16} />
+              {w.code} · {w.name}
+            </Button>
+          ))}
+          {warehouses.length === 0 && (
+            <Text fontSize="sm" color="fg.muted" textAlign="center">
+              {myWarehousesQ.isLoading ? t("common.loading") : t("common.noResults")}
+            </Text>
+          )}
+        </Stack>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+          <LogOut size={16} />
+          {t("pos.exit")}
+        </Button>
+      </Flex>
+    );
+  }
+
   return (
     <Flex direction="column" h="100vh" bg="bg">
       {/* Header strip */}
@@ -360,6 +459,12 @@ export default function Pos() {
       >
         <Text fontWeight="semibold">{t("pos.title")}</Text>
         <HStack gap={2}>
+          {activeWarehouseName && (
+            <Button size="xs" variant="subtle" colorPalette="blue" onClick={changeWarehouse}>
+              <WarehouseIcon size={14} />
+              {activeWarehouseName}
+            </Button>
+          )}
           {user && (
             <Text fontSize="sm" color="fg.muted">
               {user.name || user.email}
@@ -398,6 +503,10 @@ export default function Pos() {
             {filtered.map((m, i) => {
               const stock = Number(stockByMedicine.get(m.id) ?? 0n);
               const out = stock <= 0;
+              // Rx-required medicine with no prescription attached yet: dim it
+              // with a cue, but keep it clickable — the click auto-opens the
+              // prescription picker (handled in onAdd).
+              const needsRx = m.prescriptionRequired && !sale?.prescriptionId;
               const active = i === highlight;
               return (
                 <Flex
@@ -411,7 +520,7 @@ export default function Pos() {
                   align="center"
                   justify="space-between"
                   cursor={out ? "not-allowed" : "pointer"}
-                  opacity={out ? 0.5 : 1}
+                  opacity={out ? 0.5 : needsRx ? 0.65 : 1}
                   onMouseEnter={() => setHighlight(i)}
                   onClick={() => !out && onAdd(m)}
                 >
@@ -424,6 +533,14 @@ export default function Pos() {
                         <Badge size="xs" colorPalette="red">
                           {t("inventory.medicines.rxShort")}
                         </Badge>
+                      )}
+                      {needsRx && (
+                        <HStack gap={1} color="orange.fg">
+                          <Lock size={12} />
+                          <Text fontSize="xs" fontWeight="medium">
+                            {t("pos.needsRx")}
+                          </Text>
+                        </HStack>
                       )}
                     </HStack>
                     <Text fontSize="xs" color="fg.muted">
@@ -473,7 +590,7 @@ export default function Pos() {
             )}
             <Stack gap={2}>
               {sale?.items.map((it) => {
-                const med = medicinesQ.data?.find((m) => m.id === it.medicineId);
+                const med = medicinesQ.rows.find((m) => m.id === it.medicineId);
                 return (
                   <Flex key={it.id} align="center" gap={2}>
                     <Stack gap={0} flex="1">
@@ -708,21 +825,22 @@ function PrescriptionPickerDialog({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // List ACTIVE Rx; filter to current customer when one is set.
-  const rxQ = usePrescriptionsQuery({ status: "ACTIVE", customerId });
+  // List ACTIVE Rx; filter to current customer when one is set. Load the full
+  // active set (not just a page) so the picker shows every covering Rx.
+  const rxQ = usePrescriptionsQuery({ status: "ACTIVE", customerId, limit: ALL_LIMIT });
 
   // In pending-add mode, narrow the loaded prescriptions to ones that
   // include the required medicine with remaining qty. Done client-side on
   // the page-of-active-Rx the query already returns — no extra RPC.
   const visibleRxs = useMemo(() => {
-    const all = rxQ.data ?? [];
+    const all = rxQ.rows;
     if (!requiredMedicineId) return all;
     return all.filter((rx) =>
       rx.items.some(
         (it) => it.medicineId === requiredMedicineId && it.dispensedQty < it.prescribedQty,
       ),
     );
-  }, [rxQ.data, requiredMedicineId]);
+  }, [rxQ.rows, requiredMedicineId]);
 
   const requiredMedicineName =
     requiredMedicineId ? medById.get(requiredMedicineId)?.name ?? requiredMedicineId : "";
@@ -914,7 +1032,7 @@ function CustomerPickerDialog({
 
 function ReceiptDialog({ sale, onClose }: { sale: Sale | null; onClose: () => void }) {
   const { t } = useTranslation();
-  const { data: medicines } = useMedicinesQuery();
+  const medicinesQ = useAllMedicinesQuery();
   const printMut = usePrintReceiptMutation();
   if (!sale) return null;
   const onPrint = async () => {
@@ -925,7 +1043,7 @@ function ReceiptDialog({ sale, onClose }: { sale: Sale | null; onClose: () => vo
       /* toast handled globally */
     }
   };
-  const medById = new Map((medicines ?? []).map((m) => [m.id, m]));
+  const medById = new Map(medicinesQ.rows.map((m) => [m.id, m]));
   return (
     <Dialog.Root open={!!sale} onOpenChange={(d) => !d.open && onClose()}>
       <Portal>

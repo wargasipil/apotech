@@ -11,9 +11,12 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/apotech/backend/gen/inventory_iface/v1/inventoryifacev1connect"
+	posifacev1connect "github.com/apotech/backend/gen/pos_iface/v1/posifacev1connect"
+	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	userifacev1 "github.com/apotech/backend/gen/user_iface/v1"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
+	"github.com/apotech/backend/gen/warehouse_iface/v1/warehouseifacev1connect"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/db"
@@ -37,7 +40,13 @@ type Env struct {
 	Suppliers  inventoryifacev1connect.SupplierServiceClient
 	Medicines  inventoryifacev1connect.MedicineServiceClient
 	Batches    inventoryifacev1connect.BatchServiceClient
+	Stock      inventoryifacev1connect.StockMovementServiceClient
+	Sales      posifacev1connect.SaleServiceClient
 	Stocktakes stocktakeifacev1connect.StocktakeServiceClient
+	Warehouses warehouseifacev1connect.WarehouseServiceClient
+	Transfers  warehouseifacev1connect.StockTransferServiceClient
+	POs        purchasingifacev1connect.PurchaseOrderServiceClient
+	Receipts   purchasingifacev1connect.PurchaseReceiptServiceClient
 	Owner      TestUser
 }
 
@@ -93,7 +102,13 @@ func SetupEnv(t *testing.T) *Env {
 	supplierSvc := service.NewSuppliers(gormDB)
 	medicineSvc := service.NewMedicines(gormDB)
 	batchSvc := service.NewBatches(gormDB)
+	stockSvc := service.NewStock(gormDB)
+	saleSvc := service.NewSales(gormDB, cfg.Printer)
 	stocktakeSvc := service.NewStocktakes(gormDB)
+	warehouseSvc := service.NewWarehouses(gormDB)
+	transferSvc := service.NewTransfers(gormDB)
+	poSvc := service.NewPurchaseOrders(gormDB)
+	receiptSvc := service.NewPurchaseReceipts(gormDB)
 
 	if cfg.Bootstrap.OwnerEmail == "" {
 		t.Fatalf("config.bootstrap.owner_email is empty; set it in config.yaml so tests have a known user")
@@ -108,7 +123,13 @@ func SetupEnv(t *testing.T) *Env {
 	mux.Handle(inventoryifacev1connect.NewSupplierServiceHandler(supplierSvc, interceptors))
 	mux.Handle(inventoryifacev1connect.NewMedicineServiceHandler(medicineSvc, interceptors))
 	mux.Handle(inventoryifacev1connect.NewBatchServiceHandler(batchSvc, interceptors))
+	mux.Handle(inventoryifacev1connect.NewStockMovementServiceHandler(stockSvc, interceptors))
+	mux.Handle(posifacev1connect.NewSaleServiceHandler(saleSvc, interceptors))
 	mux.Handle(stocktakeifacev1connect.NewStocktakeServiceHandler(stocktakeSvc, interceptors))
+	mux.Handle(warehouseifacev1connect.NewWarehouseServiceHandler(warehouseSvc, interceptors))
+	mux.Handle(warehouseifacev1connect.NewStockTransferServiceHandler(transferSvc, interceptors))
+	mux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(poSvc, interceptors))
+	mux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(receiptSvc, interceptors))
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -121,7 +142,13 @@ func SetupEnv(t *testing.T) *Env {
 		Suppliers:  inventoryifacev1connect.NewSupplierServiceClient(srv.Client(), srv.URL),
 		Medicines:  inventoryifacev1connect.NewMedicineServiceClient(srv.Client(), srv.URL),
 		Batches:    inventoryifacev1connect.NewBatchServiceClient(srv.Client(), srv.URL),
+		Stock:      inventoryifacev1connect.NewStockMovementServiceClient(srv.Client(), srv.URL),
+		Sales:      posifacev1connect.NewSaleServiceClient(srv.Client(), srv.URL),
 		Stocktakes: stocktakeifacev1connect.NewStocktakeServiceClient(srv.Client(), srv.URL),
+		Warehouses: warehouseifacev1connect.NewWarehouseServiceClient(srv.Client(), srv.URL),
+		Transfers:  warehouseifacev1connect.NewStockTransferServiceClient(srv.Client(), srv.URL),
+		POs:        purchasingifacev1connect.NewPurchaseOrderServiceClient(srv.Client(), srv.URL),
+		Receipts:   purchasingifacev1connect.NewPurchaseReceiptServiceClient(srv.Client(), srv.URL),
 		Owner: TestUser{
 			Email:    cfg.Bootstrap.OwnerEmail,
 			Password: cfg.Bootstrap.OwnerPassword,

@@ -18,7 +18,9 @@ import { z } from "zod";
 import EntityDrawer from "../components/EntityDrawer";
 import FormField from "../components/FormField";
 import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
 import { Customer } from "../gen/customer_iface/v1/customer_pb";
+import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
 import {
   useArchiveCustomerMutation,
@@ -42,7 +44,8 @@ export default function Customers() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
-  const customersQ = useCustomersQuery(includeInactive);
+  const { page, setPage, pageSize, setPageSize } = usePageState(String(includeInactive));
+  const customersQ = useCustomersQuery({ includeInactive, page, pageSize });
 
   return (
     <Box>
@@ -84,10 +87,10 @@ export default function Customers() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {customersQ.data?.map((c) => (
+            {customersQ.rows.map((c) => (
               <Row key={c.id} customer={c} onEdit={() => setEditing(c)} />
             ))}
-            {(customersQ.data?.length ?? 0) === 0 && (
+            {customersQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={5}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -99,6 +102,16 @@ export default function Customers() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Box mt={3}>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={customersQ.total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      </Box>
 
       <CreateDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
       <EditDrawer customer={editing} onClose={() => setEditing(null)} />

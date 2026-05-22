@@ -16,6 +16,12 @@ message Medicine {
   bool prescription_required = 7;
   bool active = 8;
   int64 created_at = 9;
+  int64 ready_stock = 10;     // on-hand in the active warehouse (list enrich)
+  int64 on_order_stock = 11;  // incoming on open POs (list enrich)
+  string last_restock_date = 12;      // YYYY-MM-DD of most recent batch receive (GetMedicine only)
+  string last_restock_supplier = 13;  // supplier of that batch (GetMedicine only)
+  int64 total_stock = 14;             // global on-hand across all warehouses (GetMedicine only)
+  int64 stock_valuation = 15;         // global value at cost = Σ qty × cost_price (GetMedicine only)
 }
 
 message MedicinePrice {
@@ -63,9 +69,13 @@ service MedicineService {
 
 message ListMedicinesRequest {
   bool include_inactive = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string query = 4;          // optional ILIKE name / sku
 }
 message ListMedicinesResponse {
   repeated Medicine medicines = 1;
+  int32 total = 2;
 }
 
 message GetMedicineRequest { string id = 1; }

@@ -55,6 +55,48 @@ export class Medicine extends Message<Medicine> {
    */
   createdAt = protoInt64.zero;
 
+  /**
+   * on-hand in the active warehouse (list enrich)
+   *
+   * @generated from field: int64 ready_stock = 10;
+   */
+  readyStock = protoInt64.zero;
+
+  /**
+   * incoming on open POs (list enrich)
+   *
+   * @generated from field: int64 on_order_stock = 11;
+   */
+  onOrderStock = protoInt64.zero;
+
+  /**
+   * YYYY-MM-DD of most recent batch receive (GetMedicine only)
+   *
+   * @generated from field: string last_restock_date = 12;
+   */
+  lastRestockDate = "";
+
+  /**
+   * supplier of that batch (GetMedicine only)
+   *
+   * @generated from field: string last_restock_supplier = 13;
+   */
+  lastRestockSupplier = "";
+
+  /**
+   * global on-hand across all warehouses (GetMedicine only)
+   *
+   * @generated from field: int64 total_stock = 14;
+   */
+  totalStock = protoInt64.zero;
+
+  /**
+   * global value at cost = Σ qty × cost_price (GetMedicine only)
+   *
+   * @generated from field: int64 stock_valuation = 15;
+   */
+  stockValuation = protoInt64.zero;
+
   constructor(data?: PartialMessage<Medicine>) {
     super();
     proto3.util.initPartial(data, this);
@@ -72,6 +114,12 @@ export class Medicine extends Message<Medicine> {
     { no: 7, name: "prescription_required", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 8, name: "active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 9, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "ready_stock", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 11, name: "on_order_stock", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 12, name: "last_restock_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "last_restock_supplier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 14, name: "total_stock", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 15, name: "stock_valuation", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Medicine {
@@ -167,6 +215,23 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
    */
   includeInactive = false;
 
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
+
+  /**
+   * optional ILIKE name / sku
+   *
+   * @generated from field: string query = 4;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListMedicinesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -176,6 +241,9 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
   static readonly typeName = "inventory_iface.v1.ListMedicinesRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "include_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMedicinesRequest {
@@ -204,6 +272,11 @@ export class ListMedicinesResponse extends Message<ListMedicinesResponse> {
    */
   medicines: Medicine[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListMedicinesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -213,6 +286,7 @@ export class ListMedicinesResponse extends Message<ListMedicinesResponse> {
   static readonly typeName = "inventory_iface.v1.ListMedicinesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "medicines", kind: "message", T: Medicine, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMedicinesResponse {

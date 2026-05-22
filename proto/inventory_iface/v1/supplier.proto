@@ -13,6 +13,7 @@ message Supplier {
   string phone = 4;
   bool active = 5;
   int64 created_at = 6;
+  string code = 7;            // unique business code, e.g. "SUP-0001"
 }
 
 service SupplierService {
@@ -44,9 +45,13 @@ service SupplierService {
 
 message ListSuppliersRequest {
   bool include_inactive = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string query = 4;          // optional ILIKE name / code
 }
 message ListSuppliersResponse {
   repeated Supplier suppliers = 1;
+  int32 total = 2;
 }
 
 message GetSupplierRequest { string id = 1; }
@@ -56,6 +61,7 @@ message CreateSupplierRequest {
   string name = 1;
   string contact_email = 2;
   string phone = 3;
+  string code = 4;
 }
 message CreateSupplierResponse { Supplier supplier = 1; }
 
@@ -64,6 +70,7 @@ message UpdateSupplierRequest {
   string name = 2;
   string contact_email = 3;
   string phone = 4;
+  string code = 5;
 }
 message UpdateSupplierResponse { Supplier supplier = 1; }
 

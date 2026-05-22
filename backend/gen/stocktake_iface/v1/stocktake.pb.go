@@ -1073,6 +1073,7 @@ type ListStocktakesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"` // empty = all
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1121,9 +1122,17 @@ func (x *ListStocktakesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListStocktakesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListStocktakesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sessions      []*StocktakeSession    `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1163,6 +1172,13 @@ func (x *ListStocktakesResponse) GetSessions() []*StocktakeSession {
 		return x.Sessions
 	}
 	return nil
+}
+
+func (x *ListStocktakesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetStocktakeRequest struct {
@@ -1348,12 +1364,14 @@ const file_stocktake_iface_v1_stocktake_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"W\n" +
 	"\x15VoidStocktakeResponse\x12>\n" +
-	"\asession\x18\x01 \x01(\v2$.stocktake_iface.v1.StocktakeSessionR\asession\"E\n" +
+	"\asession\x18\x01 \x01(\v2$.stocktake_iface.v1.StocktakeSessionR\asession\"]\n" +
 	"\x15ListStocktakesRequest\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"Z\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"p\n" +
 	"\x16ListStocktakesResponse\x12@\n" +
-	"\bsessions\x18\x01 \x03(\v2$.stocktake_iface.v1.StocktakeSessionR\bsessions\"%\n" +
+	"\bsessions\x18\x01 \x03(\v2$.stocktake_iface.v1.StocktakeSessionR\bsessions\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"%\n" +
 	"\x13GetStocktakeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x8f\x01\n" +
 	"\x14GetStocktakeResponse\x12>\n" +

@@ -23,19 +23,35 @@ func (c *Customers) ListCustomers(
 	ctx context.Context,
 	req *connect.Request[customerifacev1.ListCustomersRequest],
 ) (*connect.Response[customerifacev1.ListCustomersResponse], error) {
-	q := c.db.WithContext(ctx).Order("name")
-	if !req.Msg.IncludeInactive {
-		q = q.Where("active = ?", true)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	query := strings.TrimSpace(req.Msg.Query)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if !req.Msg.IncludeInactive {
+			q = q.Where("active = ?", true)
+		}
+		if query != "" {
+			pattern := "%" + query + "%"
+			q = q.Where("name ILIKE ? OR phone ILIKE ?", pattern, pattern)
+		}
+		return q
+	}
+	var total int64
+	if err := applyFilters(c.db.WithContext(ctx).Model(&model.Customer{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	var rows []model.Customer
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(c.db.WithContext(ctx).Model(&model.Customer{})).
+		Order("name").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*customerifacev1.Customer, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, customerToProto(&r))
 	}
-	return connect.NewResponse(&customerifacev1.ListCustomersResponse{Customers: out}), nil
+	return connect.NewResponse(&customerifacev1.ListCustomersResponse{
+		Customers: out,
+		Total:     int32(total),
+	}), nil
 }
 
 func (c *Customers) GetCustomer(

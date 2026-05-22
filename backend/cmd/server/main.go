@@ -27,6 +27,7 @@ import (
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	"github.com/apotech/backend/gen/tax_iface/v1/taxifacev1connect"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
+	"github.com/apotech/backend/gen/warehouse_iface/v1/warehouseifacev1connect"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/db"
@@ -92,6 +93,8 @@ func main() {
 	bpjsClaimsSvc := service.NewBpjsClaims(gormDB)
 	branchesSvc := service.NewBranches(gormDB)
 	stocktakesSvc := service.NewStocktakes(gormDB)
+	warehousesSvc := service.NewWarehouses(gormDB)
+	transfersSvc := service.NewTransfers(gormDB)
 
 	if err := userSvc.EnsureBootstrapOwner(context.Background(), cfg.Bootstrap); err != nil {
 		log.Fatalf("bootstrap: %v", err) // intentionally fatal — server can't start
@@ -120,6 +123,8 @@ func main() {
 	apiMux.Handle(bpjsifacev1connect.NewBpjsClaimServiceHandler(bpjsClaimsSvc, interceptors))
 	apiMux.Handle(branchifacev1connect.NewBranchServiceHandler(branchesSvc, interceptors))
 	apiMux.Handle(stocktakeifacev1connect.NewStocktakeServiceHandler(stocktakesSvc, interceptors))
+	apiMux.Handle(warehouseifacev1connect.NewWarehouseServiceHandler(warehousesSvc, interceptors))
+	apiMux.Handle(warehouseifacev1connect.NewStockTransferServiceHandler(transfersSvc, interceptors))
 
 	// Root mux: /api/* → Connect handlers, /healthz → liveness probe,
 	// everything else → the embedded SPA (single self-contained binary).

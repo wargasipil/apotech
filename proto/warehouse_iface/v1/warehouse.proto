@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package warehouse_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/warehouse_iface/v1;warehouseifacev1";
+
+// Warehouse (gudang) — the stock location concept that replaces Branch. Stock
+// is partitioned per warehouse; see StockTransferService for moving stock.
+message Warehouse {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  string address = 4;
+  string phone = 5;
+  bool is_default = 6;
+  bool active = 7;
+  int64 created_at = 8;
+}
+
+// UserWarehouseMembership lists warehouses a user can access. `is_default`
+// marks the warehouse the UI selects on login.
+message UserWarehouseMembership {
+  string user_id = 1;
+  string warehouse_id = 2;
+  bool is_default = 3;
+}
+
+service WarehouseService {
+  rpc ListWarehouses(ListWarehousesRequest) returns (ListWarehousesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateWarehouse(CreateWarehouseRequest) returns (CreateWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc UpdateWarehouse(UpdateWarehouseRequest) returns (UpdateWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ArchiveWarehouse(ArchiveWarehouseRequest) returns (ArchiveWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+
+  // GrantWarehouseAccess / RevokeWarehouseAccess manage the user_warehouses join.
+  rpc GrantWarehouseAccess(GrantWarehouseAccessRequest) returns (GrantWarehouseAccessResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc RevokeWarehouseAccess(RevokeWarehouseAccessRequest) returns (RevokeWarehouseAccessResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ListUserWarehouses(ListUserWarehousesRequest) returns (ListUserWarehousesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc SetDefaultWarehouse(SetDefaultWarehouseRequest) returns (SetDefaultWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+}
+
+message ListWarehousesRequest { bool include_inactive = 1; }
+message ListWarehousesResponse { repeated Warehouse warehouses = 1; }
+
+message CreateWarehouseRequest {
+  string code = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+}
+message CreateWarehouseResponse { Warehouse warehouse = 1; }
+
+message UpdateWarehouseRequest {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+}
+message UpdateWarehouseResponse { Warehouse warehouse = 1; }
+
+message ArchiveWarehouseRequest { string id = 1; }
+message ArchiveWarehouseResponse { Warehouse warehouse = 1; }
+
+message GrantWarehouseAccessRequest {
+  string user_id = 1;
+  string warehouse_id = 2;
+  bool is_default = 3;
+}
+message GrantWarehouseAccessResponse { UserWarehouseMembership membership = 1; }
+
+message RevokeWarehouseAccessRequest {
+  string user_id = 1;
+  string warehouse_id = 2;
+}
+message RevokeWarehouseAccessResponse {}
+
+message ListUserWarehousesRequest {
+  // Empty user_id = self.
+  string user_id = 1;
+}
+message ListUserWarehousesResponse {
+  repeated UserWarehouseMembership memberships = 1;
+  repeated Warehouse warehouses = 2;        // hydrated for convenience
+}
+
+message SetDefaultWarehouseRequest {
+  // user_id empty = self.
+  string user_id = 1;
+  string warehouse_id = 2;
+}
+message SetDefaultWarehouseResponse { UserWarehouseMembership membership = 1; }

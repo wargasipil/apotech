@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package warehouse_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/warehouse_iface/v1;warehouseifacev1";
+
+// A stock transfer (mutasi stok) moves batch quantities from one warehouse to
+// another. Each line becomes a TRANSFER_OUT (source) + TRANSFER_IN (dest)
+// movement pair on the insert-only ledger. See CLAUDE.md -> Warehouse model.
+message StockTransfer {
+  string id = 1;
+  string transfer_no = 2;            // TRF-YYYY-NNNN
+  string from_warehouse_id = 3;
+  string to_warehouse_id = 4;
+  string from_warehouse_name = 5;    // hydrated
+  string to_warehouse_name = 6;      // hydrated
+  string note = 7;
+  string created_by = 8;
+  int64 created_at = 9;
+  repeated StockTransferLine lines = 10;
+}
+
+message StockTransferLine {
+  string batch_id = 1;
+  // Denormalized for display.
+  string medicine_id = 2;
+  string medicine_name = 3;
+  string batch_number = 4;
+  string expiry_date = 5;            // YYYY-MM-DD
+  int32 qty = 6;
+}
+
+service StockTransferService {
+  rpc CreateTransfer(CreateTransferRequest) returns (CreateTransferResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc GetTransfer(GetTransferRequest) returns (GetTransferResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}
+
+message CreateTransferLineInput {
+  string batch_id = 1;
+  int32 qty = 2;
+}
+message CreateTransferRequest {
+  string from_warehouse_id = 1;
+  string to_warehouse_id = 2;
+  string note = 3;
+  repeated CreateTransferLineInput lines = 4;
+}
+message CreateTransferResponse { StockTransfer transfer = 1; }
+
+message ListTransfersRequest {
+  string warehouse_id = 1;           // empty = all; matches from OR to
+  int32 limit = 2;
+  int32 offset = 3;
+}
+message ListTransfersResponse {
+  repeated StockTransfer transfers = 1;
+  int32 total = 2;
+}
+
+message GetTransferRequest { string id = 1; }
+message GetTransferResponse { StockTransfer transfer = 1; }

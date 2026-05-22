@@ -130,6 +130,11 @@ export class ListClaimsRequest extends Message<ListClaimsRequest> {
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListClaimsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -141,6 +146,7 @@ export class ListClaimsRequest extends Message<ListClaimsRequest> {
     { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "customer_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListClaimsRequest {
@@ -169,6 +175,11 @@ export class ListClaimsResponse extends Message<ListClaimsResponse> {
    */
   claims: BpjsClaim[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListClaimsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -178,6 +189,7 @@ export class ListClaimsResponse extends Message<ListClaimsResponse> {
   static readonly typeName = "bpjs_iface.v1.ListClaimsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "claims", kind: "message", T: BpjsClaim, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListClaimsResponse {

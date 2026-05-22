@@ -29,14 +29,16 @@ export const purchasingKeys = {
 };
 
 // ---------- Orders ----------
+// Server-paginated. Returns { rows, total }. Caller sets limit/offset on req.
 export function usePurchaseOrdersQuery(req: PartialMessage<ListPurchaseOrdersRequest> = {}) {
-  return useQuery({
+  const q = useQuery({
     queryKey: purchasingKeys.orders(req),
     queryFn: async () => {
       const res = await purchaseOrderClient.listPurchaseOrders(req);
-      return res.orders;
+      return { rows: res.orders, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
 }
 
 export function usePurchaseOrderQuery(id: string, enabled = true) {

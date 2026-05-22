@@ -15,8 +15,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
 import { downloadCsv } from "../lib/csv";
 import { formatMoney, formatUnix } from "../lib/format";
+import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
 import { useImportNsfpMutation, useNsfpQuery, useTaxInvoicesQuery } from "../queries/tax";
 
@@ -43,8 +45,9 @@ export default function Tax() {
 
 function InvoicesPanel() {
   const { t } = useTranslation();
-  const invoicesQ = useTaxInvoicesQuery();
-  const rows = invoicesQ.data ?? [];
+  const { page, setPage, pageSize, setPageSize } = usePageState("");
+  const invoicesQ = useTaxInvoicesQuery({ limit: pageSize, offset: page * pageSize });
+  const rows = invoicesQ.rows;
   const exportCsv = () => {
     downloadCsv(
       `tax-invoices-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -115,6 +118,13 @@ function InvoicesPanel() {
           )}
         </Table.Body>
       </Table.Root>
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={invoicesQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </Stack>
   );
 }
@@ -125,7 +135,8 @@ function NsfpPanel() {
   const [end, setEnd] = useState("");
   const [year, setYear] = useState(new Date().getFullYear());
   const importMut = useImportNsfpMutation();
-  const nsfpQ = useNsfpQuery({ unusedOnly: false });
+  const { page, setPage, pageSize, setPageSize } = usePageState("");
+  const nsfpQ = useNsfpQuery({ unusedOnly: false, limit: pageSize, offset: page * pageSize });
 
   const submit = async () => {
     try {
@@ -195,7 +206,7 @@ function NsfpPanel() {
 
       <HStack>
         <Text fontSize="sm" color="fg.muted">
-          {t("tax.unusedTotal")}: <b>{nsfpQ.data?.unusedTotal ?? 0}</b>
+          {t("tax.unusedTotal")}: <b>{nsfpQ.unusedTotal}</b>
         </Text>
       </HStack>
 
@@ -209,7 +220,7 @@ function NsfpPanel() {
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {(nsfpQ.data?.entries ?? []).map((n) => (
+          {nsfpQ.rows.map((n) => (
             <Table.Row key={n.id}>
               <Table.Cell fontFamily="mono">{n.code}</Table.Cell>
               <Table.Cell>{n.fiscalYear}</Table.Cell>
@@ -217,7 +228,7 @@ function NsfpPanel() {
               <Table.Cell fontFamily="mono">{n.saleId.slice(0, 8) || "—"}</Table.Cell>
             </Table.Row>
           ))}
-          {(nsfpQ.data?.entries.length ?? 0) === 0 && (
+          {nsfpQ.rows.length === 0 && (
             <Table.Row>
               <Table.Cell colSpan={4}>
                 <Text color="fg.muted" textAlign="center" py={4}>
@@ -228,6 +239,13 @@ function NsfpPanel() {
           )}
         </Table.Body>
       </Table.Root>
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={nsfpQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </Stack>
   );
 }

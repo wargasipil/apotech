@@ -139,6 +139,20 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
    */
   items: PurchaseOrderItem[] = [];
 
+  /**
+   * most recent receipt date (0 if none)
+   *
+   * @generated from field: int64 received_at = 16;
+   */
+  receivedAt = protoInt64.zero;
+
+  /**
+   * most recent receipt's supplier faktur
+   *
+   * @generated from field: string invoice_no = 17;
+   */
+  invoiceNo = "";
+
   constructor(data?: PartialMessage<PurchaseOrder>) {
     super();
     proto3.util.initPartial(data, this);
@@ -162,6 +176,8 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
     { no: 13, name: "sent_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 14, name: "closed_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 15, name: "items", kind: "message", T: PurchaseOrderItem, repeated: true },
+    { no: 16, name: "received_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 17, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrder {
@@ -222,6 +238,20 @@ export class PurchaseOrderItem extends Message<PurchaseOrderItem> {
    */
   subtotal = protoInt64.zero;
 
+  /**
+   * denormalized for list display
+   *
+   * @generated from field: string medicine_name = 8;
+   */
+  medicineName = "";
+
+  /**
+   * denormalized for list display
+   *
+   * @generated from field: string medicine_sku = 9;
+   */
+  medicineSku = "";
+
   constructor(data?: PartialMessage<PurchaseOrderItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -237,6 +267,8 @@ export class PurchaseOrderItem extends Message<PurchaseOrderItem> {
     { no: 5, name: "received_qty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "unit_cost_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "subtotal", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "medicine_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "medicine_sku", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrderItem {
@@ -331,6 +363,39 @@ export class ListPurchaseOrdersRequest extends Message<ListPurchaseOrdersRequest
    */
   limit = 0;
 
+  /**
+   * ILIKE po_no / supplier name / supplier code / medicine name
+   *
+   * @generated from field: string query = 5;
+   */
+  query = "";
+
+  /**
+   * date-range lower bound (0 = unbounded)
+   *
+   * @generated from field: int64 from_unix = 6;
+   */
+  fromUnix = protoInt64.zero;
+
+  /**
+   * date-range upper bound (exclusive; 0 = unbounded)
+   *
+   * @generated from field: int64 to_unix = 7;
+   */
+  toUnix = protoInt64.zero;
+
+  /**
+   * which date the range filters: "created" | "received"
+   *
+   * @generated from field: string date_field = 8;
+   */
+  dateField = "";
+
+  /**
+   * @generated from field: int32 offset = 9;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListPurchaseOrdersRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -343,6 +408,11 @@ export class ListPurchaseOrdersRequest extends Message<ListPurchaseOrdersRequest
     { no: 2, name: "supplier_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "only_outstanding", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 4, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "date_field", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListPurchaseOrdersRequest {
@@ -371,6 +441,11 @@ export class ListPurchaseOrdersResponse extends Message<ListPurchaseOrdersRespon
    */
   orders: PurchaseOrder[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListPurchaseOrdersResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -380,6 +455,7 @@ export class ListPurchaseOrdersResponse extends Message<ListPurchaseOrdersRespon
   static readonly typeName = "purchasing_iface.v1.ListPurchaseOrdersResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "orders", kind: "message", T: PurchaseOrder, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListPurchaseOrdersResponse {

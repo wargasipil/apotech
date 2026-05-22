@@ -15,6 +15,7 @@ message PurchaseReceipt {
   string note = 6;
   int64 created_at = 7;
   repeated PurchaseReceiptItem items = 8;
+  string invoice_no = 9;           // supplier invoice / nomor faktur
 }
 
 message PurchaseReceiptItem {
@@ -57,6 +58,7 @@ message CreateReceiptRequest {
   string received_at = 2;          // YYYY-MM-DD (defaults to today if empty)
   string note = 3;
   repeated ReceiveLineInput lines = 4;
+  string invoice_no = 5;           // supplier invoice / nomor faktur
 }
 message CreateReceiptResponse {
   PurchaseReceipt receipt = 1;

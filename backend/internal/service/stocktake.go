@@ -59,14 +59,15 @@ func (s *Stocktakes) StartStocktake(
 			errors.New("another draft stocktake session is already in progress"))
 	}
 
-	session := model.StocktakeSession{
-		Name:      strings.TrimSpace(req.Msg.Name),
-		Status:    stocktakeStatusDraft,
-		CreatedBy: caller.UserID,
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
 	}
-	if caller.BranchID != "" {
-		bid := caller.BranchID
-		session.BranchID = &bid
+	session := model.StocktakeSession{
+		Name:        strings.TrimSpace(req.Msg.Name),
+		Status:      stocktakeStatusDraft,
+		CreatedBy:   caller.UserID,
+		WarehouseID: &warehouseID,
 	}
 	if err := s.db.WithContext(ctx).Create(&session).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -94,7 +95,17 @@ func (s *Stocktakes) AddAllInStockBatches(
 	ctx context.Context,
 	req *connect.Request[stocktakeifacev1.AddAllInStockBatchesRequest],
 ) (*connect.Response[stocktakeifacev1.AddAllInStockBatchesResponse], error) {
-	// Find every batch with current qty > 0 via the existing ledger sum.
+	// Resolve the session's warehouse so we only seed batches in stock THERE.
+	var session model.StocktakeSession
+	if err := s.db.WithContext(ctx).Where("id = ?", req.Msg.SessionId).First(&session).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("stocktake not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	whID := deref(session.WarehouseID)
+
+	// Find every batch with current qty > 0 in this warehouse.
 	type batchRow struct {
 		BatchID string `gorm:"column:batch_id"`
 	}
@@ -102,7 +113,7 @@ func (s *Stocktakes) AddAllInStockBatches(
 	err := s.db.WithContext(ctx).
 		Table("batches b").
 		Select("b.id AS batch_id").
-		Joins("LEFT JOIN stock_movements m ON m.batch_id = b.id").
+		Joins("LEFT JOIN stock_movements m ON m.batch_id = b.id AND m.warehouse_id = ?", whID).
 		Group("b.id").
 		Having("COALESCE(SUM(m.qty), 0) > 0").
 		Scan(&rows).Error
@@ -142,9 +153,10 @@ func (s *Stocktakes) addBatches(
 		if ierr != nil {
 			return ierr
 		}
-		_ = sess
+		whID := deref(sess.WarehouseID)
 		for _, bid := range batchIDs {
-			qty, ierr := batchCurrentQty(ctx, tx, bid)
+			// expected_qty is snapshotted per the session's warehouse.
+			qty, ierr := batchQtyInWarehouse(ctx, tx, bid, whID)
 			if ierr != nil {
 				return connect.NewError(connect.CodeInternal, ierr)
 			}
@@ -350,14 +362,15 @@ func (s *Stocktakes) CompleteStocktake(
 				Type:            l.Disposition,
 				Reason:          strings.Join(reasonParts, " — "),
 				UserID:          caller.UserID,
+				WarehouseID:     deref(session.WarehouseID),
 				StocktakeLineID: &lineID,
 				WriteOffKind:    l.WriteOffKind,
 			}
 			if ierr := tx.Create(&mv).Error; ierr != nil {
 				return connect.NewError(connect.CodeInternal, ierr)
 			}
-			// Guard: refuse if the resulting stock would go negative.
-			qty, ierr := batchCurrentQty(ctx, tx, l.BatchID)
+			// Guard: refuse if the resulting stock in this warehouse goes negative.
+			qty, ierr := batchQtyInWarehouse(ctx, tx, l.BatchID, deref(session.WarehouseID))
 			if ierr != nil {
 				return connect.NewError(connect.CodeInternal, ierr)
 			}
@@ -428,17 +441,20 @@ func (s *Stocktakes) ListStocktakes(
 	ctx context.Context,
 	req *connect.Request[stocktakeifacev1.ListStocktakesRequest],
 ) (*connect.Response[stocktakeifacev1.ListStocktakesResponse], error) {
-	q := s.db.WithContext(ctx).Order("created_at DESC")
-	if s := strings.TrimSpace(strings.ToUpper(req.Msg.Status)); s != "" {
-		q = q.Where("status = ?", s)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if st := strings.TrimSpace(strings.ToUpper(req.Msg.Status)); st != "" {
+			q = q.Where("status = ?", st)
+		}
+		return q
 	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 500 {
-		limit = 100
+	var total int64
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.StocktakeSession{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	q = q.Limit(limit)
 	var rows []model.StocktakeSession
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.StocktakeSession{})).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*stocktakeifacev1.StocktakeSession, 0, len(rows))
@@ -449,7 +465,10 @@ func (s *Stocktakes) ListStocktakes(
 		}
 		out = append(out, hydrated)
 	}
-	return connect.NewResponse(&stocktakeifacev1.ListStocktakesResponse{Sessions: out}), nil
+	return connect.NewResponse(&stocktakeifacev1.ListStocktakesResponse{
+		Sessions: out,
+		Total:    int32(total),
+	}), nil
 }
 
 func (s *Stocktakes) GetStocktake(

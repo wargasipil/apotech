@@ -1,0 +1,237 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - paragraph [ref=e10]: Apotech
+        - generic [ref=e11]:
+          - link "Dashboard" [ref=e12] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e13]:
+              - img [ref=e14]
+              - paragraph [ref=e19]: Dashboard
+          - link "POS" [ref=e20] [cursor=pointer]:
+            - /url: /pos
+            - generic [ref=e21]:
+              - img [ref=e22]
+              - paragraph [ref=e26]: POS
+          - link "Medicines" [ref=e154] [cursor=pointer]:
+            - /url: /medicines
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - paragraph [ref=e159]: Medicines
+          - button "Inventory" [ref=e161] [cursor=pointer]:
+            - img [ref=e162]
+            - paragraph [ref=e166]: Inventory
+            - img [ref=e168]
+          - link "Customers" [ref=e27] [cursor=pointer]:
+            - /url: /customers
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - paragraph [ref=e32]: Customers
+          - link "Order history" [ref=e170] [cursor=pointer]:
+            - /url: /orders
+            - generic [ref=e171]:
+              - img [ref=e172]
+              - paragraph [ref=e175]: Order history
+          - link "Prescriptions" [ref=e176] [cursor=pointer]:
+            - /url: /prescriptions
+            - generic [ref=e177]:
+              - img [ref=e178]
+              - paragraph [ref=e181]: Prescriptions
+          - link "Analytics" [ref=e182] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e183]:
+              - img [ref=e184]
+              - paragraph [ref=e186]: Analytics
+          - link "Tax" [ref=e187] [cursor=pointer]:
+            - /url: /tax
+            - generic [ref=e188]:
+              - img [ref=e189]
+              - paragraph [ref=e193]: Tax
+          - link "BPJS" [ref=e194] [cursor=pointer]:
+            - /url: /bpjs
+            - generic [ref=e195]:
+              - img [ref=e196]
+              - paragraph [ref=e199]: BPJS
+          - link "Warehouses" [ref=e200] [cursor=pointer]:
+            - /url: /warehouses
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - paragraph [ref=e205]: Warehouses
+          - link "Users" [ref=e206] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e207]:
+              - img [ref=e208]
+              - paragraph [ref=e213]: Users
+        - generic [ref=e33]:
+          - generic [ref=e214]:
+            - paragraph [ref=e215]: Owner
+            - paragraph [ref=e216]: owner@apotech.local
+          - button "Sign out" [ref=e217] [cursor=pointer]:
+            - img [ref=e218]
+            - paragraph [ref=e221]: Sign out
+          - button "toggle sidebar" [ref=e34] [cursor=pointer]:
+            - img [ref=e35]
+      - generic [ref=e38]:
+        - banner [ref=e39]:
+          - generic [ref=e41]:
+            - generic [ref=e222]:
+              - combobox [ref=e223]
+              - generic [ref=e224]:
+                - combobox [ref=e225]:
+                  - generic [ref=e226]: MAIN · Gudang Utama
+                - generic:
+                  - generic:
+                    - img
+            - button "language" [ref=e42] [cursor=pointer]:
+              - generic [ref=e43]:
+                - img [ref=e44]
+                - paragraph [ref=e48]: ID
+            - button "toggle theme" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+            - button "user menu" [ref=e227] [cursor=pointer]:
+              - generic [ref=e228]: O
+        - main [ref=e52]:
+          - generic [ref=e328]:
+            - generic [ref=e329]:
+              - generic [ref=e330]:
+                - generic [ref=e331]:
+                  - link "Medicines" [ref=e332] [cursor=pointer]:
+                    - /url: /medicines
+                    - paragraph [ref=e333]: Medicines
+                  - img [ref=e334]
+                - paragraph [ref=e337]: adasd
+              - generic [ref=e338]:
+                - heading "adasd" [level=2] [ref=e340]
+                - generic [ref=e342]:
+                  - button "Edit" [ref=e343] [cursor=pointer]:
+                    - img [ref=e344]
+                    - text: Edit
+                  - button "Archive" [ref=e347] [cursor=pointer]:
+                    - img [ref=e348]
+                    - text: Archive
+            - generic [ref=e351]:
+              - generic [ref=e352]:
+                - heading "Information" [level=2] [ref=e353]
+                - generic [ref=e354]:
+                  - generic [ref=e355]:
+                    - paragraph [ref=e356]: SKU
+                    - paragraph [ref=e357]: sdasd
+                  - generic [ref=e358]:
+                    - paragraph [ref=e359]: Manufacturer
+                    - paragraph [ref=e360]: asdasdasdasd
+                  - generic [ref=e361]:
+                    - paragraph [ref=e362]: Unit
+                    - paragraph [ref=e363]: tablet
+                  - generic [ref=e364]:
+                    - paragraph [ref=e365]: Unit price (IDR)
+                    - paragraph [ref=e366]: IDR 13,000
+                  - generic [ref=e367]:
+                    - paragraph [ref=e368]: Ready
+                    - paragraph [ref=e369]: "0"
+                  - generic [ref=e370]:
+                    - paragraph [ref=e371]: Ongoing
+                    - paragraph [ref=e372]: —
+                  - generic [ref=e373]:
+                    - paragraph [ref=e374]: Prescription required
+                    - generic [ref=e375]: "Yes"
+                  - generic [ref=e376]:
+                    - paragraph [ref=e377]: Active
+                    - generic [ref=e378]: Active
+              - generic [ref=e379]:
+                - heading "Batches" [level=2] [ref=e380]
+                - table [ref=e381]:
+                  - rowgroup [ref=e382]:
+                    - 'row "Batch # Expiry date Cost Qty" [ref=e383]':
+                      - 'columnheader "Batch #" [ref=e384]'
+                      - columnheader "Expiry date" [ref=e385]
+                      - columnheader "Cost" [ref=e386]
+                      - columnheader "Qty" [ref=e387]
+                  - rowgroup [ref=e388]:
+                    - row "No results" [ref=e389]:
+                      - cell "No results" [ref=e390]:
+                        - paragraph [ref=e391]: No results
+              - generic [ref=e392]:
+                - heading "Price history" [level=2] [ref=e393]
+                - table [ref=e394]:
+                  - rowgroup [ref=e395]:
+                    - row "From To Price" [ref=e396]:
+                      - columnheader "From" [ref=e397]
+                      - columnheader "To" [ref=e398]
+                      - columnheader "Price" [ref=e399]
+                  - rowgroup [ref=e400]:
+                    - row "May 19, 2026, 7:47 PM (current) IDR 13,000" [ref=e401]:
+                      - cell "May 19, 2026, 7:47 PM" [ref=e402]
+                      - cell "(current)" [ref=e403]
+                      - cell "IDR 13,000" [ref=e404]
+                    - row "May 17, 2026, 5:38 PM May 19, 2026, 7:47 PM IDR 12,333" [ref=e405]:
+                      - cell "May 17, 2026, 5:38 PM" [ref=e406]
+                      - cell "May 19, 2026, 7:47 PM" [ref=e407]
+                      - cell "IDR 12,333" [ref=e408]
+              - generic [ref=e409]:
+                - heading "Recent movements" [level=2] [ref=e410]
+                - table [ref=e411]:
+                  - rowgroup [ref=e412]:
+                    - row "When Type Qty (± int) Reason" [ref=e413]:
+                      - columnheader "When" [ref=e414]
+                      - columnheader "Type" [ref=e415]
+                      - columnheader "Qty (± int)" [ref=e416]
+                      - columnheader "Reason" [ref=e417]
+                  - rowgroup [ref=e418]:
+                    - row "May 21, 2026, 11:39 PM Purchase +20 initial stock" [ref=e419]:
+                      - cell "May 21, 2026, 11:39 PM" [ref=e420]
+                      - cell "Purchase" [ref=e421]
+                      - cell "+20" [ref=e422]
+                      - cell "initial stock" [ref=e423]
+                    - row "May 21, 2026, 11:38 PM Purchase +20 initial stock" [ref=e424]:
+                      - cell "May 21, 2026, 11:38 PM" [ref=e425]
+                      - cell "Purchase" [ref=e426]
+                      - cell "+20" [ref=e427]
+                      - cell "initial stock" [ref=e428]
+                    - row "May 21, 2026, 11:31 PM Sale -3 POS sale" [ref=e429]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e430]
+                      - cell "Sale" [ref=e431]
+                      - cell "-3" [ref=e432]
+                      - cell "POS sale" [ref=e433]
+                    - row "May 21, 2026, 11:31 PM Purchase +10 initial stock" [ref=e434]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e435]
+                      - cell "Purchase" [ref=e436]
+                      - cell "+10" [ref=e437]
+                      - cell "initial stock" [ref=e438]
+                    - row "May 21, 2026, 11:31 PM — +4 Transfer TRF-2026-0008" [ref=e439]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e440]
+                      - cell "—" [ref=e441]
+                      - cell "+4" [ref=e442]
+                      - cell "Transfer TRF-2026-0008" [ref=e443]
+                    - row "May 21, 2026, 11:31 PM — -4 Transfer TRF-2026-0008" [ref=e444]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e445]
+                      - cell "—" [ref=e446]
+                      - cell "-4" [ref=e447]
+                      - cell "Transfer TRF-2026-0008" [ref=e448]
+                    - row "May 21, 2026, 11:31 PM Purchase +10 initial stock" [ref=e449]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e450]
+                      - cell "Purchase" [ref=e451]
+                      - cell "+10" [ref=e452]
+                      - cell "initial stock" [ref=e453]
+                    - row "May 21, 2026, 11:31 PM Purchase +10 initial stock" [ref=e454]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e455]
+                      - cell "Purchase" [ref=e456]
+                      - cell "+10" [ref=e457]
+                      - cell "initial stock" [ref=e458]
+                    - row "May 21, 2026, 11:31 PM Purchase +10 initial stock" [ref=e459]:
+                      - cell "May 21, 2026, 11:31 PM" [ref=e460]
+                      - cell "Purchase" [ref=e461]
+                      - cell "+10" [ref=e462]
+                      - cell "initial stock" [ref=e463]
+                    - 'row "May 21, 2026, 11:31 PM Write-off -2 Stocktake: Test stocktake — EXPIRED — expired batch from 2025" [ref=e464]':
+                      - cell "May 21, 2026, 11:31 PM" [ref=e465]
+                      - cell "Write-off" [ref=e466]
+                      - cell "-2" [ref=e467]
+                      - 'cell "Stocktake: Test stocktake — EXPIRED — expired batch from 2025" [ref=e468]'
+    - generic [ref=e55]:
+      - img [ref=e57]
+      - button "Open Tanstack query devtools" [ref=e105] [cursor=pointer]:
+        - img [ref=e106]
+  - region "Notifications, top-end (alt+T)"

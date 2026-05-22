@@ -133,6 +133,9 @@ func (x *Customer) GetAddress() string {
 type ListCustomersRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	IncludeInactive bool                   `protobuf:"varint,1,opt,name=include_inactive,json=includeInactive,proto3" json:"include_inactive,omitempty"`
+	Limit           int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset          int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Query           string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"` // optional ILIKE name / phone
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -174,9 +177,31 @@ func (x *ListCustomersRequest) GetIncludeInactive() bool {
 	return false
 }
 
+func (x *ListCustomersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListCustomersRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *ListCustomersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
 type ListCustomersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Customers     []*Customer            `protobuf:"bytes,1,rep,name=customers,proto3" json:"customers,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -216,6 +241,13 @@ func (x *ListCustomersResponse) GetCustomers() []*Customer {
 		return x.Customers
 	}
 	return nil
+}
+
+func (x *ListCustomersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetCustomerRequest struct {
@@ -769,11 +801,15 @@ const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\x03R\tcreatedAt\x12\x12\n" +
 	"\x04npwp\x18\b \x01(\tR\x04npwp\x12\x18\n" +
-	"\aaddress\x18\t \x01(\tR\aaddress\"A\n" +
+	"\aaddress\x18\t \x01(\tR\aaddress\"\x85\x01\n" +
 	"\x14ListCustomersRequest\x12)\n" +
-	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\"R\n" +
+	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12\x14\n" +
+	"\x05query\x18\x04 \x01(\tR\x05query\"h\n" +
 	"\x15ListCustomersResponse\x129\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\"$\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"$\n" +
 	"\x12GetCustomerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"N\n" +
 	"\x13GetCustomerResponse\x127\n" +

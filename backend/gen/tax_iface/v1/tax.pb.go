@@ -357,6 +357,7 @@ type ListNsfpRequest struct {
 	FiscalYear    int32                  `protobuf:"varint,1,opt,name=fiscal_year,json=fiscalYear,proto3" json:"fiscal_year,omitempty"`
 	UnusedOnly    bool                   `protobuf:"varint,2,opt,name=unused_only,json=unusedOnly,proto3" json:"unused_only,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -412,10 +413,18 @@ func (x *ListNsfpRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListNsfpRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListNsfpResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entries       []*NsfpEntry           `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
 	UnusedTotal   int32                  `protobuf:"varint,2,opt,name=unused_total,json=unusedTotal,proto3" json:"unused_total,omitempty"`
+	Total         int32                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -464,11 +473,19 @@ func (x *ListNsfpResponse) GetUnusedTotal() int32 {
 	return 0
 }
 
+func (x *ListNsfpResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 type ListTaxInvoicesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromUnix      int64                  `protobuf:"varint,1,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`
 	ToUnix        int64                  `protobuf:"varint,2,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -524,9 +541,17 @@ func (x *ListTaxInvoicesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListTaxInvoicesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListTaxInvoicesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Invoices      []*TaxInvoice          `protobuf:"bytes,1,rep,name=invoices,proto3" json:"invoices,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -566,6 +591,13 @@ func (x *ListTaxInvoicesResponse) GetInvoices() []*TaxInvoice {
 		return x.Invoices
 	}
 	return nil
+}
+
+func (x *ListTaxInvoicesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetTaxInvoiceRequest struct {
@@ -694,22 +726,26 @@ const file_tax_iface_v1_tax_proto_rawDesc = "" +
 	"fiscalYear\"e\n" +
 	"\x17ImportNsfpRangeResponse\x12%\n" +
 	"\x0eimported_count\x18\x01 \x01(\x05R\rimportedCount\x12#\n" +
-	"\rskipped_count\x18\x02 \x01(\x05R\fskippedCount\"i\n" +
+	"\rskipped_count\x18\x02 \x01(\x05R\fskippedCount\"\x81\x01\n" +
 	"\x0fListNsfpRequest\x12\x1f\n" +
 	"\vfiscal_year\x18\x01 \x01(\x05R\n" +
 	"fiscalYear\x12\x1f\n" +
 	"\vunused_only\x18\x02 \x01(\bR\n" +
 	"unusedOnly\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"h\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"~\n" +
 	"\x10ListNsfpResponse\x121\n" +
 	"\aentries\x18\x01 \x03(\v2\x17.tax_iface.v1.NsfpEntryR\aentries\x12!\n" +
-	"\funused_total\x18\x02 \x01(\x05R\vunusedTotal\"d\n" +
+	"\funused_total\x18\x02 \x01(\x05R\vunusedTotal\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"|\n" +
 	"\x16ListTaxInvoicesRequest\x12\x1b\n" +
 	"\tfrom_unix\x18\x01 \x01(\x03R\bfromUnix\x12\x17\n" +
 	"\ato_unix\x18\x02 \x01(\x03R\x06toUnix\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"O\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"e\n" +
 	"\x17ListTaxInvoicesResponse\x124\n" +
-	"\binvoices\x18\x01 \x03(\v2\x18.tax_iface.v1.TaxInvoiceR\binvoices\"/\n" +
+	"\binvoices\x18\x01 \x03(\v2\x18.tax_iface.v1.TaxInvoiceR\binvoices\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"/\n" +
 	"\x14GetTaxInvoiceRequest\x12\x17\n" +
 	"\asale_id\x18\x01 \x01(\tR\x06saleId\"K\n" +
 	"\x15GetTaxInvoiceResponse\x122\n" +

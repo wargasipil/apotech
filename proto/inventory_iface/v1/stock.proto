@@ -50,9 +50,13 @@ service StockMovementService {
 message ListMovementsRequest {
   string batch_id = 1;
   MovementType type = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  string medicine_id = 5;   // optional: all movements for a medicine's batches
 }
 message ListMovementsResponse {
   repeated StockMovement movements = 1;
+  int32 total = 2;
 }
 
 message RecordMovementRequest {

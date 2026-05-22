@@ -37,6 +37,7 @@ func TestSearchSuppliers(t *testing.T) {
 	createRes, err := env.Suppliers.CreateSupplier(ctx, authReq(env, t,
 		&inventoryifacev1.CreateSupplierRequest{
 			Name:         unique,
+			Code:         "C" + unique,
 			ContactEmail: unique + "@example.com",
 		}))
 	require.NoError(t, err)

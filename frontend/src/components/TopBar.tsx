@@ -9,13 +9,14 @@ import {
 } from "@chakra-ui/react";
 
 import EnumSelect from "./EnumSelect";
+import { useQueryClient } from "@tanstack/react-query";
 import { Languages, LogOut, Menu as MenuIcon, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../lib/auth";
-import { BRANCH_KEY } from "../lib/transport";
-import { useMyBranchesQuery } from "../queries/branches";
+import { WAREHOUSE_KEY } from "../lib/transport";
+import { useMyWarehousesQuery } from "../queries/warehouses";
 import { usePreferencesStore, type Locale } from "../stores/preferences";
 
 export default function TopBar() {
@@ -66,7 +67,7 @@ export default function TopBar() {
         </HStack>
 
         <HStack gap={1}>
-          {user && <BranchSelector />}
+          {user && <WarehouseSelector />}
           <IconButton aria-label="language" variant="ghost" size="sm" onClick={flipLocale}>
             <HStack gap={1}>
               <Languages size={16} />
@@ -125,27 +126,28 @@ export default function TopBar() {
   );
 }
 
-function BranchSelector() {
-  const myBranchesQ = useMyBranchesQuery();
-  const [current, setCurrent] = useState<string>(() => localStorage.getItem(BRANCH_KEY) || "");
+function WarehouseSelector() {
+  const queryClient = useQueryClient();
+  const myWarehousesQ = useMyWarehousesQuery();
+  const [current, setCurrent] = useState<string>(() => localStorage.getItem(WAREHOUSE_KEY) || "");
 
   // Once memberships load, default to the persisted choice or the user's
-  // default branch.
+  // default warehouse.
   useEffect(() => {
-    const data = myBranchesQ.data;
-    if (!data || data.branches.length === 0) return;
-    const persisted = localStorage.getItem(BRANCH_KEY);
-    if (persisted && data.branches.some((b) => b.id === persisted)) {
+    const data = myWarehousesQ.data;
+    if (!data || data.warehouses.length === 0) return;
+    const persisted = localStorage.getItem(WAREHOUSE_KEY);
+    if (persisted && data.warehouses.some((w) => w.id === persisted)) {
       setCurrent(persisted);
       return;
     }
     const def = data.memberships.find((m) => m.isDefault);
-    const fallback = def?.branchId ?? data.branches[0].id;
+    const fallback = def?.warehouseId ?? data.warehouses[0].id;
     setCurrent(fallback);
-    localStorage.setItem(BRANCH_KEY, fallback);
-  }, [myBranchesQ.data]);
+    localStorage.setItem(WAREHOUSE_KEY, fallback);
+  }, [myWarehousesQ.data]);
 
-  if (!myBranchesQ.data || myBranchesQ.data.branches.length <= 1) return null;
+  if (!myWarehousesQ.data || myWarehousesQ.data.warehouses.length <= 1) return null;
 
   return (
     <EnumSelect
@@ -154,13 +156,14 @@ function BranchSelector() {
       value={current}
       onChange={(v) => {
         setCurrent(v);
-        localStorage.setItem(BRANCH_KEY, v);
-        // Hard reload to refetch all branch-scoped data with the new header.
-        window.location.reload();
+        localStorage.setItem(WAREHOUSE_KEY, v);
+        // Refetch all warehouse-scoped data with the new X-Warehouse-Id header
+        // (the transport reads localStorage per request) — no full page reload.
+        void queryClient.invalidateQueries();
       }}
-      items={myBranchesQ.data.branches}
-      itemToString={(b) => `${b.code} · ${b.name}`}
-      itemToValue={(b) => b.id}
+      items={myWarehousesQ.data.warehouses}
+      itemToString={(w) => `${w.code} · ${w.name}`}
+      itemToValue={(w) => w.id}
     />
   );
 }

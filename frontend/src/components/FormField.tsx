@@ -10,6 +10,8 @@ import {
 import { useTranslation } from "react-i18next";
 import type { InputHTMLAttributes } from "react";
 
+import DatePickerField from "./DatePicker";
+
 type Props<TForm extends FieldValues> = {
   control: Control<TForm>;
   name: FieldPath<TForm>;
@@ -48,16 +50,25 @@ export default function FormField<TForm extends FieldValues>(props: Props<TForm>
       control={control}
       name={name}
       render={({ field, fieldState }) => {
-        const input = (
-          <Input
-            {...field}
-            value={field.value ?? ""}
-            type={effectiveType}
-            inputMode={inputMode}
-            placeholder={placeholder}
-            autoFocus={autoFocus}
-          />
-        );
+        // Date fields render the shared Chakra calendar popover instead of the
+        // OS-native <input type="date"> chrome. Same YYYY-MM-DD string contract.
+        const input =
+          type === "date" ? (
+            <DatePickerField
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              placeholder={placeholder}
+            />
+          ) : (
+            <Input
+              {...field}
+              value={field.value ?? ""}
+              type={effectiveType}
+              inputMode={inputMode}
+              placeholder={placeholder}
+              autoFocus={autoFocus}
+            />
+          );
         return (
           <Field.Root required={required} invalid={!!fieldState.error}>
             <Field.Label>

@@ -2,6 +2,15 @@
   "app": {
     "name": "Apotech"
   },
+  "datepicker": {
+    "open": "Open calendar",
+    "clear": "Clear date",
+    "prev": "Previous",
+    "next": "Next",
+    "switchMonth": "Switch to month view",
+    "switchYear": "Switch to year view",
+    "switchDecade": "Switch to decade view"
+  },
   "common": {
     "loading": "Loading…",
     "save": "Save",
@@ -19,7 +28,14 @@
     "inactive": "Inactive",
     "actions": "Actions",
     "showArchived": "Show archived",
-    "noResults": "No results"
+    "noResults": "No results",
+    "pagination": {
+      "showing": "Showing {{from}}–{{to}} of {{total}}",
+      "prev": "Prev",
+      "next": "Next",
+      "perPage": "{{count}} / page"
+    },
+    "back": "Back"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -29,7 +45,7 @@
     "suppliers": "Suppliers",
     "batches": "Batches",
     "movements": "Movements",
-    "purchasing": "Purchasing",
+    "purchasing": "Restock",
     "analytics": "Analytics",
     "users": "Users",
     "customers": "Customers",
@@ -37,10 +53,12 @@
     "tax": "Tax",
     "bpjs": "BPJS",
     "branches": "Branches",
+    "warehouses": "Warehouses",
+    "orders": "Order history",
     "signOut": "Sign out"
   },
   "purchasing": {
-    "title": "Purchasing",
+    "title": "Restock",
     "tabs": {
       "all": "All POs",
       "outstanding": "Outstanding",
@@ -92,7 +110,21 @@
     "noPayments": "No payments yet",
     "supplierBalance": "Supplier balance",
     "totalOrdered": "Total ordered",
-    "totalPaid": "Total paid"
+    "totalPaid": "Total paid",
+    "invoiceNo": "Invoice no",
+    "item": "Item",
+    "created": "Created",
+    "searchPlaceholder": "Search PO / supplier / code / medicine",
+    "dateOff": "Date: off",
+    "dateCreated": "By created date",
+    "dateReceived": "By received date",
+    "outstandingToggle": "Outstanding only",
+    "itemsMore": "+{{count}} more",
+    "lineTotalInput": "Total cost (IDR)",
+    "unitCostDerived": "Cost / unit",
+    "statusTabs": {
+      "all": "All"
+    }
   },
   "auth": {
     "signInTitle": "Apotech sign in",
@@ -216,7 +248,10 @@
     "dashboardRevenue": "Revenue today",
     "dashboardSales": "Sales today",
     "dashboardItems": "Items sold today",
-    "shortcutHints": "F2 search · F4 customer · F5 Rx · F8 complete · Esc clear"
+    "shortcutHints": "F2 search · F4 customer · F5 Rx · F8 complete · Esc clear",
+    "selectWarehouse": "Select a warehouse",
+    "selectWarehouseHint": "Choose which warehouse you are selling from.",
+    "needsRx": "needs prescription"
   },
   "prescriptions": {
     "title": "Prescriptions",
@@ -234,7 +269,7 @@
     "selectCustomer": "Select patient",
     "prescribedQty": "Prescribed qty",
     "dispensedQty": "Dispensed",
-    "remaining": "Remaining",
+    "remaining": "remaining",
     "dosage": "Dosage instructions",
     "addLine": "Add item",
     "void": "Void",
@@ -252,7 +287,6 @@
     "attach": "Attach prescription (F5)",
     "detach": "Detach",
     "needForMedicine": "Need prescription for: {{medicine}}",
-    "remaining": "remaining",
     "goCreate": "Create a prescription",
     "noCoveringRx": "No active prescription for this medicine."
   },
@@ -324,7 +358,8 @@
       "suppliers": "Suppliers",
       "batches": "Batches",
       "movements": "Movements",
-      "stocktake": "Stocktake"
+      "stocktake": "Stocktake",
+      "transfers": "Transfers"
     },
     "medicines": {
       "title": "Medicines",
@@ -342,11 +377,22 @@
       "priceFrom": "From",
       "priceTo": "To",
       "priceCurrent": "(current)",
-      "pricePrice": "Price"
+      "pricePrice": "Price",
+      "readyStock": "Ready",
+      "onOrder": "Ongoing",
+      "searchPlaceholder": "Search name or SKU…",
+      "infoSection": "Information",
+      "batchesSection": "Batches",
+      "movementsSection": "Recent movements",
+      "confirmArchive": "Archive this medicine?",
+      "lastRestock": "Last restock",
+      "totalStock": "Total stock",
+      "stockValuation": "Stock valuation"
     },
     "suppliers": {
       "title": "Suppliers",
       "addTitle": "Add supplier",
+      "code": "Code",
       "name": "Name",
       "email": "Email",
       "phone": "Phone"
@@ -442,8 +488,70 @@
       }
     }
   },
+  "warehouses": {
+    "title": "Warehouses",
+    "addTitle": "Add warehouse",
+    "code": "Code",
+    "name": "Name",
+    "address": "Address",
+    "phone": "Phone",
+    "default": "Default",
+    "editTitle": "Edit warehouse"
+  },
+  "transfers": {
+    "intro": "Move stock between warehouses. Each transfer is recorded with a number and history.",
+    "newTransfer": "New transfer",
+    "transferNo": "Transfer #",
+    "route": "From / To",
+    "lines": "Items",
+    "note": "Note",
+    "when": "When",
+    "empty": "No transfers yet.",
+    "created": "Transfer recorded",
+    "from": "From warehouse",
+    "to": "To warehouse",
+    "selectWarehouse": "Select warehouse",
+    "items": "Items",
+    "pickBatch": "Pick a batch",
+    "qty": "Qty",
+    "addLine": "Add item",
+    "removeLine": "Remove item",
+    "submit": "Transfer"
+  },
   "errors": {
     "generic": "Something went wrong.",
     "tryAgain": "Try again"
+  },
+  "orders": {
+    "title": "Order history",
+    "searchPlaceholder": "Search sale no, customer, or medicine…",
+    "saleNo": "Sale no",
+    "date": "Date",
+    "customer": "Customer",
+    "items": "Items",
+    "itemsMore": "+{{count}} more",
+    "payment": "Payment",
+    "total": "Total",
+    "status": "Status",
+    "statusAll": "All statuses",
+    "dateOff": "Any date",
+    "dateOn": "Date range",
+    "states": {
+      "completed": "Completed",
+      "voided": "Voided",
+      "draft": "Draft",
+      "unspecified": "—"
+    },
+    "payments": {
+      "cash": "Cash",
+      "bpjs": "BPJS",
+      "insuranceOther": "Insurance",
+      "unspecified": "—"
+    },
+    "summary": {
+      "sales": "Sales",
+      "itemsSold": "Items sold",
+      "revenue": "Revenue"
+    }
   }
 }

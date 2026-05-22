@@ -27,27 +27,57 @@ func (b *Batches) ListBatches(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListBatchesRequest],
 ) (*connect.Response[inventoryifacev1.ListBatchesResponse], error) {
-	q := b.db.WithContext(ctx).Order("expiry_date ASC")
-	if req.Msg.MedicineId != "" {
-		q = q.Where("medicine_id = ?", req.Msg.MedicineId)
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
 	}
-	var rows []model.Batch
-	if err := q.Find(&rows).Error; err != nil {
+	warehouseID, err := resolveWarehouse(ctx, b.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+
+	// Per-warehouse stock is computed in SQL (GROUP BY) so only_in_stock +
+	// pagination + total stay consistent.
+	base := func() *gorm.DB {
+		q := b.db.WithContext(ctx).
+			Table("batches AS b").
+			Joins("LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?", warehouseID).
+			Group("b.id")
+		if req.Msg.MedicineId != "" {
+			q = q.Where("b.medicine_id = ?", req.Msg.MedicineId)
+		}
+		if req.Msg.OnlyInStock {
+			q = q.Having("COALESCE(SUM(sm.qty), 0) > 0")
+		}
+		return q
+	}
+
+	var total int64
+	if err := b.db.WithContext(ctx).
+		Table("(?) AS sub", base().Select("b.id")).Count(&total).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	out := make([]*inventoryifacev1.Batch, 0, len(rows))
-	for _, r := range rows {
-		qty, err := batchCurrentQty(ctx, b.db, r.ID)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-		if req.Msg.OnlyInStock && qty <= 0 {
-			continue
-		}
-		out = append(out, batchToProto(&r, qty))
+	type batchRow struct {
+		model.Batch
+		Qty int64 `gorm:"column:qty"`
 	}
-	return connect.NewResponse(&inventoryifacev1.ListBatchesResponse{Batches: out}), nil
+	var rows []batchRow
+	if err := base().
+		Select("b.*, COALESCE(SUM(sm.qty), 0) AS qty").
+		Order("b.expiry_date ASC").Offset(offset).Limit(limit).Scan(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*inventoryifacev1.Batch, 0, len(rows))
+	for i := range rows {
+		out = append(out, batchToProto(&rows[i].Batch, rows[i].Qty))
+	}
+	return connect.NewResponse(&inventoryifacev1.ListBatchesResponse{
+		Batches: out,
+		Total:   int32(total),
+	}), nil
 }
 
 func (b *Batches) GetBatch(
@@ -107,17 +137,23 @@ func (b *Batches) CreateBatch(
 		batch.SupplierID = &sid
 	}
 
+	warehouseID, err := resolveWarehouse(ctx, b.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
 	err = b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&batch).Error; err != nil {
 			return fmt.Errorf("create batch: %w", err)
 		}
 		if req.Msg.InitialQuantity > 0 {
 			mv := model.StockMovement{
-				BatchID: batch.ID,
-				Qty:     int32(req.Msg.InitialQuantity),
-				Type:    "PURCHASE",
-				Reason:  "initial stock",
-				UserID:  caller.UserID,
+				BatchID:     batch.ID,
+				Qty:         int32(req.Msg.InitialQuantity),
+				Type:        "PURCHASE",
+				Reason:      "initial stock",
+				UserID:      caller.UserID,
+				WarehouseID: warehouseID,
 			}
 			if err := tx.Create(&mv).Error; err != nil {
 				return fmt.Errorf("create initial movement: %w", err)
@@ -231,12 +267,31 @@ func (b *Batches) load(ctx context.Context, id string) (*model.Batch, error) {
 	return &batch, nil
 }
 
-// batchCurrentQty returns SUM(stock_movements.qty) for a batch.
+// batchCurrentQty returns SUM(stock_movements.qty) for a batch across ALL
+// warehouses (the global lot total). Used where location is irrelevant.
 func batchCurrentQty(ctx context.Context, db *gorm.DB, batchID string) (int64, error) {
 	var total *int64
 	err := db.WithContext(ctx).
 		Model(&model.StockMovement{}).
 		Where("batch_id = ?", batchID).
+		Select("COALESCE(SUM(qty), 0)").
+		Scan(&total).Error
+	if err != nil {
+		return 0, err
+	}
+	if total == nil {
+		return 0, nil
+	}
+	return *total, nil
+}
+
+// batchQtyInWarehouse returns SUM(qty) for a batch within one warehouse.
+// This is the per-location stock figure that POS FEFO and transfers consume.
+func batchQtyInWarehouse(ctx context.Context, db *gorm.DB, batchID, warehouseID string) (int64, error) {
+	var total *int64
+	err := db.WithContext(ctx).
+		Model(&model.StockMovement{}).
+		Where("batch_id = ? AND warehouse_id = ?", batchID, warehouseID).
 		Select("COALESCE(SUM(qty), 0)").
 		Scan(&total).Error
 	if err != nil {

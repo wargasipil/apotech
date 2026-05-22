@@ -23,23 +23,37 @@ func (s *Stock) ListMovements(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListMovementsRequest],
 ) (*connect.Response[inventoryifacev1.ListMovementsResponse], error) {
-	q := s.db.WithContext(ctx).Order("created_at DESC")
-	if req.Msg.BatchId != "" {
-		q = q.Where("batch_id = ?", req.Msg.BatchId)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if req.Msg.BatchId != "" {
+			q = q.Where("batch_id = ?", req.Msg.BatchId)
+		}
+		if req.Msg.MedicineId != "" {
+			q = q.Where("batch_id IN (?)",
+				s.db.Table("batches").Select("id").Where("medicine_id = ?", req.Msg.MedicineId))
+		}
+		if t := movementTypeToString(req.Msg.Type); t != "" {
+			q = q.Where("type = ?", t)
+		}
+		return q
 	}
-	if t := movementTypeToString(req.Msg.Type); t != "" {
-		q = q.Where("type = ?", t)
+	var total int64
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.StockMovement{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
 	var rows []model.StockMovement
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.StockMovement{})).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*inventoryifacev1.StockMovement, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, movementToProto(&r))
 	}
-	return connect.NewResponse(&inventoryifacev1.ListMovementsResponse{Movements: out}), nil
+	return connect.NewResponse(&inventoryifacev1.ListMovementsResponse{
+		Movements: out,
+		Total:     int32(total),
+	}), nil
 }
 
 func (s *Stock) RecordMovement(
@@ -71,20 +85,27 @@ func (s *Stock) RecordMovement(
 			errors.New("type must be ADJUSTMENT or WRITE_OFF for RecordMovement"))
 	}
 
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
 	mv := model.StockMovement{
-		BatchID: req.Msg.BatchId,
-		Qty:     req.Msg.Qty,
-		Type:    typeStr,
-		Reason:  req.Msg.Reason,
-		UserID:  caller.UserID,
+		BatchID:     req.Msg.BatchId,
+		Qty:         req.Msg.Qty,
+		Type:        typeStr,
+		Reason:      req.Msg.Reason,
+		UserID:      caller.UserID,
+		WarehouseID: warehouseID,
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&mv).Error; err != nil {
 			return fmt.Errorf("create movement: %w", err)
 		}
-		// Guard: refuse if this movement would drive stock negative.
-		qty, err := batchCurrentQty(ctx, tx, mv.BatchID)
+		// Guard: refuse if this movement would drive the batch's stock in this
+		// warehouse negative.
+		qty, err := batchQtyInWarehouse(ctx, tx, mv.BatchID, warehouseID)
 		if err != nil {
 			return err
 		}
@@ -104,13 +125,24 @@ func (s *Stock) GetStockLevels(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.GetStockLevelsRequest],
 ) (*connect.Response[inventoryifacev1.GetStockLevelsResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	// Stock is scoped to the caller's active warehouse — the warehouse filter
+	// lives in the JOIN so batches with no stock there still appear (qty 0).
 	q := s.db.WithContext(ctx).
 		Table("batches b").
 		Select(`b.id AS batch_id,
 		        b.medicine_id,
 		        TO_CHAR(b.expiry_date, 'YYYY-MM-DD') AS expiry_date,
 		        COALESCE(SUM(m.qty), 0) AS current_quantity`).
-		Joins("LEFT JOIN stock_movements m ON m.batch_id = b.id").
+		Joins("LEFT JOIN stock_movements m ON m.batch_id = b.id AND m.warehouse_id = ?", warehouseID).
 		Group("b.id").
 		Order("b.expiry_date ASC")
 

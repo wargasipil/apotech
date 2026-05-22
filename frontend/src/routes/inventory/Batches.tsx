@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Badge,
   Box,
   Button,
   HStack,
@@ -16,24 +15,17 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import EntityDrawer from "../../components/EntityDrawer";
+import ExpiryBadge from "../../components/ExpiryBadge";
 import FormField from "../../components/FormField";
+import Pagination from "../../components/Pagination";
 import SearchableSelect from "../../components/SearchableSelect";
 import { searchMedicines } from "../../queries/medicines";
 import { searchSuppliers } from "../../queries/suppliers";
 import { formatMoney } from "../../lib/format";
+import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import { useBatchesQuery, useCreateBatchMutation } from "../../queries/batches";
-import { useMedicinesQuery } from "../../queries/medicines";
-
-const MS_PER_DAY = 86_400_000;
-
-function ExpiryBadge({ expiry, expiredLabel }: { expiry: string; expiredLabel: string }) {
-  const days = Math.ceil((new Date(expiry).getTime() - Date.now()) / MS_PER_DAY);
-  if (days <= 0) return <Badge colorPalette="red">{expiredLabel}</Badge>;
-  if (days <= 30) return <Badge colorPalette="red">{days}d</Badge>;
-  if (days <= 90) return <Badge colorPalette="orange">{days}d</Badge>;
-  return <Badge colorPalette="green">{days}d</Badge>;
-}
+import { useAllMedicinesQuery } from "../../queries/medicines";
 
 const Schema = z.object({
   medicineId: z.string().min(1),
@@ -49,14 +41,15 @@ type FormValues = z.infer<typeof Schema>;
 export default function Batches() {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const batchesQ = useBatchesQuery();
+  const { page, setPage, pageSize, setPageSize } = usePageState("");
+  const batchesQ = useBatchesQuery({ page, pageSize });
   // Kept for the medicine-name column display on the batches table; the
   // selects inside CreateDrawer use server-side search via loadOptions.
-  const medicinesQ = useMedicinesQuery();
+  const medicinesQ = useAllMedicinesQuery();
 
   const medById = useMemo(
-    () => new Map((medicinesQ.data ?? []).map((m) => [m.id, m])),
-    [medicinesQ.data],
+    () => new Map(medicinesQ.rows.map((m) => [m.id, m])),
+    [medicinesQ.rows],
   );
 
   return (
@@ -84,7 +77,7 @@ export default function Batches() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {batchesQ.data?.map((b) => (
+            {batchesQ.rows.map((b) => (
               <Table.Row key={b.id}>
                 <Table.Cell>{medById.get(b.medicineId)?.name ?? b.medicineId}</Table.Cell>
                 <Table.Cell>{b.batchNumber || "—"}</Table.Cell>
@@ -101,7 +94,7 @@ export default function Batches() {
                 <Table.Cell>{String(b.currentQuantity)}</Table.Cell>
               </Table.Row>
             ))}
-            {(batchesQ.data?.length ?? 0) === 0 && (
+            {batchesQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={5}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -113,6 +106,14 @@ export default function Batches() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={batchesQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <CreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </Stack>
@@ -185,7 +186,7 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
               value={form.watch("supplierId")}
               onChange={(v) => form.setValue("supplierId", v)}
               loadOptions={searchSuppliers}
-              itemToString={(s) => s.name}
+              itemToString={(s) => `${s.code} · ${s.name}`}
               itemToValue={(s) => s.id}
               placeholder={t("inventory.batches.supplierNone")}
             />

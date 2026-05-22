@@ -14,7 +14,8 @@ type Sale struct {
 	Total          int64      `gorm:"not null;default:0"`
 	PaidAmount     int64      `gorm:"not null;default:0;column:paid_amount"`
 	Status         string     `gorm:"not null;default:'DRAFT'"`
-	BranchID       *string    `gorm:"type:uuid;column:branch_id"`
+	BranchID       *string    `gorm:"type:uuid;column:branch_id"` // deprecated; superseded by warehouse_id
+	WarehouseID    *string    `gorm:"type:uuid;column:warehouse_id"`
 	PrescriptionID *string    `gorm:"type:uuid;column:prescription_id"`
 	TaxInvoiceCode *string    `gorm:"column:tax_invoice_code"`
 	TaxInvoiceDPP  int64      `gorm:"not null;default:0;column:tax_invoice_dpp"`

@@ -37,6 +37,8 @@ message Sale {
   int64 completed_at = 14;
   repeated SaleItem items = 15;
   string prescription_id = 16;
+  string warehouse_id = 17;
+  string customer_name = 18;   // denormalized for the order-history list
 }
 
 message SaleItem {
@@ -48,6 +50,7 @@ message SaleItem {
   int64 unit_price_snapshot = 6;
   int64 line_discount = 7;
   int64 line_total = 8;
+  string medicine_name = 9;    // denormalized for the order-history list
 }
 
 service SaleService {
@@ -111,6 +114,11 @@ service SaleService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  rpc GetSalesSummary(GetSalesSummaryRequest) returns (GetSalesSummaryResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
   rpc PrintReceipt(PrintReceiptRequest) returns (PrintReceiptResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
@@ -129,9 +137,12 @@ message ListSalesRequest {
   int64 to_unix = 2;
   SaleStatus status = 3;
   int32 limit = 4;
+  int32 offset = 5;
+  string query = 6;          // ILIKE sale_no / customer name / medicine name
 }
 message ListSalesResponse {
   repeated Sale sales = 1;
+  int32 total = 2;
 }
 
 message AddItemRequest {
@@ -190,6 +201,21 @@ message GetTodaySnapshotResponse {
   int64 items_sold = 3;
   string top_medicine_id = 4;
   int64 top_medicine_qty = 5;
+}
+
+// Aggregate over the SAME filters as ListSales (status + date range + search),
+// across ALL matching rows — not just one page. Backs the order-history
+// summary bar; the list itself stays server-paginated via ListSales.
+message GetSalesSummaryRequest {
+  int64 from_unix = 1;
+  int64 to_unix = 2;
+  SaleStatus status = 3;
+  string query = 4;          // ILIKE sale_no / customer name / medicine name
+}
+message GetSalesSummaryResponse {
+  int64 sale_count = 1;
+  int64 items_sold = 2;      // SUM(sale_items.qty)
+  int64 revenue = 3;         // SUM(sales.total)
 }
 
 message PrintReceiptRequest {

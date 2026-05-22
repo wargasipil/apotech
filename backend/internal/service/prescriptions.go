@@ -35,18 +35,24 @@ func (p *Prescriptions) ListPrescriptions(
 	ctx context.Context,
 	req *connect.Request[prescriptionifacev1.ListPrescriptionsRequest],
 ) (*connect.Response[prescriptionifacev1.ListPrescriptionsResponse], error) {
-	q := p.db.WithContext(ctx).Preload("Items").Order("created_at DESC")
-	if req.Msg.CustomerId != "" {
-		q = q.Where("customer_id = ?", req.Msg.CustomerId)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if req.Msg.CustomerId != "" {
+			q = q.Where("customer_id = ?", req.Msg.CustomerId)
+		}
+		return q
 	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 500 {
-		limit = 100
+
+	// total reflects the base rows (customer scope); the computed-status filter
+	// below is a client-side refinement over the fetched page only.
+	var total int64
+	if err := applyFilters(p.db.WithContext(ctx).Model(&model.Prescription{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	q = q.Limit(limit)
 
 	var rows []model.Prescription
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(p.db.WithContext(ctx).Preload("Items")).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -60,7 +66,10 @@ func (p *Prescriptions) ListPrescriptions(
 		}
 		out = append(out, rxToProto(&rows[i], status))
 	}
-	return connect.NewResponse(&prescriptionifacev1.ListPrescriptionsResponse{Prescriptions: out}), nil
+	return connect.NewResponse(&prescriptionifacev1.ListPrescriptionsResponse{
+		Prescriptions: out,
+		Total:         int32(total),
+	}), nil
 }
 
 func (p *Prescriptions) GetPrescription(

@@ -2,6 +2,15 @@
   "app": {
     "name": "Apotech"
   },
+  "datepicker": {
+    "open": "Buka kalender",
+    "clear": "Hapus tanggal",
+    "prev": "Sebelumnya",
+    "next": "Berikutnya",
+    "switchMonth": "Beralih ke tampilan bulan",
+    "switchYear": "Beralih ke tampilan tahun",
+    "switchDecade": "Beralih ke tampilan dekade"
+  },
   "common": {
     "loading": "Memuat…",
     "save": "Simpan",
@@ -19,7 +28,14 @@
     "inactive": "Tidak aktif",
     "actions": "Aksi",
     "showArchived": "Tampilkan arsip",
-    "noResults": "Tidak ada hasil"
+    "noResults": "Tidak ada hasil",
+    "pagination": {
+      "showing": "Menampilkan {{from}}–{{to}} dari {{total}}",
+      "prev": "Sebelumnya",
+      "next": "Berikutnya",
+      "perPage": "{{count}} / halaman"
+    },
+    "back": "Kembali"
   },
   "nav": {
     "dashboard": "Dasbor",
@@ -29,7 +45,7 @@
     "suppliers": "Pemasok",
     "batches": "Batch",
     "movements": "Mutasi stok",
-    "purchasing": "Pembelian",
+    "purchasing": "Restok",
     "analytics": "Analitik",
     "users": "Pengguna",
     "customers": "Pelanggan",
@@ -37,10 +53,12 @@
     "tax": "Pajak",
     "bpjs": "BPJS",
     "branches": "Cabang",
+    "warehouses": "Gudang",
+    "orders": "Riwayat order",
     "signOut": "Keluar"
   },
   "purchasing": {
-    "title": "Pembelian",
+    "title": "Restok",
     "tabs": {
       "all": "Semua PO",
       "outstanding": "Tertunggak",
@@ -92,7 +110,21 @@
     "noPayments": "Belum ada pembayaran",
     "supplierBalance": "Saldo pemasok",
     "totalOrdered": "Total dipesan",
-    "totalPaid": "Total dibayar"
+    "totalPaid": "Total dibayar",
+    "invoiceNo": "No. faktur",
+    "item": "Item",
+    "created": "Dibuat",
+    "searchPlaceholder": "Cari PO / pemasok / kode / obat",
+    "dateOff": "Tanggal: nonaktif",
+    "dateCreated": "Per tanggal dibuat",
+    "dateReceived": "Per tanggal diterima",
+    "outstandingToggle": "Hanya tertunggak",
+    "itemsMore": "+{{count}} lainnya",
+    "lineTotalInput": "Harga modal total (IDR)",
+    "unitCostDerived": "Harga / unit",
+    "statusTabs": {
+      "all": "Semua"
+    }
   },
   "auth": {
     "signInTitle": "Masuk ke Apotech",
@@ -216,7 +248,10 @@
     "dashboardRevenue": "Pendapatan hari ini",
     "dashboardSales": "Transaksi hari ini",
     "dashboardItems": "Item terjual hari ini",
-    "shortcutHints": "F2 cari · F4 pelanggan · F5 resep · F8 selesai · Esc bersihkan"
+    "shortcutHints": "F2 cari · F4 pelanggan · F5 resep · F8 selesai · Esc bersihkan",
+    "selectWarehouse": "Pilih gudang",
+    "selectWarehouseHint": "Pilih gudang tempat Anda menjual.",
+    "needsRx": "perlu resep"
   },
   "prescriptions": {
     "title": "Resep",
@@ -234,7 +269,7 @@
     "selectCustomer": "Pilih pasien",
     "prescribedQty": "Jumlah diresepkan",
     "dispensedQty": "Sudah diberikan",
-    "remaining": "Sisa",
+    "remaining": "sisa",
     "dosage": "Aturan pakai",
     "addLine": "Tambah item",
     "void": "Batalkan",
@@ -252,7 +287,6 @@
     "attach": "Lampirkan resep (F5)",
     "detach": "Lepas",
     "needForMedicine": "Perlu resep untuk: {{medicine}}",
-    "remaining": "sisa",
     "goCreate": "Buat resep",
     "noCoveringRx": "Belum ada resep aktif untuk obat ini."
   },
@@ -324,7 +358,8 @@
       "suppliers": "Pemasok",
       "batches": "Batch",
       "movements": "Mutasi",
-      "stocktake": "Stok opname"
+      "stocktake": "Stok opname",
+      "transfers": "Transfer"
     },
     "medicines": {
       "title": "Obat",
@@ -342,11 +377,22 @@
       "priceFrom": "Dari",
       "priceTo": "Sampai",
       "priceCurrent": "(saat ini)",
-      "pricePrice": "Harga"
+      "pricePrice": "Harga",
+      "readyStock": "Siap",
+      "onOrder": "Dipesan",
+      "searchPlaceholder": "Cari nama atau SKU…",
+      "infoSection": "Informasi",
+      "batchesSection": "Batch",
+      "movementsSection": "Mutasi terbaru",
+      "confirmArchive": "Arsipkan obat ini?",
+      "lastRestock": "Restok terakhir",
+      "totalStock": "Total stok",
+      "stockValuation": "Valuasi stok"
     },
     "suppliers": {
       "title": "Pemasok",
       "addTitle": "Tambah pemasok",
+      "code": "Kode",
       "name": "Nama",
       "email": "Email",
       "phone": "Telepon"
@@ -442,8 +488,70 @@
       }
     }
   },
+  "warehouses": {
+    "title": "Gudang",
+    "addTitle": "Tambah gudang",
+    "code": "Kode",
+    "name": "Nama",
+    "address": "Alamat",
+    "phone": "Telepon",
+    "default": "Utama",
+    "editTitle": "Ubah gudang"
+  },
+  "transfers": {
+    "intro": "Pindahkan stok antar gudang. Setiap transfer dicatat dengan nomor dan riwayat.",
+    "newTransfer": "Transfer baru",
+    "transferNo": "No. transfer",
+    "route": "Dari / Ke",
+    "lines": "Item",
+    "note": "Catatan",
+    "when": "Waktu",
+    "empty": "Belum ada transfer.",
+    "created": "Transfer dicatat",
+    "from": "Dari gudang",
+    "to": "Ke gudang",
+    "selectWarehouse": "Pilih gudang",
+    "items": "Item",
+    "pickBatch": "Pilih batch",
+    "qty": "Qty",
+    "addLine": "Tambah item",
+    "removeLine": "Hapus item",
+    "submit": "Transfer"
+  },
   "errors": {
     "generic": "Terjadi kesalahan.",
     "tryAgain": "Coba lagi"
+  },
+  "orders": {
+    "title": "Riwayat order",
+    "searchPlaceholder": "Cari no penjualan, pelanggan, atau obat…",
+    "saleNo": "No penjualan",
+    "date": "Tanggal",
+    "customer": "Pelanggan",
+    "items": "Item",
+    "itemsMore": "+{{count}} lagi",
+    "payment": "Pembayaran",
+    "total": "Total",
+    "status": "Status",
+    "statusAll": "Semua status",
+    "dateOff": "Semua tanggal",
+    "dateOn": "Rentang tanggal",
+    "states": {
+      "completed": "Selesai",
+      "voided": "Dibatalkan",
+      "draft": "Draf",
+      "unspecified": "—"
+    },
+    "payments": {
+      "cash": "Tunai",
+      "bpjs": "BPJS",
+      "insuranceOther": "Asuransi",
+      "unspecified": "—"
+    },
+    "summary": {
+      "sales": "Penjualan",
+      "itemsSold": "Item terjual",
+      "revenue": "Pendapatan"
+    }
   }
 }

@@ -17,15 +17,18 @@ import { z } from "zod";
 
 import EntityDrawer from "../../components/EntityDrawer";
 import FormField from "../../components/FormField";
+import Pagination from "../../components/Pagination";
 import { Supplier } from "../../gen/inventory_iface/v1/supplier_pb";
 import {
   useArchiveSupplierMutation,
   useCreateSupplierMutation,
   useSuppliersQuery,
 } from "../../queries/suppliers";
+import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 
 const Schema = z.object({
+  code: z.string().min(1),
   name: z.string().min(1),
   contactEmail: z.string().email().or(z.literal("")),
   phone: z.string(),
@@ -36,7 +39,8 @@ export default function Suppliers() {
   const { t } = useTranslation();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const suppliersQ = useSuppliersQuery(includeInactive);
+  const { page, setPage, pageSize, setPageSize } = usePageState(String(includeInactive));
+  const suppliersQ = useSuppliersQuery({ includeInactive, page, pageSize });
 
   return (
     <Stack gap={4}>
@@ -63,6 +67,7 @@ export default function Suppliers() {
         <Table.Root size="sm" bg="bg.subtle" borderWidth="1px" borderRadius="lg">
           <Table.Header bg="bg.muted">
             <Table.Row>
+              <Table.ColumnHeader>{t("inventory.suppliers.code")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.suppliers.name")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.suppliers.email")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.suppliers.phone")}</Table.ColumnHeader>
@@ -71,12 +76,12 @@ export default function Suppliers() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {suppliersQ.data?.map((s) => (
+            {suppliersQ.rows.map((s) => (
               <Row key={s.id} supplier={s} />
             ))}
-            {(suppliersQ.data?.length ?? 0) === 0 && (
+            {suppliersQ.rows.length === 0 && (
               <Table.Row>
-                <Table.Cell colSpan={5}>
+                <Table.Cell colSpan={6}>
                   <Text color="fg.muted" textAlign="center" py={4}>
                     {t("common.noResults")}
                   </Text>
@@ -86,6 +91,14 @@ export default function Suppliers() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={suppliersQ.total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <CreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </Stack>
@@ -97,6 +110,7 @@ function Row({ supplier }: { supplier: Supplier }) {
   const archive = useArchiveSupplierMutation();
   return (
     <Table.Row>
+      <Table.Cell fontFamily="mono">{supplier.code}</Table.Cell>
       <Table.Cell>{supplier.name}</Table.Cell>
       <Table.Cell>{supplier.contactEmail}</Table.Cell>
       <Table.Cell>{supplier.phone}</Table.Cell>
@@ -122,12 +136,13 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
   const create = useCreateSupplierMutation();
   const form = useForm<FormValues>({
     resolver: zodResolver(Schema),
-    defaultValues: { name: "", contactEmail: "", phone: "" },
+    defaultValues: { code: "", name: "", contactEmail: "", phone: "" },
   });
 
   const submit = form.handleSubmit(async (values) => {
     try {
       await create.mutateAsync({
+        code: values.code,
         name: values.name,
         contactEmail: values.contactEmail,
         phone: values.phone,
@@ -160,10 +175,16 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
         <Stack gap={4}>
           <FormField
             control={form.control}
+            name="code"
+            label={t("inventory.suppliers.code")}
+            required
+            autoFocus
+          />
+          <FormField
+            control={form.control}
             name="name"
             label={t("inventory.suppliers.name")}
             required
-            autoFocus
           />
           <FormField
             control={form.control}

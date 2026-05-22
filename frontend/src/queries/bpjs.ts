@@ -13,14 +13,16 @@ export const bpjsKeys = {
   list: (filters: object) => [...bpjsKeys.all, "list", filters] as const,
 };
 
+// Server-paginated. Returns { rows, total }. Caller sets limit/offset on req.
 export function useBpjsClaimsQuery(req: PartialMessage<ListClaimsRequest> = {}) {
-  return useQuery({
+  const q = useQuery({
     queryKey: bpjsKeys.list(req),
     queryFn: async () => {
       const res = await bpjsClaimClient.listClaims(req);
-      return res.claims;
+      return { rows: res.claims, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
 }
 
 export function useCreateBpjsClaimMutation() {

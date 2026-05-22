@@ -73,9 +73,11 @@ message ListPrescriptionsRequest {
   string customer_id = 1;          // filter (optional)
   string status = 2;               // filter (optional) — ACTIVE | DISPENSED | EXPIRED | VOIDED
   int32 limit = 3;
+  int32 offset = 4;
 }
 message ListPrescriptionsResponse {
   repeated Prescription prescriptions = 1;
+  int32 total = 2;
 }
 
 message GetPrescriptionRequest { string id = 1; }

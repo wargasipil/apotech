@@ -51,9 +51,13 @@ service CustomerService {
 
 message ListCustomersRequest {
   bool include_inactive = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string query = 4;          // optional ILIKE name / phone
 }
 message ListCustomersResponse {
   repeated Customer customers = 1;
+  int32 total = 2;
 }
 
 message GetCustomerRequest { string id = 1; }

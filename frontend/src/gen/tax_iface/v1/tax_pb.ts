@@ -308,6 +308,11 @@ export class ListNsfpRequest extends Message<ListNsfpRequest> {
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListNsfpRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -319,6 +324,7 @@ export class ListNsfpRequest extends Message<ListNsfpRequest> {
     { no: 1, name: "fiscal_year", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "unused_only", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNsfpRequest {
@@ -352,6 +358,11 @@ export class ListNsfpResponse extends Message<ListNsfpResponse> {
    */
   unusedTotal = 0;
 
+  /**
+   * @generated from field: int32 total = 3;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListNsfpResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -362,6 +373,7 @@ export class ListNsfpResponse extends Message<ListNsfpResponse> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "entries", kind: "message", T: NsfpEntry, repeated: true },
     { no: 2, name: "unused_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNsfpResponse {
@@ -400,6 +412,11 @@ export class ListTaxInvoicesRequest extends Message<ListTaxInvoicesRequest> {
    */
   limit = 0;
 
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<ListTaxInvoicesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -411,6 +428,7 @@ export class ListTaxInvoicesRequest extends Message<ListTaxInvoicesRequest> {
     { no: 1, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTaxInvoicesRequest {
@@ -439,6 +457,11 @@ export class ListTaxInvoicesResponse extends Message<ListTaxInvoicesResponse> {
    */
   invoices: TaxInvoice[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListTaxInvoicesResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -448,6 +471,7 @@ export class ListTaxInvoicesResponse extends Message<ListTaxInvoicesResponse> {
   static readonly typeName = "tax_iface.v1.ListTaxInvoicesResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "invoices", kind: "message", T: TaxInvoice, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTaxInvoicesResponse {

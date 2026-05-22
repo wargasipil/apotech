@@ -145,9 +145,11 @@ message VoidStocktakeResponse { StocktakeSession session = 1; }
 message ListStocktakesRequest {
   string status = 1;             // empty = all
   int32 limit = 2;
+  int32 offset = 3;
 }
 message ListStocktakesResponse {
   repeated StocktakeSession sessions = 1;
+  int32 total = 2;
 }
 
 message GetStocktakeRequest { string id = 1; }

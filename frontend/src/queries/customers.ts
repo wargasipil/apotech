@@ -9,21 +9,48 @@ import type {
   UpdateCustomerRequest,
 } from "../gen/customer_iface/v1/customer_pb";
 
+import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
+
+export type CustomersQueryOpts = {
+  includeInactive?: boolean;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 export const customerKeys = {
   all: ["customers"] as const,
-  list: (includeInactive: boolean) =>
-    [...customerKeys.all, "list", { includeInactive }] as const,
+  list: (opts: Required<CustomersQueryOpts>) =>
+    [...customerKeys.all, "list", opts] as const,
   search: (query: string) => [...customerKeys.all, "search", query] as const,
 };
 
-export function useCustomersQuery(includeInactive = false) {
-  return useQuery({
-    queryKey: customerKeys.list(includeInactive),
+// Server-paginated. Returns { rows, total }. For page-level name maps pass
+// { pageSize: ALL_LIMIT } or use useAllCustomersQuery.
+export function useCustomersQuery(opts: CustomersQueryOpts = {}) {
+  const {
+    includeInactive = false,
+    query = "",
+    page = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } = opts;
+  const q = useQuery({
+    queryKey: customerKeys.list({ includeInactive, query, page, pageSize }),
     queryFn: async () => {
-      const res = await customerClient.listCustomers({ includeInactive });
-      return res.customers;
+      const res = await customerClient.listCustomers({
+        includeInactive,
+        query,
+        limit: pageSize,
+        offset: page * pageSize,
+      });
+      return { rows: res.customers, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
+}
+
+export function useAllCustomersQuery(includeInactive = false) {
+  return useCustomersQuery({ includeInactive, pageSize: ALL_LIMIT });
 }
 
 export function useCustomerSearchQuery(query: string, enabled = true) {

@@ -30,6 +30,7 @@ type Supplier struct {
 	Phone         string                 `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
 	Active        bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Code          string                 `protobuf:"bytes,7,opt,name=code,proto3" json:"code,omitempty"` // unique business code, e.g. "SUP-0001"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,9 +107,19 @@ func (x *Supplier) GetCreatedAt() int64 {
 	return 0
 }
 
+func (x *Supplier) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
 type ListSuppliersRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	IncludeInactive bool                   `protobuf:"varint,1,opt,name=include_inactive,json=includeInactive,proto3" json:"include_inactive,omitempty"`
+	Limit           int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset          int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Query           string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"` // optional ILIKE name / code
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -150,9 +161,31 @@ func (x *ListSuppliersRequest) GetIncludeInactive() bool {
 	return false
 }
 
+func (x *ListSuppliersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListSuppliersRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *ListSuppliersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
 type ListSuppliersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Suppliers     []*Supplier            `protobuf:"bytes,1,rep,name=suppliers,proto3" json:"suppliers,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -192,6 +225,13 @@ func (x *ListSuppliersResponse) GetSuppliers() []*Supplier {
 		return x.Suppliers
 	}
 	return nil
+}
+
+func (x *ListSuppliersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type GetSupplierRequest struct {
@@ -287,6 +327,7 @@ type CreateSupplierRequest struct {
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	ContactEmail  string                 `protobuf:"bytes,2,opt,name=contact_email,json=contactEmail,proto3" json:"contact_email,omitempty"`
 	Phone         string                 `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
+	Code          string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -342,6 +383,13 @@ func (x *CreateSupplierRequest) GetPhone() string {
 	return ""
 }
 
+func (x *CreateSupplierRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
 type CreateSupplierResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Supplier      *Supplier              `protobuf:"bytes,1,opt,name=supplier,proto3" json:"supplier,omitempty"`
@@ -392,6 +440,7 @@ type UpdateSupplierRequest struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	ContactEmail  string                 `protobuf:"bytes,3,opt,name=contact_email,json=contactEmail,proto3" json:"contact_email,omitempty"`
 	Phone         string                 `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
+	Code          string                 `protobuf:"bytes,5,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -450,6 +499,13 @@ func (x *UpdateSupplierRequest) GetContactEmail() string {
 func (x *UpdateSupplierRequest) GetPhone() string {
 	if x != nil {
 		return x.Phone
+	}
+	return ""
+}
+
+func (x *UpdateSupplierRequest) GetCode() string {
+	if x != nil {
+		return x.Code
 	}
 	return ""
 }
@@ -686,7 +742,7 @@ var File_inventory_iface_v1_supplier_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_supplier_proto_rawDesc = "" +
 	"\n" +
-	"!inventory_iface/v1/supplier.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xa0\x01\n" +
+	"!inventory_iface/v1/supplier.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xb4\x01\n" +
 	"\bSupplier\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -694,26 +750,33 @@ const file_inventory_iface_v1_supplier_proto_rawDesc = "" +
 	"\x05phone\x18\x04 \x01(\tR\x05phone\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\x03R\tcreatedAt\"A\n" +
+	"created_at\x18\x06 \x01(\x03R\tcreatedAt\x12\x12\n" +
+	"\x04code\x18\a \x01(\tR\x04code\"\x85\x01\n" +
 	"\x14ListSuppliersRequest\x12)\n" +
-	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\"S\n" +
+	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12\x14\n" +
+	"\x05query\x18\x04 \x01(\tR\x05query\"i\n" +
 	"\x15ListSuppliersResponse\x12:\n" +
-	"\tsuppliers\x18\x01 \x03(\v2\x1c.inventory_iface.v1.SupplierR\tsuppliers\"$\n" +
+	"\tsuppliers\x18\x01 \x03(\v2\x1c.inventory_iface.v1.SupplierR\tsuppliers\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"$\n" +
 	"\x12GetSupplierRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"O\n" +
 	"\x13GetSupplierResponse\x128\n" +
-	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"f\n" +
+	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"z\n" +
 	"\x15CreateSupplierRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12#\n" +
 	"\rcontact_email\x18\x02 \x01(\tR\fcontactEmail\x12\x14\n" +
-	"\x05phone\x18\x03 \x01(\tR\x05phone\"R\n" +
+	"\x05phone\x18\x03 \x01(\tR\x05phone\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\"R\n" +
 	"\x16CreateSupplierResponse\x128\n" +
-	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"v\n" +
+	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"\x8a\x01\n" +
 	"\x15UpdateSupplierRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
 	"\rcontact_email\x18\x03 \x01(\tR\fcontactEmail\x12\x14\n" +
-	"\x05phone\x18\x04 \x01(\tR\x05phone\"R\n" +
+	"\x05phone\x18\x04 \x01(\tR\x05phone\x12\x12\n" +
+	"\x04code\x18\x05 \x01(\tR\x04code\"R\n" +
 	"\x16UpdateSupplierResponse\x128\n" +
 	"\bsupplier\x18\x01 \x01(\v2\x1c.inventory_iface.v1.SupplierR\bsupplier\"(\n" +
 	"\x16ArchiveSupplierRequest\x12\x0e\n" +

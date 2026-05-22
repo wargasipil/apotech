@@ -41,8 +41,9 @@ test.describe("analytics", () => {
     // lib/queryClient.ts, TanStack Query would throw "Do not know how to
     // serialize a BigInt" the moment we touched this control.
     const cycle = async (label: string) => {
-      // First combobox on the page is the date-range picker.
-      await page.getByRole("combobox").first().click();
+      // First combobox in the page content is the date-range picker. (Scope to
+      // <main> so the TopBar warehouse selector isn't matched first.)
+      await page.locator("main").getByRole("combobox").first().click();
       await page.getByRole("option", { name: label }).click();
     };
     await cycle("7 days");

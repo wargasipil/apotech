@@ -23,9 +23,9 @@ const (
 	saleStatusCompleted = "COMPLETED"
 	saleStatusVoided    = "VOIDED"
 
-	paymentCash             = "CASH"
-	paymentBPJS             = "BPJS"
-	paymentInsuranceOther   = "INSURANCE_OTHER"
+	paymentCash           = "CASH"
+	paymentBPJS           = "BPJS"
+	paymentInsuranceOther = "INSURANCE_OTHER"
 
 	movementTypeSale = "SALE"
 )
@@ -49,13 +49,14 @@ func (s *Sales) StartSale(
 	if err != nil {
 		return nil, err
 	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	sale := model.Sale{
 		CashierUserID: caller.UserID,
 		Status:        saleStatusDraft,
-	}
-	if caller.BranchID != "" {
-		bid := caller.BranchID
-		sale.BranchID = &bid
+		WarehouseID:   &warehouseID,
 	}
 	if err := s.db.WithContext(ctx).Create(&sale).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -82,31 +83,161 @@ func (s *Sales) ListSales(
 	ctx context.Context,
 	req *connect.Request[posifacev1.ListSalesRequest],
 ) (*connect.Response[posifacev1.ListSalesResponse], error) {
-	q := s.db.WithContext(ctx).Preload("Items").Order("created_at DESC")
-	if req.Msg.FromUnix > 0 {
-		q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		return s.applySaleFilters(q, req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
 	}
-	if req.Msg.ToUnix > 0 {
-		q = q.Where("created_at < ?", time.Unix(req.Msg.ToUnix, 0))
-	}
-	if statusStr := saleStatusToString(req.Msg.Status); statusStr != "" {
-		q = q.Where("status = ?", statusStr)
-	}
-	limit := int(req.Msg.Limit)
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-	q = q.Limit(limit)
 
+	var total int64
+	if err := applyFilters(s.db.WithContext(ctx).Model(&model.Sale{})).Count(&total).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	var rows []model.Sale
-	if err := q.Find(&rows).Error; err != nil {
+	if err := applyFilters(s.db.WithContext(ctx).Preload("Items")).
+		Order("created_at DESC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	out := make([]*posifacev1.Sale, 0, len(rows))
 	for i := range rows {
 		out = append(out, saleToProto(&rows[i]))
 	}
-	return connect.NewResponse(&posifacev1.ListSalesResponse{Sales: out}), nil
+	if err := s.enrichSaleNames(ctx, out); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&posifacev1.ListSalesResponse{
+		Sales: out,
+		Total: int32(total),
+	}), nil
+}
+
+// applySaleFilters applies the order-history filters (date range, status,
+// free-text search) shared by ListSales and GetSalesSummary so the paginated
+// list and its summary always agree. The caller's query root must be `sales`
+// (the unqualified columns + `id IN (...)` resolve against it).
+func (s *Sales) applySaleFilters(
+	q *gorm.DB,
+	fromUnix, toUnix int64,
+	status posifacev1.SaleStatus,
+	query string,
+) *gorm.DB {
+	if fromUnix > 0 {
+		q = q.Where("created_at >= ?", time.Unix(fromUnix, 0))
+	}
+	if toUnix > 0 {
+		q = q.Where("created_at < ?", time.Unix(toUnix, 0))
+	}
+	if statusStr := saleStatusToString(status); statusStr != "" {
+		q = q.Where("status = ?", statusStr)
+	}
+	if qstr := strings.TrimSpace(query); qstr != "" {
+		pattern := "%" + qstr + "%"
+		sub := s.db.Table("sales AS s").Select("s.id").
+			Joins("LEFT JOIN customers c ON c.id = s.customer_id").
+			Joins("LEFT JOIN sale_items si ON si.sale_id = s.id").
+			Joins("LEFT JOIN medicines m ON m.id = si.medicine_id").
+			Where("s.sale_no ILIKE ? OR c.name ILIKE ? OR m.name ILIKE ?", pattern, pattern, pattern)
+		q = q.Where("id IN (?)", sub)
+	}
+	return q
+}
+
+// GetSalesSummary aggregates over the SAME filters as ListSales across ALL
+// matching rows (not one page). The list stays server-paginated via ListSales;
+// this is a separate server-side aggregate (never a client-side sum of a page).
+func (s *Sales) GetSalesSummary(
+	ctx context.Context,
+	req *connect.Request[posifacev1.GetSalesSummaryRequest],
+) (*connect.Response[posifacev1.GetSalesSummaryResponse], error) {
+	scope := func() *gorm.DB {
+		return s.applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}),
+			req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
+	}
+
+	var saleCount int64
+	if err := scope().Count(&saleCount).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	var revenue int64
+	if err := scope().Select("COALESCE(SUM(total), 0)").Scan(&revenue).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// items_sold = SUM(qty) over sale_items whose sale matches the same filters.
+	idSub := s.applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}).Select("id"),
+		req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
+	var itemsSold int64
+	if err := s.db.WithContext(ctx).
+		Table("sale_items").
+		Where("sale_id IN (?)", idSub).
+		Select("COALESCE(SUM(qty), 0)").
+		Scan(&itemsSold).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&posifacev1.GetSalesSummaryResponse{
+		SaleCount: saleCount,
+		ItemsSold: itemsSold,
+		Revenue:   revenue,
+	}), nil
+}
+
+// enrichSaleNames denormalizes customer + medicine names onto a page of sales
+// for the order-history list (two batched queries, no N+1).
+func (s *Sales) enrichSaleNames(ctx context.Context, sales []*posifacev1.Sale) error {
+	if len(sales) == 0 {
+		return nil
+	}
+	custIDSet := map[string]struct{}{}
+	medIDSet := map[string]struct{}{}
+	for _, sl := range sales {
+		if sl.CustomerId != "" {
+			custIDSet[sl.CustomerId] = struct{}{}
+		}
+		for _, it := range sl.Items {
+			if it.MedicineId != "" {
+				medIDSet[it.MedicineId] = struct{}{}
+			}
+		}
+	}
+	nameByID := func(table string, idset map[string]struct{}) (map[string]string, error) {
+		out := map[string]string{}
+		if len(idset) == 0 {
+			return out, nil
+		}
+		ids := make([]string, 0, len(idset))
+		for id := range idset {
+			ids = append(ids, id)
+		}
+		type row struct {
+			ID   string `gorm:"column:id"`
+			Name string `gorm:"column:name"`
+		}
+		var rows []row
+		if err := s.db.WithContext(ctx).Table(table).Select("id, name").
+			Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		for _, r := range rows {
+			out[r.ID] = r.Name
+		}
+		return out, nil
+	}
+	custNames, err := nameByID("customers", custIDSet)
+	if err != nil {
+		return err
+	}
+	medNames, err := nameByID("medicines", medIDSet)
+	if err != nil {
+		return err
+	}
+	for _, sl := range sales {
+		sl.CustomerName = custNames[sl.CustomerId]
+		for _, it := range sl.Items {
+			it.MedicineName = medNames[it.MedicineId]
+		}
+	}
+	return nil
 }
 
 // ---------- Item ops ----------
@@ -411,6 +542,9 @@ func (s *Sales) CompleteSale(
 
 		now := time.Now()
 
+		// FEFO consumes stock from the sale's warehouse only.
+		saleWh := deref(sale.WarehouseID)
+
 		// For each item: pick FEFO batches with available qty, allocate.
 		// If a line spans multiple batches, we split it into one item row per
 		// batch consumed so audit is clean (1 sale_item -> 1 stock_movement).
@@ -435,9 +569,10 @@ func (s *Sales) CompleteSale(
 				if needed <= 0 {
 					break
 				}
+				// Per-warehouse available qty — only this warehouse's stock.
 				var avail int64
 				if err := tx.Model(&model.StockMovement{}).
-					Where("batch_id = ?", b.ID).
+					Where("batch_id = ? AND warehouse_id = ?", b.ID, saleWh).
 					Select("COALESCE(SUM(qty), 0)").
 					Scan(&avail).Error; err != nil {
 					return connect.NewError(connect.CodeInternal, err)
@@ -468,12 +603,13 @@ func (s *Sales) CompleteSale(
 				// Insert the SALE stock movement (negative qty), linked to this sale_item.
 				saleItemID := child.ID
 				mv := model.StockMovement{
-					BatchID:    b.ID,
-					Qty:        -int32(take),
-					Type:       movementTypeSale,
-					Reason:     "POS sale",
-					UserID:     caller.UserID,
-					SaleItemID: &saleItemID,
+					BatchID:     b.ID,
+					Qty:         -int32(take),
+					Type:        movementTypeSale,
+					Reason:      "POS sale",
+					UserID:      caller.UserID,
+					SaleItemID:  &saleItemID,
+					WarehouseID: saleWh,
 				}
 				if err := tx.Create(&mv).Error; err != nil {
 					return connect.NewError(connect.CodeInternal, err)
@@ -916,15 +1052,15 @@ func asConnectErr(err error) error {
 
 func saleToProto(s *model.Sale) *posifacev1.Sale {
 	out := &posifacev1.Sale{
-		Id:             s.ID,
-		CashierUserId:  s.CashierUserID,
-		Subtotal:       s.Subtotal,
-		CartDiscount:   s.CartDiscount,
-		Total:          s.Total,
-		PaidAmount:     s.PaidAmount,
-		Status:         saleStatusToProto(s.Status),
-		CreatedAt:      s.CreatedAt.Unix(),
-		PaymentSource:  paymentSourceFromString(deref(s.PaymentSource)),
+		Id:            s.ID,
+		CashierUserId: s.CashierUserID,
+		Subtotal:      s.Subtotal,
+		CartDiscount:  s.CartDiscount,
+		Total:         s.Total,
+		PaidAmount:    s.PaidAmount,
+		Status:        saleStatusToProto(s.Status),
+		CreatedAt:     s.CreatedAt.Unix(),
+		PaymentSource: paymentSourceFromString(deref(s.PaymentSource)),
 	}
 	if s.SaleNo != nil {
 		out.SaleNo = *s.SaleNo
@@ -937,6 +1073,9 @@ func saleToProto(s *model.Sale) *posifacev1.Sale {
 	}
 	if s.BranchID != nil {
 		out.BranchId = *s.BranchID
+	}
+	if s.WarehouseID != nil {
+		out.WarehouseId = *s.WarehouseID
 	}
 	if s.PrescriptionID != nil {
 		out.PrescriptionId = *s.PrescriptionID

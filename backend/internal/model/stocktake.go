@@ -6,7 +6,8 @@ type StocktakeSession struct {
 	ID          string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	Name        string     `gorm:"not null;default:''"`
 	Status      string     `gorm:"not null;default:'DRAFT'"`
-	BranchID    *string    `gorm:"type:uuid;column:branch_id"`
+	BranchID    *string    `gorm:"type:uuid;column:branch_id"` // deprecated; superseded by warehouse_id
+	WarehouseID *string    `gorm:"type:uuid;column:warehouse_id"`
 	CreatedBy   string     `gorm:"not null;type:uuid;column:created_by"`
 	CreatedAt   time.Time
 	CompletedAt *time.Time `gorm:"column:completed_at"`

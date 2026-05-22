@@ -4,27 +4,50 @@ import type { PartialMessage } from "@bufbuild/protobuf";
 import { batchClient } from "../lib/clients";
 import type {
   CreateBatchRequest,
-  ListBatchesRequest,
   UpdateBatchRequest,
 } from "../gen/inventory_iface/v1/batch_pb";
 
-export const batchKeys = {
-  all: ["batches"] as const,
-  list: (filters: { medicineId?: string; onlyInStock?: boolean }) =>
-    [...batchKeys.all, "list", filters] as const,
+import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
+
+export type BatchesQueryOpts = {
+  medicineId?: string;
+  onlyInStock?: boolean;
+  page?: number;
+  pageSize?: number;
 };
 
-export function useBatchesQuery(filters: PartialMessage<ListBatchesRequest> = {}) {
-  return useQuery({
-    queryKey: batchKeys.list({
-      medicineId: filters.medicineId ?? "",
-      onlyInStock: filters.onlyInStock ?? false,
-    }),
+export const batchKeys = {
+  all: ["batches"] as const,
+  list: (opts: Required<BatchesQueryOpts>) =>
+    [...batchKeys.all, "list", opts] as const,
+};
+
+// Server-paginated. Returns { rows, total }. For page-level maps pass
+// { pageSize: ALL_LIMIT } or use useAllBatchesQuery.
+export function useBatchesQuery(opts: BatchesQueryOpts = {}) {
+  const {
+    medicineId = "",
+    onlyInStock = false,
+    page = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } = opts;
+  const q = useQuery({
+    queryKey: batchKeys.list({ medicineId, onlyInStock, page, pageSize }),
     queryFn: async () => {
-      const res = await batchClient.listBatches(filters);
-      return res.batches;
+      const res = await batchClient.listBatches({
+        medicineId,
+        onlyInStock,
+        limit: pageSize,
+        offset: page * pageSize,
+      });
+      return { rows: res.batches, total: res.total };
     },
   });
+  return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
+}
+
+export function useAllBatchesQuery(opts: Omit<BatchesQueryOpts, "page" | "pageSize"> = {}) {
+  return useBatchesQuery({ ...opts, pageSize: ALL_LIMIT });
 }
 
 // Imperative search — call directly from <SearchableSelect loadOptions={...}>.

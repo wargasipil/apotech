@@ -102,6 +102,23 @@ export class ListCustomersRequest extends Message<ListCustomersRequest> {
    */
   includeInactive = false;
 
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
+
+  /**
+   * optional ILIKE name / phone
+   *
+   * @generated from field: string query = 4;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListCustomersRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -111,6 +128,9 @@ export class ListCustomersRequest extends Message<ListCustomersRequest> {
   static readonly typeName = "customer_iface.v1.ListCustomersRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "include_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCustomersRequest {
@@ -139,6 +159,11 @@ export class ListCustomersResponse extends Message<ListCustomersResponse> {
    */
   customers: Customer[] = [];
 
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
   constructor(data?: PartialMessage<ListCustomersResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -148,6 +173,7 @@ export class ListCustomersResponse extends Message<ListCustomersResponse> {
   static readonly typeName = "customer_iface.v1.ListCustomersResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "customers", kind: "message", T: Customer, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCustomersResponse {

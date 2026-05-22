@@ -47,9 +47,12 @@ service BatchService {
 message ListBatchesRequest {
   string medicine_id = 1;
   bool only_in_stock = 2;
+  int32 limit = 3;
+  int32 offset = 4;
 }
 message ListBatchesResponse {
   repeated Batch batches = 1;
+  int32 total = 2;
 }
 
 message GetBatchRequest { string id = 1; }
