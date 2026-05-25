@@ -13,6 +13,8 @@
   },
   "common": {
     "loading": "Memuat…",
+    "exportCsv": "Ekspor CSV",
+    "selectWarehouse": "Pilih gudang",
     "save": "Simpan",
     "cancel": "Batal",
     "create": "Buat",
@@ -21,6 +23,8 @@
     "archive": "Arsipkan",
     "close": "Tutup",
     "search": "Cari",
+    "anyDate": "Tanggal apa saja",
+    "dateRange": "Rentang tanggal",
     "add": "Tambah",
     "yes": "Ya",
     "no": "Tidak",
@@ -121,7 +125,9 @@
     "outstandingToggle": "Hanya tertunggak",
     "itemsMore": "+{{count}} lainnya",
     "lineTotalInput": "Harga modal total (IDR)",
-    "unitCostDerived": "Harga / unit",
+    "unitCostDerived": "Harga / satuan dasar",
+    "unit": "Satuan",
+    "remaining": "Sisa",
     "statusTabs": {
       "all": "Semua"
     }
@@ -374,6 +380,7 @@
       "rxShort": "Resep",
       "priceHistory": "Riwayat harga",
       "priceHistoryEmpty": "Belum ada perubahan harga.",
+      "priceHistoryUnitCol": "Satuan",
       "priceFrom": "Dari",
       "priceTo": "Sampai",
       "priceCurrent": "(saat ini)",
@@ -387,7 +394,15 @@
       "confirmArchive": "Arsipkan obat ini?",
       "lastRestock": "Restok terakhir",
       "totalStock": "Total stok",
-      "stockValuation": "Valuasi stok"
+      "stockValuation": "Valuasi stok",
+      "baseUnit": "Satuan dasar",
+      "basePrice": "Harga dasar (per satuan dasar)",
+      "unitsSection": "Satuan",
+      "unitsBaseNote": "Satuan dasar: {{unit}}. Tambah kemasan lebih besar (box, strip…) di bawah; faktor = jumlah satuan dasar per kemasan.",
+      "unitName": "Satuan",
+      "unitFactor": "Per dasar",
+      "unitSellPrice": "Harga jual",
+      "addUnit": "Tambah satuan"
     },
     "suppliers": {
       "title": "Pemasok",
@@ -400,6 +415,9 @@
     "batches": {
       "title": "Batch",
       "addTitle": "Terima batch",
+      "searchPlaceholder": "Cari obat / no batch…",
+      "byReceived": "Tgl diterima",
+      "byExpiry": "Tgl kedaluwarsa",
       "medicine": "Obat",
       "supplier": "Pemasok",
       "supplierNone": "— tidak ada —",
@@ -419,6 +437,7 @@
       "recordTitle": "Catat mutasi (penyesuaian / write-off)",
       "filterByBatch": "Saring per batch:",
       "filterAll": "— semua —",
+      "searchPlaceholder": "Cari batch / obat…",
       "when": "Waktu",
       "batch": "Batch",
       "type": "Jenis",
@@ -501,6 +520,7 @@
   "transfers": {
     "intro": "Pindahkan stok antar gudang. Setiap transfer dicatat dengan nomor dan riwayat.",
     "newTransfer": "Transfer baru",
+    "searchPlaceholder": "Cari no transfer / catatan…",
     "transferNo": "No. transfer",
     "route": "Dari / Ke",
     "lines": "Item",

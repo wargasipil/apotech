@@ -4,11 +4,13 @@ import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import ExportButton from "../../components/ExportButton";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
+import { downloadCsv } from "../../lib/csv";
 import { formatMoney } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
-import { useMedicinesQuery } from "../../queries/medicines";
+import { fetchMedicinesForExport, useMedicinesQuery } from "../../queries/medicines";
 import { CreateMedicineDialog } from "./medicineDrawers";
 
 export default function Medicines() {
@@ -26,6 +28,33 @@ export default function Medicines() {
 
   const { page, setPage, pageSize, setPageSize } = usePageState(query);
   const medicinesQ = useMedicinesQuery({ query, page, pageSize });
+
+  const onExport = async () => {
+    const rows = await fetchMedicinesForExport({ query });
+    downloadCsv(
+      `medicines-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows.map((m) => ({
+        sku: m.sku,
+        name: m.name,
+        manufacturer: m.manufacturer,
+        unit: m.unit,
+        unitPrice: Number(m.unitPrice),
+        ready: Number(m.readyStock),
+        onOrder: Number(m.onOrderStock),
+        rx: m.prescriptionRequired ? t("common.yes") : t("common.no"),
+      })),
+      [
+        { key: "sku", header: t("inventory.medicines.sku") },
+        { key: "name", header: t("inventory.medicines.name") },
+        { key: "manufacturer", header: t("inventory.medicines.manufacturer") },
+        { key: "unit", header: t("inventory.medicines.unit") },
+        { key: "unitPrice", header: t("inventory.medicines.unitPrice") },
+        { key: "ready", header: t("inventory.medicines.readyStock") },
+        { key: "onOrder", header: t("inventory.medicines.onOrder") },
+        { key: "rx", header: t("inventory.medicines.rxShort") },
+      ],
+    );
+  };
 
   return (
     <Box>
@@ -45,10 +74,13 @@ export default function Medicines() {
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </Box>
-          <Button size="sm" colorPalette="blue" onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            {t("inventory.medicines.addTitle")}
-          </Button>
+          <HStack gap={2}>
+            <ExportButton onExport={onExport} />
+            <Button size="sm" colorPalette="blue" onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              {t("inventory.medicines.addTitle")}
+            </Button>
+          </HStack>
         </HStack>
 
         {medicinesQ.isLoading ? (

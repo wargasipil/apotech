@@ -141,8 +141,12 @@ type PurchaseReceiptItem struct {
 	BatchNumber         string                 `protobuf:"bytes,7,opt,name=batch_number,json=batchNumber,proto3" json:"batch_number,omitempty"`
 	ExpiryDate          string                 `protobuf:"bytes,8,opt,name=expiry_date,json=expiryDate,proto3" json:"expiry_date,omitempty"` // YYYY-MM-DD
 	BatchId             string                 `protobuf:"bytes,9,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`          // populated after batch row is created
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// qty is in BASE units; these describe the purchasable unit received in.
+	MedicineUnitId string `protobuf:"bytes,10,opt,name=medicine_unit_id,json=medicineUnitId,proto3" json:"medicine_unit_id,omitempty"`
+	UnitName       string `protobuf:"bytes,11,opt,name=unit_name,json=unitName,proto3" json:"unit_name,omitempty"`
+	UnitFactor     int64  `protobuf:"varint,12,opt,name=unit_factor,json=unitFactor,proto3" json:"unit_factor,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PurchaseReceiptItem) Reset() {
@@ -238,13 +242,35 @@ func (x *PurchaseReceiptItem) GetBatchId() string {
 	return ""
 }
 
+func (x *PurchaseReceiptItem) GetMedicineUnitId() string {
+	if x != nil {
+		return x.MedicineUnitId
+	}
+	return ""
+}
+
+func (x *PurchaseReceiptItem) GetUnitName() string {
+	if x != nil {
+		return x.UnitName
+	}
+	return ""
+}
+
+func (x *PurchaseReceiptItem) GetUnitFactor() int64 {
+	if x != nil {
+		return x.UnitFactor
+	}
+	return 0
+}
+
 type ReceiveLineInput struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	PurchaseOrderItemId string                 `protobuf:"bytes,1,opt,name=purchase_order_item_id,json=purchaseOrderItemId,proto3" json:"purchase_order_item_id,omitempty"`
-	Qty                 int32                  `protobuf:"varint,2,opt,name=qty,proto3" json:"qty,omitempty"`
-	UnitCostPrice       int64                  `protobuf:"varint,3,opt,name=unit_cost_price,json=unitCostPrice,proto3" json:"unit_cost_price,omitempty"` // overrideable
+	Qty                 int32                  `protobuf:"varint,2,opt,name=qty,proto3" json:"qty,omitempty"`                                            // qty in the chosen purchasable unit
+	UnitCostPrice       int64                  `protobuf:"varint,3,opt,name=unit_cost_price,json=unitCostPrice,proto3" json:"unit_cost_price,omitempty"` // per BASE unit; overrideable
 	BatchNumber         string                 `protobuf:"bytes,4,opt,name=batch_number,json=batchNumber,proto3" json:"batch_number,omitempty"`
-	ExpiryDate          string                 `protobuf:"bytes,5,opt,name=expiry_date,json=expiryDate,proto3" json:"expiry_date,omitempty"` // YYYY-MM-DD (required)
+	ExpiryDate          string                 `protobuf:"bytes,5,opt,name=expiry_date,json=expiryDate,proto3" json:"expiry_date,omitempty"`               // YYYY-MM-DD (required)
+	MedicineUnitId      string                 `protobuf:"bytes,6,opt,name=medicine_unit_id,json=medicineUnitId,proto3" json:"medicine_unit_id,omitempty"` // purchasable unit; empty => PO line's unit
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -310,6 +336,13 @@ func (x *ReceiveLineInput) GetBatchNumber() string {
 func (x *ReceiveLineInput) GetExpiryDate() string {
 	if x != nil {
 		return x.ExpiryDate
+	}
+	return ""
+}
+
+func (x *ReceiveLineInput) GetMedicineUnitId() string {
+	if x != nil {
+		return x.MedicineUnitId
 	}
 	return ""
 }
@@ -629,7 +662,7 @@ const file_purchasing_iface_v1_receipt_proto_rawDesc = "" +
 	"created_at\x18\a \x01(\x03R\tcreatedAt\x12>\n" +
 	"\x05items\x18\b \x03(\v2(.purchasing_iface.v1.PurchaseReceiptItemR\x05items\x12\x1d\n" +
 	"\n" +
-	"invoice_no\x18\t \x01(\tR\tinvoiceNo\"\xc4\x02\n" +
+	"invoice_no\x18\t \x01(\tR\tinvoiceNo\"\xac\x03\n" +
 	"\x13PurchaseReceiptItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x13purchase_receipt_id\x18\x02 \x01(\tR\x11purchaseReceiptId\x123\n" +
@@ -641,14 +674,20 @@ const file_purchasing_iface_v1_receipt_proto_rawDesc = "" +
 	"\fbatch_number\x18\a \x01(\tR\vbatchNumber\x12\x1f\n" +
 	"\vexpiry_date\x18\b \x01(\tR\n" +
 	"expiryDate\x12\x19\n" +
-	"\bbatch_id\x18\t \x01(\tR\abatchId\"\xc5\x01\n" +
+	"\bbatch_id\x18\t \x01(\tR\abatchId\x12(\n" +
+	"\x10medicine_unit_id\x18\n" +
+	" \x01(\tR\x0emedicineUnitId\x12\x1b\n" +
+	"\tunit_name\x18\v \x01(\tR\bunitName\x12\x1f\n" +
+	"\vunit_factor\x18\f \x01(\x03R\n" +
+	"unitFactor\"\xef\x01\n" +
 	"\x10ReceiveLineInput\x123\n" +
 	"\x16purchase_order_item_id\x18\x01 \x01(\tR\x13purchaseOrderItemId\x12\x10\n" +
 	"\x03qty\x18\x02 \x01(\x05R\x03qty\x12&\n" +
 	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\x12!\n" +
 	"\fbatch_number\x18\x04 \x01(\tR\vbatchNumber\x12\x1f\n" +
 	"\vexpiry_date\x18\x05 \x01(\tR\n" +
-	"expiryDate\"\xd3\x01\n" +
+	"expiryDate\x12(\n" +
+	"\x10medicine_unit_id\x18\x06 \x01(\tR\x0emedicineUnitId\"\xd3\x01\n" +
 	"\x14CreateReceiptRequest\x12*\n" +
 	"\x11purchase_order_id\x18\x01 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +
 	"\vreceived_at\x18\x02 \x01(\tR\n" +

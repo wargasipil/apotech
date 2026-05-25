@@ -1,32 +1,35 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
   HStack,
+  Input,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import DateRangeFilter, { resolveRange, type DateRange } from "../../components/DateRangeFilter";
 import EntityDrawer from "../../components/EntityDrawer";
 import EnumSelect from "../../components/EnumSelect";
 import FormField from "../../components/FormField";
+import ExportButton from "../../components/ExportButton";
 import Pagination from "../../components/Pagination";
 import SearchableSelect from "../../components/SearchableSelect";
 import { searchBatches } from "../../queries/batches";
 import { MovementType } from "../../gen/inventory_iface/v1/stock_pb";
+import { downloadCsv } from "../../lib/csv";
 import { formatUnix } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
-import { useAllBatchesQuery } from "../../queries/batches";
-import { useAllMedicinesQuery } from "../../queries/medicines";
-import { useMovementsQuery, useRecordMovementMutation } from "../../queries/stock";
+import { resolveBatchMap, useBatchRefs } from "../../queries/refs";
+import { fetchMovementsForExport, useMovementsQuery, useRecordMovementMutation } from "../../queries/stock";
 
 const Schema = z.object({
   batchId: z.string().min(1),
@@ -55,50 +58,118 @@ export default function Movements() {
   const { t } = useTranslation();
   const [filterBatch, setFilterBatch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { page, setPage, pageSize, setPageSize } = usePageState(filterBatch);
-  const movementsQ = useMovementsQuery({ batchId: filterBatch || undefined, page, pageSize });
-  const batchesQ = useAllBatchesQuery();
-  const medicinesQ = useAllMedicinesQuery();
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const h = setTimeout(() => setQuery(searchInput.trim()), 250);
+    return () => clearTimeout(h);
+  }, [searchInput]);
+  const [dateOn, setDateOn] = useState(false);
+  const [range, setRange] = useState<DateRange>(() => resolveRange("30d"));
+  const { page, setPage, pageSize, setPageSize } = usePageState(
+    `${filterBatch}|${query}|${dateOn ? range.fromUnix : 0}|${dateOn ? range.toUnix : 0}`,
+  );
+  const movementsQ = useMovementsQuery({
+    batchId: filterBatch || undefined,
+    query,
+    fromUnix: dateOn ? range.fromUnix : 0,
+    toUnix: dateOn ? range.toUnix : 0,
+    page,
+    pageSize,
+  });
+  // Resolve the page's batch refs (batch_number + medicine_name) + the active
+  // filter batch (resolve-by-IDs; the batch filter still searches server-side).
+  const batchRefs = useBatchRefs(
+    useMemo(
+      () => [filterBatch, ...movementsQ.rows.map((m) => m.batchId)],
+      [filterBatch, movementsQ.rows],
+    ),
+  );
 
-  const medById = useMemo(
-    () => new Map(medicinesQ.rows.map((m) => [m.id, m])),
-    [medicinesQ.rows],
-  );
-  const batchById = useMemo(
-    () => new Map(batchesQ.rows.map((b) => [b.id, b])),
-    [batchesQ.rows],
-  );
+  const onExport = async () => {
+    const rows = await fetchMovementsForExport({
+      batchId: filterBatch || undefined,
+      query,
+      fromUnix: dateOn ? range.fromUnix : 0,
+      toUnix: dateOn ? range.toUnix : 0,
+    });
+    const refs = await resolveBatchMap(rows.map((m) => m.batchId));
+    downloadCsv(
+      `movements-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows.map((m) => {
+        const r = refs.get(m.batchId);
+        return {
+          date: formatUnix(m.createdAt),
+          medicine: r?.medicineName ?? "—",
+          batch: r?.batchNumber || "—",
+          type: t(`inventory.movements.types.${typeKey(m.type)}`),
+          qty: m.qty,
+          reason: m.reason,
+        };
+      }),
+      [
+        { key: "date", header: t("inventory.movements.when") },
+        { key: "medicine", header: t("inventory.batches.medicine") },
+        { key: "batch", header: t("inventory.movements.batch") },
+        { key: "type", header: t("inventory.movements.type") },
+        { key: "qty", header: t("inventory.movements.qty") },
+        { key: "reason", header: t("inventory.movements.reason") },
+      ],
+    );
+  };
 
   return (
     <Stack gap={4}>
-      <HStack justify="space-between">
-        <HStack gap={2}>
-          <Text fontSize="sm" color="fg.muted">
-            {t("inventory.movements.filterByBatch")}
-          </Text>
+      <HStack justify="space-between" wrap="wrap" gap={2}>
+        <HStack gap={2} wrap="wrap">
           <SearchableSelect
             size="sm"
-            width="280px"
+            width="260px"
             value={filterBatch}
             onChange={setFilterBatch}
             loadOptions={(q) => searchBatches(q)}
-            itemToString={(b) =>
-              `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)}`
-            }
+            itemToString={(b) => b.batchNumber || b.id.slice(0, 8)}
             itemToValue={(b) => b.id}
             selectedLabel={(() => {
-              const b = batchById.get(filterBatch);
-              return b
-                ? `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)}`
-                : undefined;
+              const r = batchRefs.get(filterBatch);
+              return r ? `${r.medicineName} · ${r.batchNumber || "—"}` : undefined;
             })()}
             placeholder={t("inventory.movements.filterAll")}
           />
+          <Box position="relative">
+            <Box position="absolute" left={2} top="50%" transform="translateY(-50%)" color="fg.muted">
+              <Search size={14} />
+            </Box>
+            <Input
+              size="sm"
+              pl={7}
+              width="220px"
+              placeholder={t("inventory.movements.searchPlaceholder")}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </Box>
+          <EnumSelect
+            size="sm"
+            width="150px"
+            value={dateOn ? "on" : "off"}
+            onChange={(v) => setDateOn(v === "on")}
+            items={[
+              { value: "off", label: t("common.anyDate") },
+              { value: "on", label: t("common.dateRange") },
+            ]}
+            itemToString={(o) => o.label}
+            itemToValue={(o) => o.value}
+          />
+          {dateOn && <DateRangeFilter value={range} onChange={setRange} />}
         </HStack>
-        <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
-          <Plus size={16} />
-          {t("inventory.movements.record")}
-        </Button>
+        <HStack gap={2}>
+          <ExportButton onExport={onExport} />
+          <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
+            <Plus size={16} />
+            {t("inventory.movements.record")}
+          </Button>
+        </HStack>
       </HStack>
 
       {movementsQ.isLoading ? (
@@ -118,13 +189,12 @@ export default function Movements() {
           </Table.Header>
           <Table.Body>
             {movementsQ.rows.map((m) => {
-              const batch = batchById.get(m.batchId);
-              const medName = batch ? medById.get(batch.medicineId)?.name : undefined;
+              const ref = batchRefs.get(m.batchId);
               return (
                 <Table.Row key={m.id}>
                   <Table.Cell>{formatUnix(m.createdAt)}</Table.Cell>
                   <Table.Cell>
-                    {medName ?? "?"} · {batch?.batchNumber || m.batchId.slice(0, 8)}
+                    {ref?.medicineName ?? "—"} · {ref?.batchNumber || "—"}
                   </Table.Cell>
                   <Table.Cell>{t(`inventory.movements.types.${typeKey(m.type)}`)}</Table.Cell>
                   <Table.Cell>{m.qty > 0 ? `+${m.qty}` : m.qty}</Table.Cell>
@@ -156,7 +226,6 @@ export default function Movements() {
       <RecordDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        medById={medById}
       />
     </Stack>
   );
@@ -165,11 +234,9 @@ export default function Movements() {
 function RecordDrawer({
   open,
   onClose,
-  medById,
 }: {
   open: boolean;
   onClose: () => void;
-  medById: Map<string, { name: string }>;
 }) {
   const { t } = useTranslation();
   const record = useRecordMovementMutation();
@@ -226,7 +293,7 @@ function RecordDrawer({
               onChange={(v) => form.setValue("batchId", v)}
               loadOptions={(q) => searchBatches(q)}
               itemToString={(b) =>
-                `${medById.get(b.medicineId)?.name ?? b.medicineId} · ${b.batchNumber || b.id.slice(0, 8)} (qty ${String(b.currentQuantity)})`
+                `${b.batchNumber || b.id.slice(0, 8)} (qty ${String(b.currentQuantity)})`
               }
               itemToValue={(b) => b.id}
               placeholder={t("inventory.batches.selectMedicine")}

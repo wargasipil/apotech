@@ -128,6 +128,10 @@ func (s *Sales) applySaleFilters(
 	}
 	if statusStr := saleStatusToString(status); statusStr != "" {
 		q = q.Where("status = ?", statusStr)
+	} else {
+		// "All" in order history means finalized orders only — in-progress
+		// carts (DRAFT) are never shown in history or its summary.
+		q = q.Where("status <> ?", saleStatusDraft)
 	}
 	if qstr := strings.TrimSpace(query); qstr != "" {
 		pattern := "%" + qstr + "%"
@@ -170,7 +174,7 @@ func (s *Sales) GetSalesSummary(
 	if err := s.db.WithContext(ctx).
 		Table("sale_items").
 		Where("sale_id IN (?)", idSub).
-		Select("COALESCE(SUM(qty), 0)").
+		Select("COALESCE(SUM(base_qty), 0)").
 		Scan(&itemsSold).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -268,40 +272,56 @@ func (s *Sales) AddItem(
 			return connect.NewError(connect.CodeFailedPrecondition, errors.New("medicine is archived"))
 		}
 
-		// Look up the existing line for this medicine (qty after this add).
+		// Resolve the selling unit (box/strip/tablet, …) — default base.
+		unit, err := resolveSellUnit(tx, med.ID, req.Msg.MedicineUnitId)
+		if err != nil {
+			return err
+		}
+
+		// Look up the existing line for this medicine + SAME unit (a box line and a
+		// tablet line of the same medicine are distinct).
 		var existing model.SaleItem
-		findErr := tx.Where("sale_id = ? AND medicine_id = ?", sale.ID, med.ID).First(&existing).Error
+		findErr := tx.Where("sale_id = ? AND medicine_id = ? AND medicine_unit_id = ?", sale.ID, med.ID, unit.ID).
+			First(&existing).Error
 		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
 			return connect.NewError(connect.CodeInternal, findErr)
 		}
-		newQty := req.Msg.Qty
+		newUnitQty := req.Msg.Qty
 		if findErr == nil {
-			newQty = existing.Qty + req.Msg.Qty
+			newUnitQty = existing.Qty + req.Msg.Qty
 		}
+		newBaseQty := newUnitQty * int32(unit.Factor)
 
-		// Rx gate: prescription_required medicines need a valid Rx attached
-		// with sufficient remaining qty.
+		// Rx gate: prescription_required medicines need a valid Rx attached with
+		// sufficient remaining qty — checked in BASE units.
 		if med.PrescriptionRequired {
-			if err := assertRxCovers(tx, sale, med.ID, newQty); err != nil {
+			if err := assertRxCovers(tx, sale, med.ID, newBaseQty); err != nil {
 				return err
 			}
 		}
 
-		// If an item for this medicine already exists, increment its qty.
 		if errors.Is(findErr, gorm.ErrRecordNotFound) {
+			unitID := unit.ID
 			item := model.SaleItem{
 				SaleID:            sale.ID,
 				MedicineID:        med.ID,
+				MedicineUnitID:    &unitID,
+				UnitName:          unit.Name,
+				UnitFactor:        unit.Factor,
 				Qty:               req.Msg.Qty,
-				UnitPriceSnapshot: med.UnitPrice,
+				BaseQty:           req.Msg.Qty * int32(unit.Factor),
+				UnitPriceSnapshot: unit.SellPrice,
 			}
 			item.LineTotal = computeLineTotal(item.Qty, item.UnitPriceSnapshot, item.LineDiscount)
 			if err := tx.Create(&item).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
 		} else {
-			existing.Qty = newQty
-			existing.UnitPriceSnapshot = med.UnitPrice
+			existing.Qty = newUnitQty
+			existing.BaseQty = newBaseQty
+			existing.UnitName = unit.Name
+			existing.UnitFactor = unit.Factor
+			existing.UnitPriceSnapshot = unit.SellPrice
 			existing.LineTotal = computeLineTotal(existing.Qty, existing.UnitPriceSnapshot, existing.LineDiscount)
 			if err := tx.Save(&existing).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
@@ -344,12 +364,17 @@ func (s *Sales) SetItemQuantity(
 		if err := tx.Where("id = ?", item.MedicineID).First(&med).Error; err != nil {
 			return connect.NewError(connect.CodeInternal, err)
 		}
+		factor := item.UnitFactor
+		if factor < 1 {
+			factor = 1
+		}
 		if med.PrescriptionRequired {
-			if err := assertRxCovers(tx, sale, med.ID, req.Msg.Qty); err != nil {
+			if err := assertRxCovers(tx, sale, med.ID, req.Msg.Qty*int32(factor)); err != nil {
 				return err
 			}
 		}
 		item.Qty = req.Msg.Qty
+		item.BaseQty = req.Msg.Qty * int32(factor)
 		item.LineTotal = computeLineTotal(item.Qty, item.UnitPriceSnapshot, item.LineDiscount)
 		if err := tx.Save(&item).Error; err != nil {
 			return connect.NewError(connect.CodeInternal, err)
@@ -545,23 +570,40 @@ func (s *Sales) CompleteSale(
 		// FEFO consumes stock from the sale's warehouse only.
 		saleWh := deref(sale.WarehouseID)
 
-		// For each item: pick FEFO batches with available qty, allocate.
-		// If a line spans multiple batches, we split it into one item row per
-		// batch consumed so audit is clean (1 sale_item -> 1 stock_movement).
-		for _, item := range items {
-			needed := int32(item.Qty)
+		// Lock every lot of the cart's medicines FOR UPDATE (deterministic id
+		// order) BEFORE reading availability, so two concurrent CompleteSale (or a
+		// transfer / adjustment) for the same lot serialize and can't both pass the
+		// availability check and oversell (the ledger SUM under READ COMMITTED
+		// otherwise misses the other tx's uncommitted movement).
+		medSet := make(map[string]struct{}, len(items))
+		medIDs := make([]string, 0, len(items))
+		for i := range items {
+			if _, ok := medSet[items[i].MedicineID]; ok {
+				continue
+			}
+			medSet[items[i].MedicineID] = struct{}{}
+			medIDs = append(medIDs, items[i].MedicineID)
+		}
+		if err := lockBatchesByMedicine(tx, medIDs); err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+
+		// For each line: consume its BASE-unit quantity across FEFO batches in the
+		// sale's warehouse. The sale_item stays one row per selling line; the
+		// per-batch breakdown lives on the SALE stock_movements (each linked to the
+		// line via sale_item_id) — which is also the COGS source.
+		for i := range items {
+			item := items[i]
+			needed := item.BaseQty
+			if needed <= 0 {
+				needed = item.Qty // back-compat for any rows created before UOM
+			}
 
 			// Available batches for the medicine, ordered by expiry ASC (FEFO).
-			// Compute per-batch available qty (sum of stock_movements) inside the loop.
 			var batches []model.Batch
 			if err := tx.Where("medicine_id = ?", item.MedicineID).
 				Order("expiry_date ASC").
 				Find(&batches).Error; err != nil {
-				return connect.NewError(connect.CodeInternal, err)
-			}
-
-			// Strip the placeholder item; we'll re-insert allocated children.
-			if err := tx.Delete(&item).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
 
@@ -585,23 +627,8 @@ func (s *Sales) CompleteSale(
 					take = avail
 				}
 
-				// Insert allocated child sale_item row pinned to this batch.
-				batchID := b.ID
-				child := model.SaleItem{
-					SaleID:            sale.ID,
-					MedicineID:        item.MedicineID,
-					BatchID:           &batchID,
-					Qty:               int32(take),
-					UnitPriceSnapshot: item.UnitPriceSnapshot,
-					LineDiscount:      0, // line discounts pre-FEFO would be reapportioned; v1 ignores
-					LineTotal:         computeLineTotal(int32(take), item.UnitPriceSnapshot, 0),
-				}
-				if err := tx.Create(&child).Error; err != nil {
-					return connect.NewError(connect.CodeInternal, err)
-				}
-
-				// Insert the SALE stock movement (negative qty), linked to this sale_item.
-				saleItemID := child.ID
+				// SALE movement (negative base qty), linked to the selling line.
+				saleItemID := item.ID
 				mv := model.StockMovement{
 					BatchID:     b.ID,
 					Qty:         -int32(take),
@@ -619,10 +646,9 @@ func (s *Sales) CompleteSale(
 			}
 
 			if needed > 0 {
-				// Insufficient stock — abort the whole tx. Caller can adjust qty
-				// or restock. Wrapped as FailedPrecondition.
+				// Insufficient base stock in this warehouse — abort the whole tx.
 				return connect.NewError(connect.CodeFailedPrecondition,
-					fmt.Errorf("insufficient stock for medicine %s (%d remaining short)", item.MedicineID, needed))
+					fmt.Errorf("insufficient stock for medicine %s (%d base units short)", item.MedicineID, needed))
 			}
 		}
 
@@ -717,6 +743,40 @@ func (s *Sales) VoidSale(
 	return connect.NewResponse(&posifacev1.VoidSaleResponse{Sale: saleToProto(sale)}), nil
 }
 
+// DiscardSale hard-deletes a DRAFT sale + its items so an abandoned cart leaves
+// no trace (not even a VOIDED row). Safe: a DRAFT has no stock_movements (stock
+// is consumed only at CompleteSale) and no sale_no, so nothing references it.
+func (s *Sales) DiscardSale(
+	ctx context.Context,
+	req *connect.Request[posifacev1.DiscardSaleRequest],
+) (*connect.Response[posifacev1.DiscardSaleResponse], error) {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var sale model.Sale
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", req.Msg.SaleId).First(&sale).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
+			}
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if sale.Status != saleStatusDraft {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				fmt.Errorf("only draft sales can be discarded; this one is %s", sale.Status))
+		}
+		if err := tx.Where("sale_id = ?", sale.ID).Delete(&model.SaleItem{}).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if err := tx.Delete(&sale).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	return connect.NewResponse(&posifacev1.DiscardSaleResponse{}), nil
+}
+
 // ---------- Snapshot ----------
 
 func (s *Sales) GetTodaySnapshot(
@@ -746,7 +806,7 @@ func (s *Sales) GetTodaySnapshot(
 		Table("sale_items si").
 		Joins("JOIN sales s ON s.id = si.sale_id").
 		Where("s.status = ? AND s.completed_at >= ?", saleStatusCompleted, dayStart).
-		Select("COALESCE(SUM(si.qty), 0)").
+		Select("COALESCE(SUM(si.base_qty), 0)").
 		Scan(&itemsSold).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -760,7 +820,7 @@ func (s *Sales) GetTodaySnapshot(
 		Table("sale_items si").
 		Joins("JOIN sales s ON s.id = si.sale_id").
 		Where("s.status = ? AND s.completed_at >= ?", saleStatusCompleted, dayStart).
-		Select("si.medicine_id AS medicine_id, SUM(si.qty) AS qty").
+		Select("si.medicine_id AS medicine_id, SUM(si.base_qty) AS qty").
 		Group("si.medicine_id").
 		Order("qty DESC").
 		Limit(1).
@@ -832,6 +892,7 @@ func (s *Sales) PrintReceipt(
 	for _, it := range sale.Items {
 		lines = append(lines, printer.ReceiptLine{
 			Qty:       it.Qty,
+			UnitName:  it.UnitName,
 			Name:      medName[it.MedicineID],
 			LineTotal: it.LineTotal,
 		})
@@ -978,6 +1039,29 @@ func assignSaleNo(tx *gorm.DB, now time.Time) (string, error) {
 
 // assertRxCovers checks that the sale has an active prescription covering
 // `needQty` of `medicineID` (taking already-dispensed qty into account).
+// resolveSellUnit returns the medicine's selling unit for the given unit id, or
+// its base unit when unitID is empty. Errors if the unit isn't sellable/active.
+func resolveSellUnit(tx *gorm.DB, medicineID, unitID string) (*model.MedicineUnit, error) {
+	var u model.MedicineUnit
+	q := tx.Where("medicine_id = ? AND active", medicineID)
+	if unitID != "" {
+		q = q.Where("id = ? AND sellable", unitID)
+	} else {
+		q = q.Where("is_base")
+	}
+	if err := q.First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("selling unit not found or not sellable"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if u.Factor < 1 {
+		u.Factor = 1
+	}
+	return &u, nil
+}
+
 func assertRxCovers(tx *gorm.DB, sale *model.Sale, medicineID string, needQty int32) error {
 	if sale.PrescriptionID == nil || *sale.PrescriptionID == "" {
 		return connect.NewError(connect.CodeFailedPrecondition,
@@ -1011,11 +1095,14 @@ func assertRxCovers(tx *gorm.DB, sale *model.Sale, medicineID string, needQty in
 // item whose medicine is Rx-required and present on the prescription. Caller
 // owns the tx; cart-line allocation has already succeeded.
 func incrementRxDispensed(tx *gorm.DB, prescriptionID string, items []model.SaleItem) error {
-	// Sum qty per medicine across the sale (FEFO may have split lines).
+	// Sum BASE qty per medicine across the sale (Rx is prescribed in base units).
 	totals := map[string]int32{}
 	for _, it := range items {
-		// it.MedicineID is the original cart-line medicine.
-		totals[it.MedicineID] += it.Qty
+		base := it.BaseQty
+		if base <= 0 {
+			base = it.Qty
+		}
+		totals[it.MedicineID] += base
 	}
 	for medID, qty := range totals {
 		var med model.Medicine
@@ -1098,9 +1185,15 @@ func saleItemToProto(i *model.SaleItem) *posifacev1.SaleItem {
 		UnitPriceSnapshot: i.UnitPriceSnapshot,
 		LineDiscount:      i.LineDiscount,
 		LineTotal:         i.LineTotal,
+		UnitName:          i.UnitName,
+		UnitFactor:        i.UnitFactor,
+		BaseQty:           i.BaseQty,
 	}
 	if i.BatchID != nil {
 		out.BatchId = *i.BatchID
+	}
+	if i.MedicineUnitID != nil {
+		out.MedicineUnitId = *i.MedicineUnitID
 	}
 	return out
 }

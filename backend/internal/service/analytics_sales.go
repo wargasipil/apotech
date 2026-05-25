@@ -119,7 +119,7 @@ func (s *SalesAnalytics) GetTopSellers(
 		Joins("JOIN medicines m ON m.id = si.medicine_id").
 		Where("s.status = ? AND s.completed_at >= ? AND s.completed_at < ?",
 			saleStatusCompleted, from, to).
-		Select("si.medicine_id, m.name AS medicine_name, m.sku, SUM(si.qty) AS qty, SUM(si.line_total) AS revenue").
+		Select("si.medicine_id, m.name AS medicine_name, m.sku, SUM(si.base_qty) AS qty, SUM(si.line_total) AS revenue").
 		Group("si.medicine_id, m.name, m.sku").
 		Order(orderBy).
 		Limit(limit).

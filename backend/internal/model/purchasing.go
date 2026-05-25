@@ -27,10 +27,14 @@ type PurchaseOrderItem struct {
 	ID              string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	PurchaseOrderID string `gorm:"not null;type:uuid;column:purchase_order_id"`
 	MedicineID      string `gorm:"not null;type:uuid;column:medicine_id"`
-	OrderedQty      int32  `gorm:"not null;column:ordered_qty"`
-	ReceivedQty     int32  `gorm:"not null;default:0;column:received_qty"`
-	UnitCostPrice   int64  `gorm:"not null;default:0;column:unit_cost_price"`
+	OrderedQty      int32  `gorm:"not null;column:ordered_qty"`  // BASE units
+	ReceivedQty     int32  `gorm:"not null;default:0;column:received_qty"` // BASE units
+	UnitCostPrice   int64  `gorm:"not null;default:0;column:unit_cost_price"` // per BASE unit
 	Subtotal        int64  `gorm:"not null;default:0"`
+	// Purchasable unit the line was ordered in (display/entry metadata).
+	MedicineUnitID *string `gorm:"type:uuid;column:medicine_unit_id"`
+	UnitName       string  `gorm:"not null;default:'';column:unit_name"`
+	UnitFactor     int64   `gorm:"not null;default:1;column:unit_factor"`
 }
 
 func (PurchaseOrderItem) TableName() string { return "purchase_order_items" }
@@ -55,12 +59,16 @@ type PurchaseReceiptItem struct {
 	PurchaseReceiptID   string    `gorm:"not null;type:uuid;column:purchase_receipt_id"`
 	PurchaseOrderItemID string    `gorm:"not null;type:uuid;column:purchase_order_item_id"`
 	MedicineID          string    `gorm:"not null;type:uuid;column:medicine_id"`
-	Qty                 int32     `gorm:"not null"`
-	UnitCostPrice       int64     `gorm:"not null;default:0;column:unit_cost_price"`
+	Qty                 int32     `gorm:"not null"` // BASE units
+	UnitCostPrice       int64     `gorm:"not null;default:0;column:unit_cost_price"` // per BASE unit
 	BatchNumber         string    `gorm:"not null;default:'';column:batch_number"`
 	ExpiryDate          time.Time `gorm:"not null;type:date;column:expiry_date"`
 	BatchID             *string   `gorm:"type:uuid;column:batch_id"`
 	CreatedAt           time.Time
+	// Purchasable unit the line was received in (display/entry metadata).
+	MedicineUnitID *string `gorm:"type:uuid;column:medicine_unit_id"`
+	UnitName       string  `gorm:"not null;default:'';column:unit_name"`
+	UnitFactor     int64   `gorm:"not null;default:1;column:unit_factor"`
 }
 
 func (PurchaseReceiptItem) TableName() string { return "purchase_receipt_items" }

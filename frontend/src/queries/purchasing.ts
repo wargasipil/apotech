@@ -19,6 +19,7 @@ import type {
   GetSupplierBalancesRequest,
   PayPurchaseRequest,
 } from "../gen/purchasing_iface/v1/payment_pb";
+import { ALL_LIMIT } from "../lib/pagination";
 
 export const purchasingKeys = {
   all: ["purchasing"] as const,
@@ -39,6 +40,15 @@ export function usePurchaseOrdersQuery(req: PartialMessage<ListPurchaseOrdersReq
     },
   });
   return { ...q, rows: q.data?.rows ?? [], total: q.data?.total ?? 0 };
+}
+
+// Imperative one-shot fetch of ALL POs matching the filters (cap ALL_LIMIT), for
+// CSV export. Not a hook — call from an export handler.
+export async function fetchPurchaseOrdersForExport(
+  req: PartialMessage<ListPurchaseOrdersRequest> = {},
+) {
+  const res = await purchaseOrderClient.listPurchaseOrders({ ...req, limit: ALL_LIMIT, offset: 0 });
+  return res.orders;
 }
 
 export function usePurchaseOrderQuery(id: string, enabled = true) {

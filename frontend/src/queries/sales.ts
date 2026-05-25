@@ -14,6 +14,7 @@ import type {
   SetSaleCustomerRequest,
   VoidSaleRequest,
 } from "../gen/pos_iface/v1/sale_pb";
+import { ALL_LIMIT } from "../lib/pagination";
 
 export const saleKeys = {
   all: ["sales"] as const,
@@ -140,6 +141,13 @@ export function useSalesSummaryQuery(filters: PartialMessage<GetSalesSummaryRequ
     queryFn: () => saleClient.getSalesSummary(filters),
     staleTime: 30_000,
   });
+}
+
+// Imperative one-shot fetch of ALL rows matching the filters (cap ALL_LIMIT),
+// for CSV export. Not a hook — call from an export handler.
+export async function fetchSalesForExport(filters: PartialMessage<ListSalesRequest> = {}) {
+  const res = await saleClient.listSales({ ...filters, limit: ALL_LIMIT, offset: 0 });
+  return res.sales;
 }
 
 export function useTodaySnapshotQuery() {

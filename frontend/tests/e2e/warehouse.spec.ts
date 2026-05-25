@@ -43,8 +43,12 @@ test.describe("warehouses", () => {
     await page.goto("/pos");
     await expect(page.getByText("Select a warehouse")).toBeVisible();
 
-    // Pick the MAIN warehouse; the cart (search box) then loads.
-    await page.getByRole("button", { name: /MAIN/ }).click();
+    // The gate's picker is the standardized searchable popup: open it, filter,
+    // and pick MAIN. The cart (search box) then loads.
+    await page.getByRole("button", { name: /Select warehouse/i }).click();
+    const picker = page.getByRole("dialog");
+    await picker.getByRole("textbox").fill("MAIN");
+    await picker.getByText("MAIN · Gudang Utama").click();
     await expect(page.getByPlaceholder(/Search medicine/i)).toBeVisible();
   });
 });

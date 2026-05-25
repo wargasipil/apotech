@@ -395,6 +395,9 @@ type ListTransfersRequest struct {
 	WarehouseId   string                 `protobuf:"bytes,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"` // empty = all; matches from OR to
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Query         string                 `protobuf:"bytes,4,opt,name=query,proto3" json:"query,omitempty"`                        // ILIKE transfer_no / note
+	FromUnix      int64                  `protobuf:"varint,5,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"` // created_at range lower bound (0 = unbounded)
+	ToUnix        int64                  `protobuf:"varint,6,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`       // created_at range upper bound (exclusive; 0 = unbounded)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -446,6 +449,27 @@ func (x *ListTransfersRequest) GetLimit() int32 {
 func (x *ListTransfersRequest) GetOffset() int32 {
 	if x != nil {
 		return x.Offset
+	}
+	return 0
+}
+
+func (x *ListTransfersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListTransfersRequest) GetFromUnix() int64 {
+	if x != nil {
+		return x.FromUnix
+	}
+	return 0
+}
+
+func (x *ListTransfersRequest) GetToUnix() int64 {
+	if x != nil {
+		return x.ToUnix
 	}
 	return 0
 }
@@ -628,11 +652,14 @@ const file_warehouse_iface_v1_transfer_proto_rawDesc = "" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12A\n" +
 	"\x05lines\x18\x04 \x03(\v2+.warehouse_iface.v1.CreateTransferLineInputR\x05lines\"W\n" +
 	"\x16CreateTransferResponse\x12=\n" +
-	"\btransfer\x18\x01 \x01(\v2!.warehouse_iface.v1.StockTransferR\btransfer\"g\n" +
+	"\btransfer\x18\x01 \x01(\v2!.warehouse_iface.v1.StockTransferR\btransfer\"\xb3\x01\n" +
 	"\x14ListTransfersRequest\x12!\n" +
 	"\fwarehouse_id\x18\x01 \x01(\tR\vwarehouseId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"n\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12\x14\n" +
+	"\x05query\x18\x04 \x01(\tR\x05query\x12\x1b\n" +
+	"\tfrom_unix\x18\x05 \x01(\x03R\bfromUnix\x12\x17\n" +
+	"\ato_unix\x18\x06 \x01(\x03R\x06toUnix\"n\n" +
 	"\x15ListTransfersResponse\x12?\n" +
 	"\ttransfers\x18\x01 \x03(\v2!.warehouse_iface.v1.StockTransferR\ttransfers\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"$\n" +

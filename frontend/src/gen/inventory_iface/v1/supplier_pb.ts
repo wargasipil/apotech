@@ -599,3 +599,128 @@ export class SearchSuppliersResponse extends Message<SearchSuppliersResponse> {
   }
 }
 
+/**
+ * Minimal display ref for resolve-by-IDs name lookups.
+ *
+ * @generated from message inventory_iface.v1.SupplierRef
+ */
+export class SupplierRef extends Message<SupplierRef> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name = "";
+
+  constructor(data?: PartialMessage<SupplierRef>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.SupplierRef";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SupplierRef {
+    return new SupplierRef().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SupplierRef {
+    return new SupplierRef().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SupplierRef {
+    return new SupplierRef().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SupplierRef | PlainMessage<SupplierRef> | undefined, b: SupplierRef | PlainMessage<SupplierRef> | undefined): boolean {
+    return proto3.util.equals(SupplierRef, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.ResolveSuppliersRequest
+ */
+export class ResolveSuppliersRequest extends Message<ResolveSuppliersRequest> {
+  /**
+   * @generated from field: repeated string ids = 1;
+   */
+  ids: string[] = [];
+
+  constructor(data?: PartialMessage<ResolveSuppliersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ResolveSuppliersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveSuppliersRequest {
+    return new ResolveSuppliersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveSuppliersRequest {
+    return new ResolveSuppliersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveSuppliersRequest {
+    return new ResolveSuppliersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveSuppliersRequest | PlainMessage<ResolveSuppliersRequest> | undefined, b: ResolveSuppliersRequest | PlainMessage<ResolveSuppliersRequest> | undefined): boolean {
+    return proto3.util.equals(ResolveSuppliersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.ResolveSuppliersResponse
+ */
+export class ResolveSuppliersResponse extends Message<ResolveSuppliersResponse> {
+  /**
+   * @generated from field: repeated inventory_iface.v1.SupplierRef suppliers = 1;
+   */
+  suppliers: SupplierRef[] = [];
+
+  constructor(data?: PartialMessage<ResolveSuppliersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ResolveSuppliersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "suppliers", kind: "message", T: SupplierRef, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveSuppliersResponse {
+    return new ResolveSuppliersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveSuppliersResponse {
+    return new ResolveSuppliersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveSuppliersResponse {
+    return new ResolveSuppliersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveSuppliersResponse | PlainMessage<ResolveSuppliersResponse> | undefined, b: ResolveSuppliersResponse | PlainMessage<ResolveSuppliersResponse> | undefined): boolean {
+    return proto3.util.equals(ResolveSuppliersResponse, a, b);
+  }
+}
+

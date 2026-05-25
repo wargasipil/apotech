@@ -45,12 +45,16 @@ message SaleItem {
   string id = 1;
   string sale_id = 2;
   string medicine_id = 3;
-  string batch_id = 4;
-  int32 qty = 5;
+  string batch_id = 4;         // unused under multi-unit (per-batch breakdown is on stock_movements)
+  int32 qty = 5;               // qty in the selling unit
   int64 unit_price_snapshot = 6;
   int64 line_discount = 7;
   int64 line_total = 8;
   string medicine_name = 9;    // denormalized for the order-history list
+  string medicine_unit_id = 10;
+  string unit_name = 11;       // selling unit name (e.g. "box")
+  int64 unit_factor = 12;      // base units per selling unit
+  int32 base_qty = 13;         // qty × factor (base units consumed)
 }
 
 service SaleService {
@@ -109,6 +113,13 @@ service SaleService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  // DiscardSale hard-deletes a DRAFT sale (and its items). Used for abandoned
+  // POS carts so they leave no VOIDED trace. Only DRAFT sales are discardable.
+  rpc DiscardSale(DiscardSaleRequest) returns (DiscardSaleResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
   rpc GetTodaySnapshot(GetTodaySnapshotRequest) returns (GetTodaySnapshotResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
@@ -148,7 +159,8 @@ message ListSalesResponse {
 message AddItemRequest {
   string sale_id = 1;
   string medicine_id = 2;
-  int32 qty = 3;
+  int32 qty = 3;                // qty in the chosen unit
+  string medicine_unit_id = 4; // selling unit; empty = the medicine's base unit
 }
 message AddItemResponse { Sale sale = 1; }
 
@@ -193,6 +205,11 @@ message VoidSaleRequest {
   string sale_id = 1;
 }
 message VoidSaleResponse { Sale sale = 1; }
+
+message DiscardSaleRequest {
+  string sale_id = 1;
+}
+message DiscardSaleResponse {}
 
 message GetTodaySnapshotRequest {}
 message GetTodaySnapshotResponse {

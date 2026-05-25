@@ -35,11 +35,15 @@ type SaleItem struct {
 	SaleID            string  `gorm:"not null;type:uuid;column:sale_id"`
 	MedicineID        string  `gorm:"not null;type:uuid;column:medicine_id"`
 	BatchID           *string `gorm:"type:uuid;column:batch_id"`
-	Qty               int32   `gorm:"not null"`
+	Qty               int32   `gorm:"not null"` // qty in the selling unit
 	UnitPriceSnapshot int64   `gorm:"not null;default:0;column:unit_price_snapshot"`
 	LineDiscount      int64   `gorm:"not null;default:0;column:line_discount"`
 	LineTotal         int64   `gorm:"not null;default:0;column:line_total"`
 	BranchID          *string `gorm:"type:uuid;column:branch_id"`
+	MedicineUnitID    *string `gorm:"type:uuid;column:medicine_unit_id"`
+	UnitName          string  `gorm:"not null;default:'';column:unit_name"`
+	UnitFactor        int64   `gorm:"not null;default:1;column:unit_factor"`
+	BaseQty           int32   `gorm:"not null;default:0;column:base_qty"`
 	CreatedAt         time.Time
 }
 

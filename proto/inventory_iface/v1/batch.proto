@@ -42,6 +42,13 @@ service BatchService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  // ResolveBatches returns minimal display refs for a set of ids (batch
+  // lookup-by-IDs for name resolution; never a full-list preload).
+  rpc ResolveBatches(ResolveBatchesRequest) returns (ResolveBatchesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
 }
 
 message ListBatchesRequest {
@@ -49,6 +56,10 @@ message ListBatchesRequest {
   bool only_in_stock = 2;
   int32 limit = 3;
   int32 offset = 4;
+  string query = 5;        // ILIKE batch_number / medicine name / sku
+  int64 from_unix = 6;     // date-range lower bound (0 = unbounded)
+  int64 to_unix = 7;       // date-range upper bound (exclusive; 0 = unbounded)
+  string date_field = 8;   // which date the range filters: "received" | "expiry"
 }
 message ListBatchesResponse {
   repeated Batch batches = 1;
@@ -87,3 +98,13 @@ message SearchBatchesRequest {
 message SearchBatchesResponse {
   repeated Batch batches = 1;
 }
+
+// Minimal display ref for resolve-by-IDs name lookups (joins medicines for the name).
+message BatchRef {
+  string id = 1;
+  string batch_number = 2;
+  string medicine_id = 3;
+  string medicine_name = 4;
+}
+message ResolveBatchesRequest { repeated string ids = 1; }
+message ResolveBatchesResponse { repeated BatchRef batches = 1; }

@@ -321,6 +321,22 @@ func (s *Stocktakes) CompleteStocktake(
 			return connect.NewError(connect.CodeInternal, ierr)
 		}
 
+		// Lock the lines' batch lots FOR UPDATE (deterministic id order) so the
+		// per-line negative guard is reliable against a concurrent sale of the
+		// same lot.
+		seen := make(map[string]struct{}, len(lines))
+		batchIDs := make([]string, 0, len(lines))
+		for _, l := range lines {
+			if _, ok := seen[l.BatchID]; ok {
+				continue
+			}
+			seen[l.BatchID] = struct{}{}
+			batchIDs = append(batchIDs, l.BatchID)
+		}
+		if ierr := lockBatchesByID(tx, batchIDs); ierr != nil {
+			return connect.NewError(connect.CodeInternal, ierr)
+		}
+
 		// Validate every line before writing any movement.
 		for _, l := range lines {
 			if l.CountedQty == nil {

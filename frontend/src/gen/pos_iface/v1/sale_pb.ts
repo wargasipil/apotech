@@ -231,11 +231,15 @@ export class SaleItem extends Message<SaleItem> {
   medicineId = "";
 
   /**
+   * unused under multi-unit (per-batch breakdown is on stock_movements)
+   *
    * @generated from field: string batch_id = 4;
    */
   batchId = "";
 
   /**
+   * qty in the selling unit
+   *
    * @generated from field: int32 qty = 5;
    */
   qty = 0;
@@ -262,6 +266,32 @@ export class SaleItem extends Message<SaleItem> {
    */
   medicineName = "";
 
+  /**
+   * @generated from field: string medicine_unit_id = 10;
+   */
+  medicineUnitId = "";
+
+  /**
+   * selling unit name (e.g. "box")
+   *
+   * @generated from field: string unit_name = 11;
+   */
+  unitName = "";
+
+  /**
+   * base units per selling unit
+   *
+   * @generated from field: int64 unit_factor = 12;
+   */
+  unitFactor = protoInt64.zero;
+
+  /**
+   * qty × factor (base units consumed)
+   *
+   * @generated from field: int32 base_qty = 13;
+   */
+  baseQty = 0;
+
   constructor(data?: PartialMessage<SaleItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -279,6 +309,10 @@ export class SaleItem extends Message<SaleItem> {
     { no: 7, name: "line_discount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "line_total", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 9, name: "medicine_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "unit_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "unit_factor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 13, name: "base_qty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SaleItem {
@@ -567,9 +601,18 @@ export class AddItemRequest extends Message<AddItemRequest> {
   medicineId = "";
 
   /**
+   * qty in the chosen unit
+   *
    * @generated from field: int32 qty = 3;
    */
   qty = 0;
+
+  /**
+   * selling unit; empty = the medicine's base unit
+   *
+   * @generated from field: string medicine_unit_id = 4;
+   */
+  medicineUnitId = "";
 
   constructor(data?: PartialMessage<AddItemRequest>) {
     super();
@@ -582,6 +625,7 @@ export class AddItemRequest extends Message<AddItemRequest> {
     { no: 1, name: "sale_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "qty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddItemRequest {
@@ -1195,6 +1239,74 @@ export class VoidSaleResponse extends Message<VoidSaleResponse> {
 
   static equals(a: VoidSaleResponse | PlainMessage<VoidSaleResponse> | undefined, b: VoidSaleResponse | PlainMessage<VoidSaleResponse> | undefined): boolean {
     return proto3.util.equals(VoidSaleResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.DiscardSaleRequest
+ */
+export class DiscardSaleRequest extends Message<DiscardSaleRequest> {
+  /**
+   * @generated from field: string sale_id = 1;
+   */
+  saleId = "";
+
+  constructor(data?: PartialMessage<DiscardSaleRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.DiscardSaleRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sale_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DiscardSaleRequest {
+    return new DiscardSaleRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DiscardSaleRequest {
+    return new DiscardSaleRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DiscardSaleRequest {
+    return new DiscardSaleRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DiscardSaleRequest | PlainMessage<DiscardSaleRequest> | undefined, b: DiscardSaleRequest | PlainMessage<DiscardSaleRequest> | undefined): boolean {
+    return proto3.util.equals(DiscardSaleRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message pos_iface.v1.DiscardSaleResponse
+ */
+export class DiscardSaleResponse extends Message<DiscardSaleResponse> {
+  constructor(data?: PartialMessage<DiscardSaleResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "pos_iface.v1.DiscardSaleResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DiscardSaleResponse {
+    return new DiscardSaleResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DiscardSaleResponse {
+    return new DiscardSaleResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DiscardSaleResponse {
+    return new DiscardSaleResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DiscardSaleResponse | PlainMessage<DiscardSaleResponse> | undefined, b: DiscardSaleResponse | PlainMessage<DiscardSaleResponse> | undefined): boolean {
+    return proto3.util.equals(DiscardSaleResponse, a, b);
   }
 }
 

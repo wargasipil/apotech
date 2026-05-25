@@ -192,6 +192,70 @@ func TestListSales_SearchAndDateRange(t *testing.T) {
 	require.NotNil(t, findSale(res.Msg.Sales, saleID), "date range should include the sale")
 }
 
+// TestListSales_ExcludesDraft proves order history shows finalized orders only:
+// an abandoned DRAFT cart never appears under "All" (UNSPECIFIED) status, while
+// a completed sale does.
+func TestListSales_ExcludesDraft(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	wh := makeWarehouse(env, t, ctx, fmt.Sprintf("DRF%d", uniq%100000))
+
+	medName := fmt.Sprintf("Draft-Med-%d", uniq)
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("drf-%d", uniq), Name: medName, Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	_, err = env.Batches.CreateBatch(ctx, whReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, BatchNumber: "DRF-B1", ExpiryDate: "2099-12-31",
+			CostPrice: 500, InitialQuantity: 20,
+		}, wh))
+	require.NoError(t, err)
+
+	// A completed sale.
+	doneID := startSaleWith(env, t, ctx, wh)
+	_, err = env.Sales.AddItem(ctx, whReq(env, t,
+		&posifacev1.AddItemRequest{SaleId: doneID, MedicineId: medID, Qty: 2}, wh))
+	require.NoError(t, err)
+	_, err = env.Sales.CompleteSale(ctx, whReq(env, t,
+		&posifacev1.CompleteSaleRequest{
+			SaleId: doneID, PaymentSource: posifacev1.PaymentSource_PAYMENT_SOURCE_CASH, PaidAmount: 2000,
+		}, wh))
+	require.NoError(t, err)
+
+	// An abandoned DRAFT sale (started + item added, never completed).
+	draftID := startSaleWith(env, t, ctx, wh)
+	_, err = env.Sales.AddItem(ctx, whReq(env, t,
+		&posifacev1.AddItemRequest{SaleId: draftID, MedicineId: medID, Qty: 1}, wh))
+	require.NoError(t, err)
+
+	// "All" (UNSPECIFIED): completed in, draft out. Both reference medName, so the
+	// search would surface the draft too were it not for the status<>DRAFT filter.
+	res, err := env.Sales.ListSales(ctx, authReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName}))
+	require.NoError(t, err)
+	require.NotNil(t, findSale(res.Msg.Sales, doneID), "completed sale appears in history")
+	require.Nil(t, findSale(res.Msg.Sales, draftID), "draft sale is excluded from history")
+
+	// Explicit COMPLETED filter still excludes the draft.
+	res, err = env.Sales.ListSales(ctx, authReq(env, t,
+		&posifacev1.ListSalesRequest{
+			Query: medName, Status: posifacev1.SaleStatus_SALE_STATUS_COMPLETED,
+		}))
+	require.NoError(t, err)
+	require.NotNil(t, findSale(res.Msg.Sales, doneID))
+	require.Nil(t, findSale(res.Msg.Sales, draftID))
+}
+
 func findSale(rows []*posifacev1.Sale, id string) *posifacev1.Sale {
 	for _, r := range rows {
 		if r.Id == id {
@@ -336,15 +400,16 @@ func TestGetMedicine_EnrichAndMovementsByMedicine(t *testing.T) {
 	require.Empty(t, gotB.Msg.Medicine.LastRestockSupplier)
 
 	// ListMovements{medicine_id: medA} → at least the PURCHASE movement; all rows
-	// belong to medA's batch (medB has none).
-	mv, err := env.Stock.ListMovements(ctx, authReq(env, t,
-		&inventoryifacev1.ListMovementsRequest{MedicineId: medA}))
+	// belong to medA's batch (medB has none). Movements are scoped to the active
+	// warehouse, so query the same warehouse the batch was seeded into.
+	mv, err := env.Stock.ListMovements(ctx, whReq(env, t,
+		&inventoryifacev1.ListMovementsRequest{MedicineId: medA}, wh))
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(mv.Msg.Movements), 1)
 	require.GreaterOrEqual(t, mv.Msg.Total, int32(1))
 
-	mvB, err := env.Stock.ListMovements(ctx, authReq(env, t,
-		&inventoryifacev1.ListMovementsRequest{MedicineId: medB}))
+	mvB, err := env.Stock.ListMovements(ctx, whReq(env, t,
+		&inventoryifacev1.ListMovementsRequest{MedicineId: medB}, wh))
 	require.NoError(t, err)
 	require.Equal(t, int32(0), mvB.Msg.Total, "medB has no movements")
 }

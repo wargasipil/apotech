@@ -252,6 +252,24 @@ export class PurchaseOrderItem extends Message<PurchaseOrderItem> {
    */
   medicineSku = "";
 
+  /**
+   * ordered_qty / received_qty are in BASE units; these describe the purchasable
+   * unit the line was ordered in (for display / entry). unit_factor = base per 1.
+   *
+   * @generated from field: string medicine_unit_id = 10;
+   */
+  medicineUnitId = "";
+
+  /**
+   * @generated from field: string unit_name = 11;
+   */
+  unitName = "";
+
+  /**
+   * @generated from field: int64 unit_factor = 12;
+   */
+  unitFactor = protoInt64.zero;
+
   constructor(data?: PartialMessage<PurchaseOrderItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -269,6 +287,9 @@ export class PurchaseOrderItem extends Message<PurchaseOrderItem> {
     { no: 7, name: "subtotal", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "medicine_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 9, name: "medicine_sku", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "unit_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "unit_factor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrderItem {
@@ -298,14 +319,25 @@ export class PurchaseOrderItemInput extends Message<PurchaseOrderItemInput> {
   medicineId = "";
 
   /**
+   * qty in the chosen purchasable unit (empty unit_id => base)
+   *
    * @generated from field: int32 ordered_qty = 2;
    */
   orderedQty = 0;
 
   /**
+   * per BASE unit (frontend derives from line total)
+   *
    * @generated from field: int64 unit_cost_price = 3;
    */
   unitCostPrice = protoInt64.zero;
+
+  /**
+   * purchasable unit; empty => base unit
+   *
+   * @generated from field: string medicine_unit_id = 4;
+   */
+  medicineUnitId = "";
 
   constructor(data?: PartialMessage<PurchaseOrderItemInput>) {
     super();
@@ -318,6 +350,7 @@ export class PurchaseOrderItemInput extends Message<PurchaseOrderItemInput> {
     { no: 1, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "ordered_qty", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "unit_cost_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrderItemInput {

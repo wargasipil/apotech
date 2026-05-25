@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -23,8 +25,20 @@ func (s *Stock) ListMovements(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.ListMovementsRequest],
 ) (*connect.Response[inventoryifacev1.ListMovementsResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
+		// Scope to the caller's active warehouse so the Mutasi page + the
+		// medicine-detail Movements tab + the Mutasi CSV export all show only
+		// this warehouse's ledger.
+		q = q.Where("warehouse_id = ?", warehouseID)
 		if req.Msg.BatchId != "" {
 			q = q.Where("batch_id = ?", req.Msg.BatchId)
 		}
@@ -34,6 +48,20 @@ func (s *Stock) ListMovements(
 		}
 		if t := movementTypeToString(req.Msg.Type); t != "" {
 			q = q.Where("type = ?", t)
+		}
+		if query := strings.TrimSpace(req.Msg.Query); query != "" {
+			pattern := "%" + query + "%"
+			q = q.Where("batch_id IN (?)",
+				s.db.Table("batches b").
+					Select("b.id").
+					Joins("JOIN medicines m ON m.id = b.medicine_id").
+					Where("b.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern))
+		}
+		if req.Msg.FromUnix > 0 {
+			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+		}
+		if req.Msg.ToUnix > 0 {
+			q = q.Where("created_at < ?", time.Unix(req.Msg.ToUnix, 0))
 		}
 		return q
 	}
@@ -100,6 +128,11 @@ func (s *Stock) RecordMovement(
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Lock the batch lot FOR UPDATE first so the post-insert negative guard is
+		// reliable against a concurrent sale/transfer of the same lot.
+		if err := lockBatchesByID(tx, []string{mv.BatchID}); err != nil {
+			return err
+		}
 		if err := tx.Create(&mv).Error; err != nil {
 			return fmt.Errorf("create movement: %w", err)
 		}

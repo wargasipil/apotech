@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -51,6 +52,26 @@ func (b *Batches) ListBatches(
 		if req.Msg.OnlyInStock {
 			q = q.Having("COALESCE(SUM(sm.qty), 0) > 0")
 		}
+		if query := strings.TrimSpace(req.Msg.Query); query != "" {
+			pattern := "%" + query + "%"
+			sub := b.db.Table("batches AS b2").
+				Select("b2.id").
+				Joins("JOIN medicines m ON m.id = b2.medicine_id").
+				Where("b2.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern)
+			q = q.Where("b.id IN (?)", sub)
+		}
+		if req.Msg.FromUnix > 0 || req.Msg.ToUnix > 0 {
+			col := "b.received_at"
+			if req.Msg.DateField == "expiry" {
+				col = "b.expiry_date"
+			}
+			if req.Msg.FromUnix > 0 {
+				q = q.Where(col+" >= ?", time.Unix(req.Msg.FromUnix, 0))
+			}
+			if req.Msg.ToUnix > 0 {
+				q = q.Where(col+" < ?", time.Unix(req.Msg.ToUnix, 0))
+			}
+		}
 		return q
 	}
 
@@ -84,11 +105,19 @@ func (b *Batches) GetBatch(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.GetBatchRequest],
 ) (*connect.Response[inventoryifacev1.GetBatchResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, b.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	batch, err := b.load(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
-	qty, err := batchCurrentQty(ctx, b.db, batch.ID)
+	qty, err := batchQtyInWarehouse(ctx, b.db, batch.ID, warehouseID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -219,6 +248,14 @@ func (b *Batches) SearchBatches(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.SearchBatchesRequest],
 ) (*connect.Response[inventoryifacev1.SearchBatchesResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, b.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	query := strings.TrimSpace(req.Msg.Query)
 	limit := int(req.Msg.Limit)
 	if limit <= 0 || limit > 50 {
@@ -243,13 +280,50 @@ func (b *Batches) SearchBatches(
 	}
 	out := make([]*inventoryifacev1.Batch, 0, len(rows))
 	for _, r := range rows {
-		qty, err := batchCurrentQty(ctx, b.db, r.ID)
+		qty, err := batchQtyInWarehouse(ctx, b.db, r.ID, warehouseID)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		out = append(out, batchToProto(&r, qty))
 	}
 	return connect.NewResponse(&inventoryifacev1.SearchBatchesResponse{Batches: out}), nil
+}
+
+// ResolveBatches returns minimal display refs (batch number + medicine name) for
+// a set of ids. Unknown ids are omitted; empty input returns an empty list.
+func (b *Batches) ResolveBatches(
+	ctx context.Context,
+	req *connect.Request[inventoryifacev1.ResolveBatchesRequest],
+) (*connect.Response[inventoryifacev1.ResolveBatchesResponse], error) {
+	ids := dedupeIDs(req.Msg.Ids)
+	if len(ids) == 0 {
+		return connect.NewResponse(&inventoryifacev1.ResolveBatchesResponse{}), nil
+	}
+	type row struct {
+		ID           string `gorm:"column:id"`
+		BatchNumber  string `gorm:"column:batch_number"`
+		MedicineID   string `gorm:"column:medicine_id"`
+		MedicineName string `gorm:"column:medicine_name"`
+	}
+	var rows []row
+	if err := b.db.WithContext(ctx).
+		Table("batches AS bt").
+		Select("bt.id, bt.batch_number, bt.medicine_id, m.name AS medicine_name").
+		Joins("JOIN medicines m ON m.id = bt.medicine_id").
+		Where("bt.id IN ?", ids).
+		Scan(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*inventoryifacev1.BatchRef, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &inventoryifacev1.BatchRef{
+			Id:           r.ID,
+			BatchNumber:  r.BatchNumber,
+			MedicineId:   r.MedicineID,
+			MedicineName: r.MedicineName,
+		})
+	}
+	return connect.NewResponse(&inventoryifacev1.ResolveBatchesResponse{Batches: out}), nil
 }
 
 func (b *Batches) load(ctx context.Context, id string) (*model.Batch, error) {
@@ -283,6 +357,36 @@ func batchCurrentQty(ctx context.Context, db *gorm.DB, batchID string) (int64, e
 		return 0, nil
 	}
 	return *total, nil
+}
+
+// lockBatchesByID takes a FOR UPDATE lock on the given batch rows in a
+// deterministic order (by id) so concurrent stock-mutating txs serialize per lot
+// without deadlocking (classic ordered locking). Call inside a tx before
+// reading/consuming a batch's stock; the batches row acts as the per-lot mutex
+// over the insert-only stock_movements ledger. No-op on empty input.
+func lockBatchesByID(tx *gorm.DB, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	var dump []model.Batch
+	return tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id IN ?", ids).
+		Order("id").
+		Find(&dump).Error
+}
+
+// lockBatchesByMedicine FOR UPDATE-locks every batch (lot) of the given medicines
+// in deterministic id order. Used by CompleteSale to serialize FEFO consumption
+// of a medicine's lots across concurrent sales. No-op on empty input.
+func lockBatchesByMedicine(tx *gorm.DB, medicineIDs []string) error {
+	if len(medicineIDs) == 0 {
+		return nil
+	}
+	var dump []model.Batch
+	return tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("medicine_id IN ?", medicineIDs).
+		Order("id").
+		Find(&dump).Error
 }
 
 // batchQtyInWarehouse returns SUM(qty) for a batch within one warehouse.

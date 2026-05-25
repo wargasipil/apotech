@@ -51,9 +51,15 @@ const (
 	// MedicineServiceListMedicinePricesProcedure is the fully-qualified name of the MedicineService's
 	// ListMedicinePrices RPC.
 	MedicineServiceListMedicinePricesProcedure = "/inventory_iface.v1.MedicineService/ListMedicinePrices"
+	// MedicineServiceListMedicineUnitPricesProcedure is the fully-qualified name of the
+	// MedicineService's ListMedicineUnitPrices RPC.
+	MedicineServiceListMedicineUnitPricesProcedure = "/inventory_iface.v1.MedicineService/ListMedicineUnitPrices"
 	// MedicineServiceSearchMedicinesProcedure is the fully-qualified name of the MedicineService's
 	// SearchMedicines RPC.
 	MedicineServiceSearchMedicinesProcedure = "/inventory_iface.v1.MedicineService/SearchMedicines"
+	// MedicineServiceResolveMedicinesProcedure is the fully-qualified name of the MedicineService's
+	// ResolveMedicines RPC.
+	MedicineServiceResolveMedicinesProcedure = "/inventory_iface.v1.MedicineService/ResolveMedicines"
 )
 
 // MedicineServiceClient is a client for the inventory_iface.v1.MedicineService service.
@@ -64,7 +70,11 @@ type MedicineServiceClient interface {
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
+	ListMedicineUnitPrices(context.Context, *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error)
 	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
+	// ResolveMedicines returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error)
 }
 
 // NewMedicineServiceClient constructs a client for the inventory_iface.v1.MedicineService service.
@@ -114,10 +124,22 @@ func NewMedicineServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(medicineServiceMethods.ByName("ListMedicinePrices")),
 			connect.WithClientOptions(opts...),
 		),
+		listMedicineUnitPrices: connect.NewClient[v1.ListMedicineUnitPricesRequest, v1.ListMedicineUnitPricesResponse](
+			httpClient,
+			baseURL+MedicineServiceListMedicineUnitPricesProcedure,
+			connect.WithSchema(medicineServiceMethods.ByName("ListMedicineUnitPrices")),
+			connect.WithClientOptions(opts...),
+		),
 		searchMedicines: connect.NewClient[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse](
 			httpClient,
 			baseURL+MedicineServiceSearchMedicinesProcedure,
 			connect.WithSchema(medicineServiceMethods.ByName("SearchMedicines")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveMedicines: connect.NewClient[v1.ResolveMedicinesRequest, v1.ResolveMedicinesResponse](
+			httpClient,
+			baseURL+MedicineServiceResolveMedicinesProcedure,
+			connect.WithSchema(medicineServiceMethods.ByName("ResolveMedicines")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -125,13 +147,15 @@ func NewMedicineServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // medicineServiceClient implements MedicineServiceClient.
 type medicineServiceClient struct {
-	listMedicines      *connect.Client[v1.ListMedicinesRequest, v1.ListMedicinesResponse]
-	getMedicine        *connect.Client[v1.GetMedicineRequest, v1.GetMedicineResponse]
-	createMedicine     *connect.Client[v1.CreateMedicineRequest, v1.CreateMedicineResponse]
-	updateMedicine     *connect.Client[v1.UpdateMedicineRequest, v1.UpdateMedicineResponse]
-	archiveMedicine    *connect.Client[v1.ArchiveMedicineRequest, v1.ArchiveMedicineResponse]
-	listMedicinePrices *connect.Client[v1.ListMedicinePricesRequest, v1.ListMedicinePricesResponse]
-	searchMedicines    *connect.Client[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse]
+	listMedicines          *connect.Client[v1.ListMedicinesRequest, v1.ListMedicinesResponse]
+	getMedicine            *connect.Client[v1.GetMedicineRequest, v1.GetMedicineResponse]
+	createMedicine         *connect.Client[v1.CreateMedicineRequest, v1.CreateMedicineResponse]
+	updateMedicine         *connect.Client[v1.UpdateMedicineRequest, v1.UpdateMedicineResponse]
+	archiveMedicine        *connect.Client[v1.ArchiveMedicineRequest, v1.ArchiveMedicineResponse]
+	listMedicinePrices     *connect.Client[v1.ListMedicinePricesRequest, v1.ListMedicinePricesResponse]
+	listMedicineUnitPrices *connect.Client[v1.ListMedicineUnitPricesRequest, v1.ListMedicineUnitPricesResponse]
+	searchMedicines        *connect.Client[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse]
+	resolveMedicines       *connect.Client[v1.ResolveMedicinesRequest, v1.ResolveMedicinesResponse]
 }
 
 // ListMedicines calls inventory_iface.v1.MedicineService.ListMedicines.
@@ -164,9 +188,19 @@ func (c *medicineServiceClient) ListMedicinePrices(ctx context.Context, req *con
 	return c.listMedicinePrices.CallUnary(ctx, req)
 }
 
+// ListMedicineUnitPrices calls inventory_iface.v1.MedicineService.ListMedicineUnitPrices.
+func (c *medicineServiceClient) ListMedicineUnitPrices(ctx context.Context, req *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error) {
+	return c.listMedicineUnitPrices.CallUnary(ctx, req)
+}
+
 // SearchMedicines calls inventory_iface.v1.MedicineService.SearchMedicines.
 func (c *medicineServiceClient) SearchMedicines(ctx context.Context, req *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error) {
 	return c.searchMedicines.CallUnary(ctx, req)
+}
+
+// ResolveMedicines calls inventory_iface.v1.MedicineService.ResolveMedicines.
+func (c *medicineServiceClient) ResolveMedicines(ctx context.Context, req *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error) {
+	return c.resolveMedicines.CallUnary(ctx, req)
 }
 
 // MedicineServiceHandler is an implementation of the inventory_iface.v1.MedicineService service.
@@ -177,7 +211,11 @@ type MedicineServiceHandler interface {
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
+	ListMedicineUnitPrices(context.Context, *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error)
 	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
+	// ResolveMedicines returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error)
 }
 
 // NewMedicineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -223,10 +261,22 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 		connect.WithSchema(medicineServiceMethods.ByName("ListMedicinePrices")),
 		connect.WithHandlerOptions(opts...),
 	)
+	medicineServiceListMedicineUnitPricesHandler := connect.NewUnaryHandler(
+		MedicineServiceListMedicineUnitPricesProcedure,
+		svc.ListMedicineUnitPrices,
+		connect.WithSchema(medicineServiceMethods.ByName("ListMedicineUnitPrices")),
+		connect.WithHandlerOptions(opts...),
+	)
 	medicineServiceSearchMedicinesHandler := connect.NewUnaryHandler(
 		MedicineServiceSearchMedicinesProcedure,
 		svc.SearchMedicines,
 		connect.WithSchema(medicineServiceMethods.ByName("SearchMedicines")),
+		connect.WithHandlerOptions(opts...),
+	)
+	medicineServiceResolveMedicinesHandler := connect.NewUnaryHandler(
+		MedicineServiceResolveMedicinesProcedure,
+		svc.ResolveMedicines,
+		connect.WithSchema(medicineServiceMethods.ByName("ResolveMedicines")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/inventory_iface.v1.MedicineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -243,8 +293,12 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 			medicineServiceArchiveMedicineHandler.ServeHTTP(w, r)
 		case MedicineServiceListMedicinePricesProcedure:
 			medicineServiceListMedicinePricesHandler.ServeHTTP(w, r)
+		case MedicineServiceListMedicineUnitPricesProcedure:
+			medicineServiceListMedicineUnitPricesHandler.ServeHTTP(w, r)
 		case MedicineServiceSearchMedicinesProcedure:
 			medicineServiceSearchMedicinesHandler.ServeHTTP(w, r)
+		case MedicineServiceResolveMedicinesProcedure:
+			medicineServiceResolveMedicinesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -278,6 +332,14 @@ func (UnimplementedMedicineServiceHandler) ListMedicinePrices(context.Context, *
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ListMedicinePrices is not implemented"))
 }
 
+func (UnimplementedMedicineServiceHandler) ListMedicineUnitPrices(context.Context, *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ListMedicineUnitPrices is not implemented"))
+}
+
 func (UnimplementedMedicineServiceHandler) SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.SearchMedicines is not implemented"))
+}
+
+func (UnimplementedMedicineServiceHandler) ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ResolveMedicines is not implemented"))
 }

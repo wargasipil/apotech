@@ -37,23 +37,33 @@ func (a *MarginAnalytics) marginRows(
 		Qty          int64
 	}
 	var rows []row
+	// Revenue comes from the sale line (line_total, in the selling unit). COGS
+	// comes from the SALE stock_movements consumed by that line (base units ×
+	// the consumed batch's cost_price) — correct under multi-unit + multi-batch.
+	// `qty` is base units sold.
 	err := a.db.WithContext(ctx).Raw(`
 		SELECT si.medicine_id,
 		       m.name AS medicine_name,
 		       m.sku,
 		       SUM(si.line_total) AS revenue,
-		       SUM(si.qty * COALESCE(b.cost_price, 0)) AS cogs,
-		       SUM(si.line_total) - SUM(si.qty * COALESCE(b.cost_price, 0)) AS gross_margin,
+		       SUM(COALESCE(c.cogs, 0)) AS cogs,
+		       SUM(si.line_total) - SUM(COALESCE(c.cogs, 0)) AS gross_margin,
 		       CASE WHEN SUM(si.line_total) > 0
-		            THEN (SUM(si.line_total) - SUM(si.qty * COALESCE(b.cost_price, 0)))::float
+		            THEN (SUM(si.line_total) - SUM(COALESCE(c.cogs, 0)))::float
 		                 / SUM(si.line_total)
 		            ELSE 0
 		       END AS margin_pct,
-		       SUM(si.qty) AS qty
+		       SUM(si.base_qty) AS qty
 		FROM sale_items si
 		JOIN sales s ON s.id = si.sale_id
 		JOIN medicines m ON m.id = si.medicine_id
-		LEFT JOIN batches b ON b.id = si.batch_id
+		LEFT JOIN (
+		  SELECT sm.sale_item_id, SUM(ABS(sm.qty) * COALESCE(b.cost_price, 0)) AS cogs
+		  FROM stock_movements sm
+		  JOIN batches b ON b.id = sm.batch_id
+		  WHERE sm.type = 'SALE' AND sm.sale_item_id IS NOT NULL
+		  GROUP BY sm.sale_item_id
+		) c ON c.sale_item_id = si.id
 		WHERE s.status = 'COMPLETED'
 		  AND s.completed_at >= ? AND s.completed_at < ?
 		GROUP BY si.medicine_id, m.name, m.sku

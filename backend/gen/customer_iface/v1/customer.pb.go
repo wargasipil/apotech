@@ -434,6 +434,147 @@ func (x *SearchCustomersResponse) GetCustomers() []*Customer {
 	return nil
 }
 
+// Minimal display ref for resolve-by-IDs name lookups.
+type CustomerRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomerRef) Reset() {
+	*x = CustomerRef{}
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomerRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomerRef) ProtoMessage() {}
+
+func (x *CustomerRef) ProtoReflect() protoreflect.Message {
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomerRef.ProtoReflect.Descriptor instead.
+func (*CustomerRef) Descriptor() ([]byte, []int) {
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CustomerRef) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CustomerRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type ResolveCustomersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveCustomersRequest) Reset() {
+	*x = ResolveCustomersRequest{}
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveCustomersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveCustomersRequest) ProtoMessage() {}
+
+func (x *ResolveCustomersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveCustomersRequest.ProtoReflect.Descriptor instead.
+func (*ResolveCustomersRequest) Descriptor() ([]byte, []int) {
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ResolveCustomersRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type ResolveCustomersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Customers     []*CustomerRef         `protobuf:"bytes,1,rep,name=customers,proto3" json:"customers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveCustomersResponse) Reset() {
+	*x = ResolveCustomersResponse{}
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveCustomersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveCustomersResponse) ProtoMessage() {}
+
+func (x *ResolveCustomersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveCustomersResponse.ProtoReflect.Descriptor instead.
+func (*ResolveCustomersResponse) Descriptor() ([]byte, []int) {
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ResolveCustomersResponse) GetCustomers() []*CustomerRef {
+	if x != nil {
+		return x.Customers
+	}
+	return nil
+}
+
 type CreateCustomerRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -448,7 +589,7 @@ type CreateCustomerRequest struct {
 
 func (x *CreateCustomerRequest) Reset() {
 	*x = CreateCustomerRequest{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[7]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +601,7 @@ func (x *CreateCustomerRequest) String() string {
 func (*CreateCustomerRequest) ProtoMessage() {}
 
 func (x *CreateCustomerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[7]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +614,7 @@ func (x *CreateCustomerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCustomerRequest.ProtoReflect.Descriptor instead.
 func (*CreateCustomerRequest) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{7}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateCustomerRequest) GetName() string {
@@ -527,7 +668,7 @@ type CreateCustomerResponse struct {
 
 func (x *CreateCustomerResponse) Reset() {
 	*x = CreateCustomerResponse{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[8]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +680,7 @@ func (x *CreateCustomerResponse) String() string {
 func (*CreateCustomerResponse) ProtoMessage() {}
 
 func (x *CreateCustomerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[8]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +693,7 @@ func (x *CreateCustomerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCustomerResponse.ProtoReflect.Descriptor instead.
 func (*CreateCustomerResponse) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{8}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CreateCustomerResponse) GetCustomer() *Customer {
@@ -577,7 +718,7 @@ type UpdateCustomerRequest struct {
 
 func (x *UpdateCustomerRequest) Reset() {
 	*x = UpdateCustomerRequest{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[9]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -589,7 +730,7 @@ func (x *UpdateCustomerRequest) String() string {
 func (*UpdateCustomerRequest) ProtoMessage() {}
 
 func (x *UpdateCustomerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[9]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,7 +743,7 @@ func (x *UpdateCustomerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCustomerRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCustomerRequest) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{9}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateCustomerRequest) GetId() string {
@@ -663,7 +804,7 @@ type UpdateCustomerResponse struct {
 
 func (x *UpdateCustomerResponse) Reset() {
 	*x = UpdateCustomerResponse{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[10]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +816,7 @@ func (x *UpdateCustomerResponse) String() string {
 func (*UpdateCustomerResponse) ProtoMessage() {}
 
 func (x *UpdateCustomerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[10]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +829,7 @@ func (x *UpdateCustomerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCustomerResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCustomerResponse) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{10}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateCustomerResponse) GetCustomer() *Customer {
@@ -707,7 +848,7 @@ type ArchiveCustomerRequest struct {
 
 func (x *ArchiveCustomerRequest) Reset() {
 	*x = ArchiveCustomerRequest{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[11]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -719,7 +860,7 @@ func (x *ArchiveCustomerRequest) String() string {
 func (*ArchiveCustomerRequest) ProtoMessage() {}
 
 func (x *ArchiveCustomerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[11]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -732,7 +873,7 @@ func (x *ArchiveCustomerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveCustomerRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveCustomerRequest) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{11}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ArchiveCustomerRequest) GetId() string {
@@ -751,7 +892,7 @@ type ArchiveCustomerResponse struct {
 
 func (x *ArchiveCustomerResponse) Reset() {
 	*x = ArchiveCustomerResponse{}
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[12]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +904,7 @@ func (x *ArchiveCustomerResponse) String() string {
 func (*ArchiveCustomerResponse) ProtoMessage() {}
 
 func (x *ArchiveCustomerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_iface_v1_customer_proto_msgTypes[12]
+	mi := &file_customer_iface_v1_customer_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +917,7 @@ func (x *ArchiveCustomerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveCustomerResponse.ProtoReflect.Descriptor instead.
 func (*ArchiveCustomerResponse) Descriptor() ([]byte, []int) {
-	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{12}
+	return file_customer_iface_v1_customer_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ArchiveCustomerResponse) GetCustomer() *Customer {
@@ -818,7 +959,14 @@ const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"T\n" +
 	"\x17SearchCustomersResponse\x129\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\"\x9e\x01\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x1b.customer_iface.v1.CustomerR\tcustomers\"1\n" +
+	"\vCustomerRef\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"+\n" +
+	"\x17ResolveCustomersRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"X\n" +
+	"\x18ResolveCustomersResponse\x12<\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x1e.customer_iface.v1.CustomerRefR\tcustomers\"\x9e\x01\n" +
 	"\x15CreateCustomerRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x17\n" +
@@ -841,11 +989,12 @@ const file_customer_iface_v1_customer_proto_rawDesc = "" +
 	"\x16ArchiveCustomerRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"R\n" +
 	"\x17ArchiveCustomerResponse\x127\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1b.customer_iface.v1.CustomerR\bcustomer2\xa9\x05\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1b.customer_iface.v1.CustomerR\bcustomer2\x9f\x06\n" +
 	"\x0fCustomerService\x12k\n" +
 	"\rListCustomers\x12'.customer_iface.v1.ListCustomersRequest\x1a(.customer_iface.v1.ListCustomersResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12e\n" +
 	"\vGetCustomer\x12%.customer_iface.v1.GetCustomerRequest\x1a&.customer_iface.v1.GetCustomerResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12q\n" +
-	"\x0fSearchCustomers\x12).customer_iface.v1.SearchCustomersRequest\x1a*.customer_iface.v1.SearchCustomersResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12n\n" +
+	"\x0fSearchCustomers\x12).customer_iface.v1.SearchCustomersRequest\x1a*.customer_iface.v1.SearchCustomersResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12t\n" +
+	"\x10ResolveCustomers\x12*.customer_iface.v1.ResolveCustomersRequest\x1a+.customer_iface.v1.ResolveCustomersResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12n\n" +
 	"\x0eCreateCustomer\x12(.customer_iface.v1.CreateCustomerRequest\x1a).customer_iface.v1.CreateCustomerResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12m\n" +
 	"\x0eUpdateCustomer\x12(.customer_iface.v1.UpdateCustomerRequest\x1a).customer_iface.v1.UpdateCustomerResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12p\n" +
 	"\x0fArchiveCustomer\x12).customer_iface.v1.ArchiveCustomerRequest\x1a*.customer_iface.v1.ArchiveCustomerResponse\"\x06\x8a\xb5\x18\x02\x01\x02BBZ@github.com/apotech/backend/gen/customer_iface/v1;customerifacev1b\x06proto3"
@@ -862,46 +1011,52 @@ func file_customer_iface_v1_customer_proto_rawDescGZIP() []byte {
 	return file_customer_iface_v1_customer_proto_rawDescData
 }
 
-var file_customer_iface_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_customer_iface_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_customer_iface_v1_customer_proto_goTypes = []any{
-	(*Customer)(nil),                // 0: customer_iface.v1.Customer
-	(*ListCustomersRequest)(nil),    // 1: customer_iface.v1.ListCustomersRequest
-	(*ListCustomersResponse)(nil),   // 2: customer_iface.v1.ListCustomersResponse
-	(*GetCustomerRequest)(nil),      // 3: customer_iface.v1.GetCustomerRequest
-	(*GetCustomerResponse)(nil),     // 4: customer_iface.v1.GetCustomerResponse
-	(*SearchCustomersRequest)(nil),  // 5: customer_iface.v1.SearchCustomersRequest
-	(*SearchCustomersResponse)(nil), // 6: customer_iface.v1.SearchCustomersResponse
-	(*CreateCustomerRequest)(nil),   // 7: customer_iface.v1.CreateCustomerRequest
-	(*CreateCustomerResponse)(nil),  // 8: customer_iface.v1.CreateCustomerResponse
-	(*UpdateCustomerRequest)(nil),   // 9: customer_iface.v1.UpdateCustomerRequest
-	(*UpdateCustomerResponse)(nil),  // 10: customer_iface.v1.UpdateCustomerResponse
-	(*ArchiveCustomerRequest)(nil),  // 11: customer_iface.v1.ArchiveCustomerRequest
-	(*ArchiveCustomerResponse)(nil), // 12: customer_iface.v1.ArchiveCustomerResponse
+	(*Customer)(nil),                 // 0: customer_iface.v1.Customer
+	(*ListCustomersRequest)(nil),     // 1: customer_iface.v1.ListCustomersRequest
+	(*ListCustomersResponse)(nil),    // 2: customer_iface.v1.ListCustomersResponse
+	(*GetCustomerRequest)(nil),       // 3: customer_iface.v1.GetCustomerRequest
+	(*GetCustomerResponse)(nil),      // 4: customer_iface.v1.GetCustomerResponse
+	(*SearchCustomersRequest)(nil),   // 5: customer_iface.v1.SearchCustomersRequest
+	(*SearchCustomersResponse)(nil),  // 6: customer_iface.v1.SearchCustomersResponse
+	(*CustomerRef)(nil),              // 7: customer_iface.v1.CustomerRef
+	(*ResolveCustomersRequest)(nil),  // 8: customer_iface.v1.ResolveCustomersRequest
+	(*ResolveCustomersResponse)(nil), // 9: customer_iface.v1.ResolveCustomersResponse
+	(*CreateCustomerRequest)(nil),    // 10: customer_iface.v1.CreateCustomerRequest
+	(*CreateCustomerResponse)(nil),   // 11: customer_iface.v1.CreateCustomerResponse
+	(*UpdateCustomerRequest)(nil),    // 12: customer_iface.v1.UpdateCustomerRequest
+	(*UpdateCustomerResponse)(nil),   // 13: customer_iface.v1.UpdateCustomerResponse
+	(*ArchiveCustomerRequest)(nil),   // 14: customer_iface.v1.ArchiveCustomerRequest
+	(*ArchiveCustomerResponse)(nil),  // 15: customer_iface.v1.ArchiveCustomerResponse
 }
 var file_customer_iface_v1_customer_proto_depIdxs = []int32{
 	0,  // 0: customer_iface.v1.ListCustomersResponse.customers:type_name -> customer_iface.v1.Customer
 	0,  // 1: customer_iface.v1.GetCustomerResponse.customer:type_name -> customer_iface.v1.Customer
 	0,  // 2: customer_iface.v1.SearchCustomersResponse.customers:type_name -> customer_iface.v1.Customer
-	0,  // 3: customer_iface.v1.CreateCustomerResponse.customer:type_name -> customer_iface.v1.Customer
-	0,  // 4: customer_iface.v1.UpdateCustomerResponse.customer:type_name -> customer_iface.v1.Customer
-	0,  // 5: customer_iface.v1.ArchiveCustomerResponse.customer:type_name -> customer_iface.v1.Customer
-	1,  // 6: customer_iface.v1.CustomerService.ListCustomers:input_type -> customer_iface.v1.ListCustomersRequest
-	3,  // 7: customer_iface.v1.CustomerService.GetCustomer:input_type -> customer_iface.v1.GetCustomerRequest
-	5,  // 8: customer_iface.v1.CustomerService.SearchCustomers:input_type -> customer_iface.v1.SearchCustomersRequest
-	7,  // 9: customer_iface.v1.CustomerService.CreateCustomer:input_type -> customer_iface.v1.CreateCustomerRequest
-	9,  // 10: customer_iface.v1.CustomerService.UpdateCustomer:input_type -> customer_iface.v1.UpdateCustomerRequest
-	11, // 11: customer_iface.v1.CustomerService.ArchiveCustomer:input_type -> customer_iface.v1.ArchiveCustomerRequest
-	2,  // 12: customer_iface.v1.CustomerService.ListCustomers:output_type -> customer_iface.v1.ListCustomersResponse
-	4,  // 13: customer_iface.v1.CustomerService.GetCustomer:output_type -> customer_iface.v1.GetCustomerResponse
-	6,  // 14: customer_iface.v1.CustomerService.SearchCustomers:output_type -> customer_iface.v1.SearchCustomersResponse
-	8,  // 15: customer_iface.v1.CustomerService.CreateCustomer:output_type -> customer_iface.v1.CreateCustomerResponse
-	10, // 16: customer_iface.v1.CustomerService.UpdateCustomer:output_type -> customer_iface.v1.UpdateCustomerResponse
-	12, // 17: customer_iface.v1.CustomerService.ArchiveCustomer:output_type -> customer_iface.v1.ArchiveCustomerResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	7,  // 3: customer_iface.v1.ResolveCustomersResponse.customers:type_name -> customer_iface.v1.CustomerRef
+	0,  // 4: customer_iface.v1.CreateCustomerResponse.customer:type_name -> customer_iface.v1.Customer
+	0,  // 5: customer_iface.v1.UpdateCustomerResponse.customer:type_name -> customer_iface.v1.Customer
+	0,  // 6: customer_iface.v1.ArchiveCustomerResponse.customer:type_name -> customer_iface.v1.Customer
+	1,  // 7: customer_iface.v1.CustomerService.ListCustomers:input_type -> customer_iface.v1.ListCustomersRequest
+	3,  // 8: customer_iface.v1.CustomerService.GetCustomer:input_type -> customer_iface.v1.GetCustomerRequest
+	5,  // 9: customer_iface.v1.CustomerService.SearchCustomers:input_type -> customer_iface.v1.SearchCustomersRequest
+	8,  // 10: customer_iface.v1.CustomerService.ResolveCustomers:input_type -> customer_iface.v1.ResolveCustomersRequest
+	10, // 11: customer_iface.v1.CustomerService.CreateCustomer:input_type -> customer_iface.v1.CreateCustomerRequest
+	12, // 12: customer_iface.v1.CustomerService.UpdateCustomer:input_type -> customer_iface.v1.UpdateCustomerRequest
+	14, // 13: customer_iface.v1.CustomerService.ArchiveCustomer:input_type -> customer_iface.v1.ArchiveCustomerRequest
+	2,  // 14: customer_iface.v1.CustomerService.ListCustomers:output_type -> customer_iface.v1.ListCustomersResponse
+	4,  // 15: customer_iface.v1.CustomerService.GetCustomer:output_type -> customer_iface.v1.GetCustomerResponse
+	6,  // 16: customer_iface.v1.CustomerService.SearchCustomers:output_type -> customer_iface.v1.SearchCustomersResponse
+	9,  // 17: customer_iface.v1.CustomerService.ResolveCustomers:output_type -> customer_iface.v1.ResolveCustomersResponse
+	11, // 18: customer_iface.v1.CustomerService.CreateCustomer:output_type -> customer_iface.v1.CreateCustomerResponse
+	13, // 19: customer_iface.v1.CustomerService.UpdateCustomer:output_type -> customer_iface.v1.UpdateCustomerResponse
+	15, // 20: customer_iface.v1.CustomerService.ArchiveCustomer:output_type -> customer_iface.v1.ArchiveCustomerResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_customer_iface_v1_customer_proto_init() }
@@ -915,7 +1070,7 @@ func file_customer_iface_v1_customer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_customer_iface_v1_customer_proto_rawDesc), len(file_customer_iface_v1_customer_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -12,6 +12,10 @@ import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
 export type BatchesQueryOpts = {
   medicineId?: string;
   onlyInStock?: boolean;
+  query?: string;
+  fromUnix?: number;
+  toUnix?: number;
+  dateField?: string; // "received" | "expiry"
   page?: number;
   pageSize?: number;
 };
@@ -28,15 +32,23 @@ export function useBatchesQuery(opts: BatchesQueryOpts = {}) {
   const {
     medicineId = "",
     onlyInStock = false,
+    query = "",
+    fromUnix = 0,
+    toUnix = 0,
+    dateField = "",
     page = 0,
     pageSize = DEFAULT_PAGE_SIZE,
   } = opts;
   const q = useQuery({
-    queryKey: batchKeys.list({ medicineId, onlyInStock, page, pageSize }),
+    queryKey: batchKeys.list({ medicineId, onlyInStock, query, fromUnix, toUnix, dateField, page, pageSize }),
     queryFn: async () => {
       const res = await batchClient.listBatches({
         medicineId,
         onlyInStock,
+        query,
+        fromUnix: BigInt(fromUnix),
+        toUnix: BigInt(toUnix),
+        dateField,
         limit: pageSize,
         offset: page * pageSize,
       });

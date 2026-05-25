@@ -60,6 +60,8 @@ const (
 	SaleServiceCompleteSaleProcedure = "/pos_iface.v1.SaleService/CompleteSale"
 	// SaleServiceVoidSaleProcedure is the fully-qualified name of the SaleService's VoidSale RPC.
 	SaleServiceVoidSaleProcedure = "/pos_iface.v1.SaleService/VoidSale"
+	// SaleServiceDiscardSaleProcedure is the fully-qualified name of the SaleService's DiscardSale RPC.
+	SaleServiceDiscardSaleProcedure = "/pos_iface.v1.SaleService/DiscardSale"
 	// SaleServiceGetTodaySnapshotProcedure is the fully-qualified name of the SaleService's
 	// GetTodaySnapshot RPC.
 	SaleServiceGetTodaySnapshotProcedure = "/pos_iface.v1.SaleService/GetTodaySnapshot"
@@ -84,6 +86,9 @@ type SaleServiceClient interface {
 	DetachPrescription(context.Context, *connect.Request[v1.DetachPrescriptionRequest]) (*connect.Response[v1.DetachPrescriptionResponse], error)
 	CompleteSale(context.Context, *connect.Request[v1.CompleteSaleRequest]) (*connect.Response[v1.CompleteSaleResponse], error)
 	VoidSale(context.Context, *connect.Request[v1.VoidSaleRequest]) (*connect.Response[v1.VoidSaleResponse], error)
+	// DiscardSale hard-deletes a DRAFT sale (and its items). Used for abandoned
+	// POS carts so they leave no VOIDED trace. Only DRAFT sales are discardable.
+	DiscardSale(context.Context, *connect.Request[v1.DiscardSaleRequest]) (*connect.Response[v1.DiscardSaleResponse], error)
 	GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error)
 	GetSalesSummary(context.Context, *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error)
 	PrintReceipt(context.Context, *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error)
@@ -166,6 +171,12 @@ func NewSaleServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(saleServiceMethods.ByName("VoidSale")),
 			connect.WithClientOptions(opts...),
 		),
+		discardSale: connect.NewClient[v1.DiscardSaleRequest, v1.DiscardSaleResponse](
+			httpClient,
+			baseURL+SaleServiceDiscardSaleProcedure,
+			connect.WithSchema(saleServiceMethods.ByName("DiscardSale")),
+			connect.WithClientOptions(opts...),
+		),
 		getTodaySnapshot: connect.NewClient[v1.GetTodaySnapshotRequest, v1.GetTodaySnapshotResponse](
 			httpClient,
 			baseURL+SaleServiceGetTodaySnapshotProcedure,
@@ -200,6 +211,7 @@ type saleServiceClient struct {
 	detachPrescription *connect.Client[v1.DetachPrescriptionRequest, v1.DetachPrescriptionResponse]
 	completeSale       *connect.Client[v1.CompleteSaleRequest, v1.CompleteSaleResponse]
 	voidSale           *connect.Client[v1.VoidSaleRequest, v1.VoidSaleResponse]
+	discardSale        *connect.Client[v1.DiscardSaleRequest, v1.DiscardSaleResponse]
 	getTodaySnapshot   *connect.Client[v1.GetTodaySnapshotRequest, v1.GetTodaySnapshotResponse]
 	getSalesSummary    *connect.Client[v1.GetSalesSummaryRequest, v1.GetSalesSummaryResponse]
 	printReceipt       *connect.Client[v1.PrintReceiptRequest, v1.PrintReceiptResponse]
@@ -260,6 +272,11 @@ func (c *saleServiceClient) VoidSale(ctx context.Context, req *connect.Request[v
 	return c.voidSale.CallUnary(ctx, req)
 }
 
+// DiscardSale calls pos_iface.v1.SaleService.DiscardSale.
+func (c *saleServiceClient) DiscardSale(ctx context.Context, req *connect.Request[v1.DiscardSaleRequest]) (*connect.Response[v1.DiscardSaleResponse], error) {
+	return c.discardSale.CallUnary(ctx, req)
+}
+
 // GetTodaySnapshot calls pos_iface.v1.SaleService.GetTodaySnapshot.
 func (c *saleServiceClient) GetTodaySnapshot(ctx context.Context, req *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error) {
 	return c.getTodaySnapshot.CallUnary(ctx, req)
@@ -288,6 +305,9 @@ type SaleServiceHandler interface {
 	DetachPrescription(context.Context, *connect.Request[v1.DetachPrescriptionRequest]) (*connect.Response[v1.DetachPrescriptionResponse], error)
 	CompleteSale(context.Context, *connect.Request[v1.CompleteSaleRequest]) (*connect.Response[v1.CompleteSaleResponse], error)
 	VoidSale(context.Context, *connect.Request[v1.VoidSaleRequest]) (*connect.Response[v1.VoidSaleResponse], error)
+	// DiscardSale hard-deletes a DRAFT sale (and its items). Used for abandoned
+	// POS carts so they leave no VOIDED trace. Only DRAFT sales are discardable.
+	DiscardSale(context.Context, *connect.Request[v1.DiscardSaleRequest]) (*connect.Response[v1.DiscardSaleResponse], error)
 	GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error)
 	GetSalesSummary(context.Context, *connect.Request[v1.GetSalesSummaryRequest]) (*connect.Response[v1.GetSalesSummaryResponse], error)
 	PrintReceipt(context.Context, *connect.Request[v1.PrintReceiptRequest]) (*connect.Response[v1.PrintReceiptResponse], error)
@@ -366,6 +386,12 @@ func NewSaleServiceHandler(svc SaleServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(saleServiceMethods.ByName("VoidSale")),
 		connect.WithHandlerOptions(opts...),
 	)
+	saleServiceDiscardSaleHandler := connect.NewUnaryHandler(
+		SaleServiceDiscardSaleProcedure,
+		svc.DiscardSale,
+		connect.WithSchema(saleServiceMethods.ByName("DiscardSale")),
+		connect.WithHandlerOptions(opts...),
+	)
 	saleServiceGetTodaySnapshotHandler := connect.NewUnaryHandler(
 		SaleServiceGetTodaySnapshotProcedure,
 		svc.GetTodaySnapshot,
@@ -408,6 +434,8 @@ func NewSaleServiceHandler(svc SaleServiceHandler, opts ...connect.HandlerOption
 			saleServiceCompleteSaleHandler.ServeHTTP(w, r)
 		case SaleServiceVoidSaleProcedure:
 			saleServiceVoidSaleHandler.ServeHTTP(w, r)
+		case SaleServiceDiscardSaleProcedure:
+			saleServiceDiscardSaleHandler.ServeHTTP(w, r)
 		case SaleServiceGetTodaySnapshotProcedure:
 			saleServiceGetTodaySnapshotHandler.ServeHTTP(w, r)
 		case SaleServiceGetSalesSummaryProcedure:
@@ -465,6 +493,10 @@ func (UnimplementedSaleServiceHandler) CompleteSale(context.Context, *connect.Re
 
 func (UnimplementedSaleServiceHandler) VoidSale(context.Context, *connect.Request[v1.VoidSaleRequest]) (*connect.Response[v1.VoidSaleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pos_iface.v1.SaleService.VoidSale is not implemented"))
+}
+
+func (UnimplementedSaleServiceHandler) DiscardSale(context.Context, *connect.Request[v1.DiscardSaleRequest]) (*connect.Response[v1.DiscardSaleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pos_iface.v1.SaleService.DiscardSale is not implemented"))
 }
 
 func (UnimplementedSaleServiceHandler) GetTodaySnapshot(context.Context, *connect.Request[v1.GetTodaySnapshotRequest]) (*connect.Response[v1.GetTodaySnapshotResponse], error) {

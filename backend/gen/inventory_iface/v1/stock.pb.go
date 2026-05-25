@@ -244,6 +244,9 @@ type ListMovementsRequest struct {
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	MedicineId    string                 `protobuf:"bytes,5,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"` // optional: all movements for a medicine's batches
+	Query         string                 `protobuf:"bytes,6,opt,name=query,proto3" json:"query,omitempty"`                             // ILIKE batch_number / medicine name / sku
+	FromUnix      int64                  `protobuf:"varint,7,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`      // created_at range lower bound (0 = unbounded)
+	ToUnix        int64                  `protobuf:"varint,8,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`            // created_at range upper bound (exclusive; 0 = unbounded)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -311,6 +314,27 @@ func (x *ListMovementsRequest) GetMedicineId() string {
 		return x.MedicineId
 	}
 	return ""
+}
+
+func (x *ListMovementsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListMovementsRequest) GetFromUnix() int64 {
+	if x != nil {
+		return x.FromUnix
+	}
+	return 0
+}
+
+func (x *ListMovementsRequest) GetToUnix() int64 {
+	if x != nil {
+		return x.ToUnix
+	}
+	return 0
 }
 
 type ListMovementsResponse struct {
@@ -586,14 +610,17 @@ const file_inventory_iface_v1_stock_proto_rawDesc = "" +
 	"medicineId\x12\x1f\n" +
 	"\vexpiry_date\x18\x03 \x01(\tR\n" +
 	"expiryDate\x12)\n" +
-	"\x10current_quantity\x18\x04 \x01(\x03R\x0fcurrentQuantity\"\xb6\x01\n" +
+	"\x10current_quantity\x18\x04 \x01(\x03R\x0fcurrentQuantity\"\x82\x02\n" +
 	"\x14ListMovementsRequest\x12\x19\n" +
 	"\bbatch_id\x18\x01 \x01(\tR\abatchId\x124\n" +
 	"\x04type\x18\x02 \x01(\x0e2 .inventory_iface.v1.MovementTypeR\x04type\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12\x1f\n" +
 	"\vmedicine_id\x18\x05 \x01(\tR\n" +
-	"medicineId\"n\n" +
+	"medicineId\x12\x14\n" +
+	"\x05query\x18\x06 \x01(\tR\x05query\x12\x1b\n" +
+	"\tfrom_unix\x18\a \x01(\x03R\bfromUnix\x12\x17\n" +
+	"\ato_unix\x18\b \x01(\x03R\x06toUnix\"n\n" +
 	"\x15ListMovementsResponse\x12?\n" +
 	"\tmovements\x18\x01 \x03(\v2!.inventory_iface.v1.StockMovementR\tmovements\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"\x92\x01\n" +

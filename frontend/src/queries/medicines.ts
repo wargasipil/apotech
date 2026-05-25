@@ -24,6 +24,8 @@ export const medicineKeys = {
   one: (id: string) => [...medicineKeys.all, "one", id] as const,
   prices: (medicineId: string) =>
     [...medicineKeys.all, "prices", medicineId] as const,
+  unitPrices: (medicineId: string) =>
+    [...medicineKeys.all, "unitPrices", medicineId] as const,
   search: (query: string) => [...medicineKeys.all, "search", query] as const,
 };
 
@@ -76,11 +78,37 @@ export async function searchMedicines(query: string) {
   return res.medicines;
 }
 
+// Imperative one-shot fetch of ALL medicines matching the filter (cap
+// ALL_LIMIT), for CSV export. Not a hook — call from an export handler.
+export async function fetchMedicinesForExport(opts: MedicinesQueryOpts = {}) {
+  const { includeInactive = false, query = "" } = opts;
+  const res = await medicineClient.listMedicines({
+    includeInactive,
+    query,
+    limit: ALL_LIMIT,
+    offset: 0,
+  });
+  return res.medicines;
+}
+
 export function useMedicinePricesQuery(medicineId: string, enabled = true) {
   return useQuery({
     queryKey: medicineKeys.prices(medicineId),
     queryFn: async () => {
       const res = await medicineClient.listMedicinePrices({ medicineId });
+      return res.prices;
+    },
+    enabled: enabled && !!medicineId,
+  });
+}
+
+// Per-unit sell-price history (one row per change, grouped by unit). Superset of
+// the base-only listMedicinePrices — used by the medicine detail Price-history tab.
+export function useMedicineUnitPricesQuery(medicineId: string, enabled = true) {
+  return useQuery({
+    queryKey: medicineKeys.unitPrices(medicineId),
+    queryFn: async () => {
+      const res = await medicineClient.listMedicineUnitPrices({ medicineId });
       return res.prices;
     },
     enabled: enabled && !!medicineId,

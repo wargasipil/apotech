@@ -28,14 +28,19 @@ message PurchaseReceiptItem {
   string batch_number = 7;
   string expiry_date = 8;          // YYYY-MM-DD
   string batch_id = 9;             // populated after batch row is created
+  // qty is in BASE units; these describe the purchasable unit received in.
+  string medicine_unit_id = 10;
+  string unit_name = 11;
+  int64 unit_factor = 12;
 }
 
 message ReceiveLineInput {
   string purchase_order_item_id = 1;
-  int32 qty = 2;
-  int64 unit_cost_price = 3;       // overrideable
+  int32 qty = 2;                   // qty in the chosen purchasable unit
+  int64 unit_cost_price = 3;       // per BASE unit; overrideable
   string batch_number = 4;
   string expiry_date = 5;          // YYYY-MM-DD (required)
+  string medicine_unit_id = 6;     // purchasable unit; empty => PO line's unit
 }
 
 service PurchaseReceiptService {

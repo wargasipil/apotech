@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateBatchRequest, CreateBatchResponse, GetBatchRequest, GetBatchResponse, ListBatchesRequest, ListBatchesResponse, SearchBatchesRequest, SearchBatchesResponse, UpdateBatchRequest, UpdateBatchResponse } from "./batch_pb.js";
+import { CreateBatchRequest, CreateBatchResponse, GetBatchRequest, GetBatchResponse, ListBatchesRequest, ListBatchesResponse, ResolveBatchesRequest, ResolveBatchesResponse, SearchBatchesRequest, SearchBatchesResponse, UpdateBatchRequest, UpdateBatchResponse } from "./batch_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,18 @@ export const BatchService = {
       name: "SearchBatches",
       I: SearchBatchesRequest,
       O: SearchBatchesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ResolveBatches returns minimal display refs for a set of ids (batch
+     * lookup-by-IDs for name resolution; never a full-list preload).
+     *
+     * @generated from rpc inventory_iface.v1.BatchService.ResolveBatches
+     */
+    resolveBatches: {
+      name: "ResolveBatches",
+      I: ResolveBatchesRequest,
+      O: ResolveBatchesResponse,
       kind: MethodKind.Unary,
     },
   }

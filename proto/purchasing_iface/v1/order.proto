@@ -46,12 +46,18 @@ message PurchaseOrderItem {
   int64 subtotal = 7;             // ordered_qty * unit_cost_price
   string medicine_name = 8;       // denormalized for list display
   string medicine_sku = 9;        // denormalized for list display
+  // ordered_qty / received_qty are in BASE units; these describe the purchasable
+  // unit the line was ordered in (for display / entry). unit_factor = base per 1.
+  string medicine_unit_id = 10;
+  string unit_name = 11;
+  int64 unit_factor = 12;
 }
 
 message PurchaseOrderItemInput {
   string medicine_id = 1;
-  int32 ordered_qty = 2;
-  int64 unit_cost_price = 3;
+  int32 ordered_qty = 2;          // qty in the chosen purchasable unit (empty unit_id => base)
+  int64 unit_cost_price = 3;      // per BASE unit (frontend derives from line total)
+  string medicine_unit_id = 4;    // purchasable unit; empty => base unit
 }
 
 service PurchaseOrderService {

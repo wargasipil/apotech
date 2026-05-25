@@ -36,6 +36,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 export type SearchableSelectProps<T> = {
   value: string | null;
   onChange: (value: string) => void;
+  /** Fires with the full picked item (async or sync) alongside onChange. */
+  onSelectItem?: (item: T | undefined) => void;
 
   /** Sync mode: full list of options (small/static lists only). */
   items?: readonly T[];
@@ -64,6 +66,7 @@ const DEBOUNCE_MS = 250;
 export default function SearchableSelect<T>({
   value,
   onChange,
+  onSelectItem,
   items,
   loadOptions,
   itemToString,
@@ -80,6 +83,8 @@ export default function SearchableSelect<T>({
   // even after the collection rotates (e.g. user types, list changes, but the
   // currently-selected item is no longer in view).
   const labelCacheRef = useRef<Map<string, string>>(new Map());
+  // Keep the original items by value so onSelectItem can hand back the full T.
+  const itemsByValueRef = useRef<Map<string, T>>(new Map());
   const rememberLabel = useCallback((entry: Entry) => {
     labelCacheRef.current.set(entry.value, entry.label);
   }, []);
@@ -133,6 +138,7 @@ export default function SearchableSelect<T>({
           value: itemToValueRef.current(item),
         }));
         mapped.forEach(rememberLabel);
+        rows.forEach((item) => itemsByValueRef.current.set(itemToValueRef.current(item), item));
         setAsyncEntries(mapped);
       } finally {
         if (latestQueryRef.current === query) {
@@ -155,6 +161,9 @@ export default function SearchableSelect<T>({
   // -------------------- Collection ----------------------------------------
   // Cache labels from sync entries so the trigger display also works in sync mode.
   syncEntries.forEach(rememberLabel);
+  if (!isAsync) {
+    (items ?? []).forEach((item) => itemsByValueRef.current.set(itemToValue(item), item));
+  }
 
   // Build the final entry list. If the current value isn't in the active
   // entries, inject it as a stub so Chakra's Combobox shows the right label
@@ -211,6 +220,7 @@ export default function SearchableSelect<T>({
         const picked = collection.items.find((e) => e.value === next);
         if (picked) rememberLabel(picked);
         onChange(next);
+        if (onSelectItem) onSelectItem(itemsByValueRef.current.get(next));
       }}
       onInputValueChange={(d) => {
         setInputValue(d.inputValue);

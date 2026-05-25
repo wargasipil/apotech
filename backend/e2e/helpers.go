@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/apotech/backend/gen/customer_iface/v1/customerifacev1connect"
 	"github.com/apotech/backend/gen/inventory_iface/v1/inventoryifacev1connect"
 	posifacev1connect "github.com/apotech/backend/gen/pos_iface/v1/posifacev1connect"
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
@@ -37,6 +38,7 @@ type Env struct {
 	DB        *gorm.DB
 	Auth      userifacev1connect.AuthServiceClient
 	Users     userifacev1connect.UserServiceClient
+	Customers customerifacev1connect.CustomerServiceClient
 	Suppliers  inventoryifacev1connect.SupplierServiceClient
 	Medicines  inventoryifacev1connect.MedicineServiceClient
 	Batches    inventoryifacev1connect.BatchServiceClient
@@ -82,6 +84,19 @@ func SetupEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
+	// Close this test's connection pool when the test ends — otherwise each
+	// SetupEnv leaks a pool and the suite accumulates connections until Postgres
+	// max_connections is exhausted (flaky "can't get a connection" failures on
+	// random tests under load). Registered before the srv cleanup below so it
+	// runs after it (t.Cleanup is LIFO: stop serving, then close the DB). Bound
+	// the pool too as cheap insurance against momentary overlap with the dev
+	// backend / make web; tests are sequential + unary, so 10 is ample.
+	if sqlDB, derr := gormDB.DB(); derr == nil {
+		sqlDB.SetMaxOpenConns(10)
+		sqlDB.SetMaxIdleConns(2)
+		sqlDB.SetConnMaxLifetime(time.Minute)
+		t.Cleanup(func() { _ = sqlDB.Close() })
+	}
 
 	issuer := &auth.Issuer{
 		Secret: []byte(cfg.Auth.JWTSecret),
@@ -99,6 +114,7 @@ func SetupEnv(t *testing.T) *Env {
 	loginLimiter := auth.NewLoginLimiter(1000, time.Second)
 	authSvc := service.NewAuth(gormDB, issuer, refreshIssuer, loginLimiter)
 	userSvc := service.NewUsers(gormDB)
+	customerSvc := service.NewCustomers(gormDB)
 	supplierSvc := service.NewSuppliers(gormDB)
 	medicineSvc := service.NewMedicines(gormDB)
 	batchSvc := service.NewBatches(gormDB)
@@ -120,6 +136,7 @@ func SetupEnv(t *testing.T) *Env {
 	mux := http.NewServeMux()
 	mux.Handle(userifacev1connect.NewAuthServiceHandler(authSvc, interceptors))
 	mux.Handle(userifacev1connect.NewUserServiceHandler(userSvc, interceptors))
+	mux.Handle(customerifacev1connect.NewCustomerServiceHandler(customerSvc, interceptors))
 	mux.Handle(inventoryifacev1connect.NewSupplierServiceHandler(supplierSvc, interceptors))
 	mux.Handle(inventoryifacev1connect.NewMedicineServiceHandler(medicineSvc, interceptors))
 	mux.Handle(inventoryifacev1connect.NewBatchServiceHandler(batchSvc, interceptors))
@@ -139,6 +156,7 @@ func SetupEnv(t *testing.T) *Env {
 		DB:        gormDB,
 		Auth:      userifacev1connect.NewAuthServiceClient(srv.Client(), srv.URL),
 		Users:     userifacev1connect.NewUserServiceClient(srv.Client(), srv.URL),
+		Customers: customerifacev1connect.NewCustomerServiceClient(srv.Client(), srv.URL),
 		Suppliers:  inventoryifacev1connect.NewSupplierServiceClient(srv.Client(), srv.URL),
 		Medicines:  inventoryifacev1connect.NewMedicineServiceClient(srv.Client(), srv.URL),
 		Batches:    inventoryifacev1connect.NewBatchServiceClient(srv.Client(), srv.URL),

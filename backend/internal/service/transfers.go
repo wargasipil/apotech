@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -76,6 +77,17 @@ func (s *Transfers) CreateTransfer(
 		}
 		transferID = header.ID
 
+		// Lock the line batches FOR UPDATE (deterministic id order) so concurrent
+		// drains of the same source lot serialize and can't both pass the
+		// availability check and oversell the source warehouse.
+		batchIDs := make([]string, 0, len(req.Msg.Lines))
+		for _, line := range req.Msg.Lines {
+			batchIDs = append(batchIDs, line.BatchId)
+		}
+		if e := lockBatchesByID(tx, batchIDs); e != nil {
+			return connect.NewError(connect.CodeInternal, e)
+		}
+
 		for _, line := range req.Msg.Lines {
 			if line.Qty <= 0 {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("qty must be > 0"))
@@ -130,10 +142,32 @@ func (s *Transfers) ListTransfers(
 	ctx context.Context,
 	req *connect.Request[warehouseifacev1.ListTransfersRequest],
 ) (*connect.Response[warehouseifacev1.ListTransfersResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Scope to the active warehouse — transfers touching it (from OR to). An
+	// explicit warehouse_id in the request overrides; otherwise resolve from the
+	// X-Warehouse-Id header like every other inventory read.
+	wh := req.Msg.WarehouseId
+	if wh == "" {
+		wh, err = resolveWarehouse(ctx, s.db, caller)
+		if err != nil {
+			return nil, err
+		}
+	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
-		if req.Msg.WarehouseId != "" {
-			q = q.Where("from_warehouse_id = ? OR to_warehouse_id = ?", req.Msg.WarehouseId, req.Msg.WarehouseId)
+		q = q.Where("from_warehouse_id = ? OR to_warehouse_id = ?", wh, wh)
+		if query := strings.TrimSpace(req.Msg.Query); query != "" {
+			pattern := "%" + query + "%"
+			q = q.Where("transfer_no ILIKE ? OR note ILIKE ?", pattern, pattern)
+		}
+		if req.Msg.FromUnix > 0 {
+			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
+		}
+		if req.Msg.ToUnix > 0 {
+			q = q.Where("created_at < ?", time.Unix(req.Msg.ToUnix, 0))
 		}
 		return q
 	}

@@ -21,8 +21,9 @@ test.describe("purchasing", () => {
 
   test("create PO shows a total-cost input and code-labelled supplier", async ({ page }) => {
     await page.goto("/purchasing/new");
-    // The line cost column is now "Total cost", not unit cost.
+    // The line cost column is now "Total cost"; the derived per-base cost shows
+    // as "Cost / base unit" (relabelled when buy-in-units landed).
     await expect(page.getByText("Total cost (IDR)")).toBeVisible();
-    await expect(page.getByText("Cost / unit")).toBeVisible();
+    await expect(page.getByText("Cost / base unit")).toBeVisible();
   });
 });

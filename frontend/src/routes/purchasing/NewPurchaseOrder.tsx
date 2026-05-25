@@ -16,7 +16,10 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import DatePickerField from "../../components/DatePicker";
+import EnumSelect from "../../components/EnumSelect";
+import MoneyInput from "../../components/MoneyInput";
 import SearchableSelect from "../../components/SearchableSelect";
+import type { Medicine, MedicineUnit } from "../../gen/inventory_iface/v1/medicine_pb";
 import { formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
 import { searchMedicines } from "../../queries/medicines";
@@ -25,14 +28,32 @@ import { searchSuppliers } from "../../queries/suppliers";
 
 type Line = {
   medicineId: string;
-  orderedQty: number;
+  medicineUnitId: string; // chosen purchasable unit ("" => base)
+  units: MedicineUnit[]; // purchasable + active units of the picked medicine
+  orderedQty: number; // in the chosen unit
   lineTotal: number; // total cost for the line (Harga modal total); unit cost is derived
 };
 
-// Unit cost is derived from the line total / qty (rounded to whole rupiah).
-function unitCostOf(l: Line): number {
-  return l.orderedQty > 0 ? Math.round(l.lineTotal / l.orderedQty) : 0;
-}
+const factorOf = (l: Line): number => {
+  const u = l.units.find((x) => x.id === l.medicineUnitId);
+  return u ? Number(u.factor) : 1;
+};
+const baseQtyOf = (l: Line): number => l.orderedQty * factorOf(l);
+// Cost per BASE unit is derived from the line total / base qty (rounded).
+const unitCostOf = (l: Line): number => {
+  const base = baseQtyOf(l);
+  return base > 0 ? Math.round(l.lineTotal / base) : 0;
+};
+const unitNameOf = (l: Line): string =>
+  l.units.find((x) => x.id === l.medicineUnitId)?.name ?? "";
+
+const emptyLine = (): Line => ({
+  medicineId: "",
+  medicineUnitId: "",
+  units: [],
+  orderedQty: 1,
+  lineTotal: 0,
+});
 
 export default function NewPurchaseOrder() {
   const { t } = useTranslation();
@@ -42,7 +63,7 @@ export default function NewPurchaseOrder() {
   const [supplierId, setSupplierId] = useState("");
   const [expectedAt, setExpectedAt] = useState("");
   const [note, setNote] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ medicineId: "", orderedQty: 1, lineTotal: 0 }]);
+  const [lines, setLines] = useState<Line[]>([emptyLine()]);
 
   const total = useMemo(() => lines.reduce((sum, l) => sum + l.lineTotal, 0), [lines]);
 
@@ -50,8 +71,13 @@ export default function NewPurchaseOrder() {
     setLines((cur) => cur.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
   const removeLine = (idx: number) => setLines((cur) => cur.filter((_, i) => i !== idx));
-  const addLine = () =>
-    setLines((cur) => [...cur, { medicineId: "", orderedQty: 1, lineTotal: 0 }]);
+  const addLine = () => setLines((cur) => [...cur, emptyLine()]);
+
+  const onPickMedicine = (idx: number, m: Medicine | undefined) => {
+    const units = (m?.units ?? []).filter((u) => u.purchasable && u.active);
+    const base = units.find((u) => u.isBase);
+    updateLine(idx, { units, medicineUnitId: base?.id ?? units[0]?.id ?? "" });
+  };
 
   const canSubmit =
     !!supplierId &&
@@ -66,6 +92,7 @@ export default function NewPurchaseOrder() {
         note,
         items: lines.map((l) => ({
           medicineId: l.medicineId,
+          medicineUnitId: l.medicineUnitId,
           orderedQty: l.orderedQty,
           unitCostPrice: BigInt(unitCostOf(l)),
         })),
@@ -124,6 +151,7 @@ export default function NewPurchaseOrder() {
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader minW="240px">{t("purchasing.selectMedicine")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("purchasing.unit")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("purchasing.qty")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("purchasing.lineTotalInput")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("purchasing.unitCostDerived")}</Table.ColumnHeader>
@@ -138,11 +166,29 @@ export default function NewPurchaseOrder() {
                       size="sm"
                       value={l.medicineId}
                       onChange={(v) => updateLine(idx, { medicineId: v })}
+                      onSelectItem={(m) => onPickMedicine(idx, m)}
                       loadOptions={searchMedicines}
                       itemToString={(m) => `${m.sku} · ${m.name}`}
                       itemToValue={(m) => m.id}
                       placeholder={t("purchasing.selectMedicine")}
                     />
+                  </Table.Cell>
+                  <Table.Cell>
+                    {l.units.length > 1 ? (
+                      <EnumSelect
+                        size="sm"
+                        width="110px"
+                        value={l.medicineUnitId}
+                        onChange={(v) => updateLine(idx, { medicineUnitId: v })}
+                        items={l.units}
+                        itemToString={(u) => u.name}
+                        itemToValue={(u) => u.id}
+                      />
+                    ) : (
+                      <Text fontSize="sm" color="fg.muted">
+                        {unitNameOf(l) || "—"}
+                      </Text>
+                    )}
                   </Table.Cell>
                   <Table.Cell>
                     <Input
@@ -154,18 +200,20 @@ export default function NewPurchaseOrder() {
                     />
                   </Table.Cell>
                   <Table.Cell>
-                    <Input
+                    <MoneyInput
                       size="sm"
-                      type="number"
+                      width="140px"
                       value={l.lineTotal}
-                      onChange={(e) =>
-                        updateLine(idx, { lineTotal: parseInt(e.target.value, 10) || 0 })
-                      }
-                      w="140px"
+                      onChange={(raw) => updateLine(idx, { lineTotal: Number(raw || 0) })}
                     />
                   </Table.Cell>
                   <Table.Cell fontFamily="mono" color="fg.muted">
                     {formatMoney(unitCostOf(l))}
+                    {factorOf(l) > 1 && (
+                      <Text fontSize="xs">
+                        /{t("inventory.medicines.baseUnit").toLowerCase()}
+                      </Text>
+                    )}
                   </Table.Cell>
                   <Table.Cell>
                     <IconButton

@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	analyticsifacev1 "github.com/apotech/backend/gen/analytics_iface/v1"
+	"github.com/apotech/backend/internal/auth"
 )
 
 type InventoryAnalytics struct {
@@ -20,6 +21,14 @@ func (a *InventoryAnalytics) GetTurnover(
 	ctx context.Context,
 	req *connect.Request[analyticsifacev1.GetTurnoverRequest],
 ) (*connect.Response[analyticsifacev1.GetTurnoverResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, a.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	periodDays := int(req.Msg.PeriodDays)
 	if periodDays <= 0 {
 		periodDays = 30
@@ -44,18 +53,18 @@ func (a *InventoryAnalytics) GetTurnover(
 		TurnoverRatio   float64 `gorm:"column:turnover_ratio"`
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
+	err = a.db.WithContext(ctx).Raw(`
 		WITH window_sales AS (
 			SELECT b.medicine_id, COALESCE(SUM(-sm.qty), 0) AS sold_qty
 			FROM stock_movements sm
 			JOIN batches b ON b.id = sm.batch_id
-			WHERE sm.type = 'SALE' AND sm.created_at >= ?
+			WHERE sm.type = 'SALE' AND sm.created_at >= ? AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		),
 		current_stock AS (
 			SELECT b.medicine_id, COALESCE(SUM(sm.qty), 0) AS current_qty
 			FROM batches b
-			LEFT JOIN stock_movements sm ON sm.batch_id = b.id
+			LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		)
 		SELECT m.id AS medicine_id,
@@ -71,7 +80,7 @@ func (a *InventoryAnalytics) GetTurnover(
 		WHERE m.active = TRUE
 		ORDER BY turnover_ratio DESC
 		LIMIT ?
-	`, from, limit).Scan(&rows).Error
+	`, from, warehouseID, warehouseID, limit).Scan(&rows).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -94,6 +103,14 @@ func (a *InventoryAnalytics) GetDeadStock(
 	ctx context.Context,
 	req *connect.Request[analyticsifacev1.GetDeadStockRequest],
 ) (*connect.Response[analyticsifacev1.GetDeadStockResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, a.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	noMov := int(req.Msg.NoMovementDays)
 	if noMov <= 0 {
 		noMov = 60
@@ -108,18 +125,18 @@ func (a *InventoryAnalytics) GetDeadStock(
 		LastSale     *time.Time `gorm:"column:last_sale"`
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
+	err = a.db.WithContext(ctx).Raw(`
 		WITH current_stock AS (
 			SELECT b.medicine_id, COALESCE(SUM(sm.qty), 0) AS current_qty
 			FROM batches b
-			LEFT JOIN stock_movements sm ON sm.batch_id = b.id
+			LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		),
 		last_sale AS (
 			SELECT b.medicine_id, MAX(sm.created_at) AS last_sale
 			FROM stock_movements sm
 			JOIN batches b ON b.id = sm.batch_id
-			WHERE sm.type = 'SALE'
+			WHERE sm.type = 'SALE' AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		)
 		SELECT m.id AS medicine_id, m.name AS medicine_name, m.sku,
@@ -131,7 +148,7 @@ func (a *InventoryAnalytics) GetDeadStock(
 		  AND cs.current_qty > 0
 		  AND (ls.last_sale IS NULL OR ls.last_sale < ?)
 		ORDER BY cs.current_qty DESC
-	`, cutoff).Scan(&rows).Error
+	`, warehouseID, warehouseID, cutoff).Scan(&rows).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -157,6 +174,14 @@ func (a *InventoryAnalytics) GetDaysOfStockRemaining(
 	ctx context.Context,
 	req *connect.Request[analyticsifacev1.GetDaysOfStockRemainingRequest],
 ) (*connect.Response[analyticsifacev1.GetDaysOfStockRemainingResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, a.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	sample := int(req.Msg.SampleDays)
 	if sample <= 0 {
 		sample = 30
@@ -172,18 +197,18 @@ func (a *InventoryAnalytics) GetDaysOfStockRemaining(
 		DaysRemaining       float64 `gorm:"column:days_remaining"`
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
+	err = a.db.WithContext(ctx).Raw(`
 		WITH window_sales AS (
 			SELECT b.medicine_id, COALESCE(SUM(-sm.qty), 0) AS sold_qty
 			FROM stock_movements sm
 			JOIN batches b ON b.id = sm.batch_id
-			WHERE sm.type = 'SALE' AND sm.created_at >= ?
+			WHERE sm.type = 'SALE' AND sm.created_at >= ? AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		),
 		current_stock AS (
 			SELECT b.medicine_id, COALESCE(SUM(sm.qty), 0) AS current_qty
 			FROM batches b
-			LEFT JOIN stock_movements sm ON sm.batch_id = b.id
+			LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 			GROUP BY b.medicine_id
 		)
 		SELECT m.id AS medicine_id, m.name AS medicine_name, m.sku,
@@ -200,7 +225,7 @@ func (a *InventoryAnalytics) GetDaysOfStockRemaining(
 		WHERE m.active = TRUE
 		  AND COALESCE(cs.current_qty, 0) > 0
 		ORDER BY days_remaining NULLS LAST, m.name
-	`, from, sample, sample).Scan(&rows).Error
+	`, from, warehouseID, warehouseID, sample, sample).Scan(&rows).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -223,6 +248,14 @@ func (a *InventoryAnalytics) GetExpiryRiskForecast(
 	ctx context.Context,
 	_ *connect.Request[analyticsifacev1.GetExpiryRiskForecastRequest],
 ) (*connect.Response[analyticsifacev1.GetExpiryRiskForecastResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, a.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	windows := []int{30, 90, 180}
 	out := make([]*analyticsifacev1.ExpiryBucket, 0, len(windows))
@@ -235,12 +268,12 @@ func (a *InventoryAnalytics) GetExpiryRiskForecast(
 	for _, win := range windows {
 		var r row
 		until := now.AddDate(0, 0, win)
-		err := a.db.WithContext(ctx).Raw(`
+		err = a.db.WithContext(ctx).Raw(`
 			WITH batch_qty AS (
 				SELECT b.id, b.cost_price, b.expiry_date,
 				       COALESCE(SUM(sm.qty), 0) AS current_qty
 				FROM batches b
-				LEFT JOIN stock_movements sm ON sm.batch_id = b.id
+				LEFT JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 				WHERE b.expiry_date >= ? AND b.expiry_date < ?
 				GROUP BY b.id
 			)
@@ -248,7 +281,7 @@ func (a *InventoryAnalytics) GetExpiryRiskForecast(
 			       COALESCE(SUM(current_qty * cost_price), 0) AS value_at_risk
 			FROM batch_qty
 			WHERE current_qty > 0
-		`, now, until).Scan(&r).Error
+		`, warehouseID, now, until).Scan(&r).Error
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}

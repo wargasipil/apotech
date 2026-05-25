@@ -115,6 +115,34 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
    */
   offset = 0;
 
+  /**
+   * ILIKE batch_number / medicine name / sku
+   *
+   * @generated from field: string query = 5;
+   */
+  query = "";
+
+  /**
+   * date-range lower bound (0 = unbounded)
+   *
+   * @generated from field: int64 from_unix = 6;
+   */
+  fromUnix = protoInt64.zero;
+
+  /**
+   * date-range upper bound (exclusive; 0 = unbounded)
+   *
+   * @generated from field: int64 to_unix = 7;
+   */
+  toUnix = protoInt64.zero;
+
+  /**
+   * which date the range filters: "received" | "expiry"
+   *
+   * @generated from field: string date_field = 8;
+   */
+  dateField = "";
+
   constructor(data?: PartialMessage<ListBatchesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -127,6 +155,10 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
     { no: 2, name: "only_in_stock", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "date_field", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListBatchesRequest {
@@ -562,6 +594,137 @@ export class SearchBatchesResponse extends Message<SearchBatchesResponse> {
 
   static equals(a: SearchBatchesResponse | PlainMessage<SearchBatchesResponse> | undefined, b: SearchBatchesResponse | PlainMessage<SearchBatchesResponse> | undefined): boolean {
     return proto3.util.equals(SearchBatchesResponse, a, b);
+  }
+}
+
+/**
+ * Minimal display ref for resolve-by-IDs name lookups (joins medicines for the name).
+ *
+ * @generated from message inventory_iface.v1.BatchRef
+ */
+export class BatchRef extends Message<BatchRef> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string batch_number = 2;
+   */
+  batchNumber = "";
+
+  /**
+   * @generated from field: string medicine_id = 3;
+   */
+  medicineId = "";
+
+  /**
+   * @generated from field: string medicine_name = 4;
+   */
+  medicineName = "";
+
+  constructor(data?: PartialMessage<BatchRef>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.BatchRef";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "batch_number", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "medicine_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BatchRef {
+    return new BatchRef().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BatchRef {
+    return new BatchRef().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BatchRef {
+    return new BatchRef().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BatchRef | PlainMessage<BatchRef> | undefined, b: BatchRef | PlainMessage<BatchRef> | undefined): boolean {
+    return proto3.util.equals(BatchRef, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.ResolveBatchesRequest
+ */
+export class ResolveBatchesRequest extends Message<ResolveBatchesRequest> {
+  /**
+   * @generated from field: repeated string ids = 1;
+   */
+  ids: string[] = [];
+
+  constructor(data?: PartialMessage<ResolveBatchesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ResolveBatchesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveBatchesRequest {
+    return new ResolveBatchesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveBatchesRequest {
+    return new ResolveBatchesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveBatchesRequest {
+    return new ResolveBatchesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveBatchesRequest | PlainMessage<ResolveBatchesRequest> | undefined, b: ResolveBatchesRequest | PlainMessage<ResolveBatchesRequest> | undefined): boolean {
+    return proto3.util.equals(ResolveBatchesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.ResolveBatchesResponse
+ */
+export class ResolveBatchesResponse extends Message<ResolveBatchesResponse> {
+  /**
+   * @generated from field: repeated inventory_iface.v1.BatchRef batches = 1;
+   */
+  batches: BatchRef[] = [];
+
+  constructor(data?: PartialMessage<ResolveBatchesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ResolveBatchesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "batches", kind: "message", T: BatchRef, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveBatchesResponse {
+    return new ResolveBatchesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveBatchesResponse {
+    return new ResolveBatchesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveBatchesResponse {
+    return new ResolveBatchesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveBatchesResponse | PlainMessage<ResolveBatchesResponse> | undefined, b: ResolveBatchesResponse | PlainMessage<ResolveBatchesResponse> | undefined): boolean {
+    return proto3.util.equals(ResolveBatchesResponse, a, b);
   }
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -10,38 +10,113 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import DateRangeFilter, { resolveRange, type DateRange } from "../../components/DateRangeFilter";
 import EntityDrawer from "../../components/EntityDrawer";
 import EnumSelect from "../../components/EnumSelect";
 import Pagination from "../../components/Pagination";
+import ExportButton from "../../components/ExportButton";
 import SearchableSelect from "../../components/SearchableSelect";
+import WarehouseSelect from "../../components/WarehouseSelect";
 import { searchBatches } from "../../queries/batches";
+import { downloadCsv } from "../../lib/csv";
 import { formatUnix } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import { useWarehousesQuery } from "../../queries/warehouses";
-import { useCreateTransferMutation, useTransfersQuery } from "../../queries/transfers";
+import { fetchTransfersForExport, useCreateTransferMutation, useTransfersQuery } from "../../queries/transfers";
 
 type LineDraft = { batchId: string; label: string; qty: string };
 
 export default function Transfers() {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { page, setPage, pageSize, setPageSize } = usePageState("");
-  const transfersQ = useTransfersQuery({ page, pageSize });
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const h = setTimeout(() => setQuery(searchInput.trim()), 250);
+    return () => clearTimeout(h);
+  }, [searchInput]);
+  const [dateOn, setDateOn] = useState(false);
+  const [range, setRange] = useState<DateRange>(() => resolveRange("30d"));
+  const { page, setPage, pageSize, setPageSize } = usePageState(
+    `${query}|${dateOn ? range.fromUnix : 0}|${dateOn ? range.toUnix : 0}`,
+  );
+  const transfersQ = useTransfersQuery({
+    query,
+    fromUnix: dateOn ? range.fromUnix : 0,
+    toUnix: dateOn ? range.toUnix : 0,
+    page,
+    pageSize,
+  });
+
+  const onExport = async () => {
+    const rows = await fetchTransfersForExport({
+      query,
+      fromUnix: dateOn ? range.fromUnix : 0,
+      toUnix: dateOn ? range.toUnix : 0,
+    });
+    downloadCsv(
+      `transfers-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows.map((tr) => ({
+        transferNo: tr.transferNo,
+        from: tr.fromWarehouseName,
+        to: tr.toWarehouseName,
+        lines: tr.lines.length,
+        note: tr.note,
+        date: formatUnix(tr.createdAt),
+      })),
+      [
+        { key: "transferNo", header: t("transfers.transferNo") },
+        { key: "from", header: t("transfers.from") },
+        { key: "to", header: t("transfers.to") },
+        { key: "lines", header: t("transfers.lines") },
+        { key: "note", header: t("transfers.note") },
+        { key: "date", header: t("transfers.when") },
+      ],
+    );
+  };
 
   return (
     <Stack gap={4}>
-      <HStack justify="space-between">
-        <Text fontSize="sm" color="fg.muted">
-          {t("transfers.intro")}
-        </Text>
-        <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
-          <Plus size={16} />
-          {t("transfers.newTransfer")}
-        </Button>
+      <HStack justify="space-between" wrap="wrap" gap={2}>
+        <HStack gap={2} wrap="wrap">
+          <Box position="relative">
+            <Box position="absolute" left={2} top="50%" transform="translateY(-50%)" color="fg.muted">
+              <Search size={14} />
+            </Box>
+            <Input
+              size="sm"
+              pl={7}
+              width="240px"
+              placeholder={t("transfers.searchPlaceholder")}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </Box>
+          <EnumSelect
+            size="sm"
+            width="150px"
+            value={dateOn ? "on" : "off"}
+            onChange={(v) => setDateOn(v === "on")}
+            items={[
+              { value: "off", label: t("common.anyDate") },
+              { value: "on", label: t("common.dateRange") },
+            ]}
+            itemToString={(o) => o.label}
+            itemToValue={(o) => o.value}
+          />
+          {dateOn && <DateRangeFilter value={range} onChange={setRange} />}
+        </HStack>
+        <HStack gap={2}>
+          <ExportButton onExport={onExport} />
+          <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
+            <Plus size={16} />
+            {t("transfers.newTransfer")}
+          </Button>
+        </HStack>
       </HStack>
 
       {transfersQ.isLoading ? (
@@ -159,12 +234,10 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
           <Text fontSize="sm" fontWeight="medium" color="fg.muted">
             {t("transfers.from")} *
           </Text>
-          <EnumSelect
+          <WarehouseSelect
             value={from}
             onChange={setFrom}
-            items={warehouseItems}
-            itemToString={(w) => `${w.code} · ${w.name}`}
-            itemToValue={(w) => w.id}
+            warehouses={warehouseItems}
             placeholder={t("transfers.selectWarehouse")}
           />
         </Stack>
@@ -172,12 +245,11 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
           <Text fontSize="sm" fontWeight="medium" color="fg.muted">
             {t("transfers.to")} *
           </Text>
-          <EnumSelect
+          <WarehouseSelect
             value={to}
             onChange={setTo}
-            items={warehouseItems.filter((w) => w.id !== from)}
-            itemToString={(w) => `${w.code} · ${w.name}`}
-            itemToValue={(w) => w.id}
+            warehouses={warehouseItems}
+            excludeId={from}
             placeholder={t("transfers.selectWarehouse")}
           />
         </Stack>

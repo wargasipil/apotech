@@ -22,6 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import BackButton from "../../components/BackButton";
 import DatePickerField from "../../components/DatePicker";
+import MoneyInput from "../../components/MoneyInput";
 import {
   POStatus,
   type PurchaseOrder,
@@ -29,7 +30,8 @@ import {
 } from "../../gen/purchasing_iface/v1/order_pb";
 import { formatDate, formatMoney } from "../../lib/format";
 import { toast } from "../../lib/toaster";
-import { useAllMedicinesQuery } from "../../queries/medicines";
+import type { MedicineRef } from "../../gen/inventory_iface/v1/medicine_pb";
+import { useMedicineRefs, useSupplierRefs } from "../../queries/refs";
 import {
   useCreateReceiptMutation,
   usePayPurchaseMutation,
@@ -38,7 +40,6 @@ import {
   useSendPurchaseOrderMutation,
   useVoidPurchaseOrderMutation,
 } from "../../queries/purchasing";
-import { useAllSuppliersQuery } from "../../queries/suppliers";
 
 const STATUS_PALETTE: Record<POStatus, string> = {
   [POStatus.PO_STATUS_UNSPECIFIED]: "gray",
@@ -56,8 +57,6 @@ export default function PurchaseOrderDetail() {
   const { id = "" } = useParams();
 
   const poQ = usePurchaseOrderQuery(id);
-  const suppliersQ = useAllSuppliersQuery(true);
-  const medicinesQ = useAllMedicinesQuery(true);
   const receiptsQ = useReceiptsQuery({ purchaseOrderId: id });
 
   const sendMut = useSendPurchaseOrderMutation();
@@ -66,23 +65,26 @@ export default function PurchaseOrderDetail() {
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
 
-  const supplierName = useMemo(
-    () => new Map(suppliersQ.rows.map((s) => [s.id, s.name])),
-    [suppliersQ.rows],
-  );
-  const medicineName = useMemo(
-    () => new Map(medicinesQ.rows.map((m) => [m.id, m.name])),
-    [medicinesQ.rows],
-  );
+  // Resolve names for just this PO's supplier + line/receipt medicines
+  // (resolve-by-IDs; hooks run unconditionally, before the loading early-return).
+  const po = poQ.data;
+  const supplierIds = useMemo(() => (po ? [po.supplierId] : []), [po]);
+  const medicineIds = useMemo(() => {
+    const ids = new Set<string>();
+    po?.items.forEach((it) => ids.add(it.medicineId));
+    receiptsQ.data?.forEach((r) => r.items.forEach((it) => ids.add(it.medicineId)));
+    return Array.from(ids);
+  }, [po, receiptsQ.data]);
+  const supplierRefs = useSupplierRefs(supplierIds);
+  const medicineRefs = useMedicineRefs(medicineIds);
 
-  if (poQ.isLoading || !poQ.data) {
+  if (poQ.isLoading || !po) {
     return (
       <Box p={6} textAlign="center">
         <Spinner />
       </Box>
     );
   }
-  const po = poQ.data;
 
   const canSend = po.status === POStatus.PO_STATUS_DRAFT && po.items.length > 0;
   const canVoid = po.status === POStatus.PO_STATUS_DRAFT || po.status === POStatus.PO_STATUS_SENT;
@@ -150,7 +152,7 @@ export default function PurchaseOrderDetail() {
       {/* Header info */}
       <Box bg="bg.subtle" borderWidth="1px" borderRadius="lg" p={4}>
         <Grid templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }} gap={4}>
-          <Info label={t("purchasing.supplier")} value={supplierName.get(po.supplierId) ?? po.supplierId} />
+          <Info label={t("purchasing.supplier")} value={supplierRefs.get(po.supplierId)?.name ?? "—"} />
           <Info label={t("purchasing.expectedAt")} value={po.expectedAt ? formatDate(po.expectedAt) : "—"} />
           <Info
             label={t("purchasing.totalOrdered")}
@@ -190,10 +192,11 @@ export default function PurchaseOrderDetail() {
           <Table.Body>
             {po.items.map((it) => (
               <Table.Row key={it.id}>
-                <Table.Cell>{medicineName.get(it.medicineId) ?? it.medicineId.slice(0, 8)}</Table.Cell>
-                <Table.Cell>{it.orderedQty}</Table.Cell>
+                <Table.Cell>{medicineRefs.get(it.medicineId)?.name ?? "—"}</Table.Cell>
+                <Table.Cell>{fmtUnitQty(it.orderedQty, it.unitName, it.unitFactor)}</Table.Cell>
                 <Table.Cell>
-                  {it.receivedQty} / {it.orderedQty}
+                  {fmtUnitQty(it.receivedQty, it.unitName, it.unitFactor)} /{" "}
+                  {fmtUnitQty(it.orderedQty, it.unitName, it.unitFactor)}
                 </Table.Cell>
                 <Table.Cell fontFamily="mono">{formatMoney(Number(it.unitCostPrice))}</Table.Cell>
                 <Table.Cell fontFamily="mono">{formatMoney(Number(it.subtotal))}</Table.Cell>
@@ -245,8 +248,8 @@ export default function PurchaseOrderDetail() {
                   <Table.Body>
                     {r.items.map((it) => (
                       <Table.Row key={it.id}>
-                        <Table.Cell>{medicineName.get(it.medicineId) ?? it.medicineId.slice(0, 8)}</Table.Cell>
-                        <Table.Cell>{it.qty}</Table.Cell>
+                        <Table.Cell>{medicineRefs.get(it.medicineId)?.name ?? "—"}</Table.Cell>
+                        <Table.Cell>{fmtUnitQty(it.qty, it.unitName, it.unitFactor)}</Table.Cell>
                         <Table.Cell>{it.batchNumber || "—"}</Table.Cell>
                         <Table.Cell>{formatDate(it.expiryDate)}</Table.Cell>
                       </Table.Row>
@@ -263,7 +266,7 @@ export default function PurchaseOrderDetail() {
         open={receiveOpen}
         onClose={() => setReceiveOpen(false)}
         po={po}
-        medicineName={medicineName}
+        medicineRefs={medicineRefs}
       />
       <PayDialog open={payOpen} onClose={() => setPayOpen(false)} poId={po.id} outstanding={Number(po.outstanding)} />
 
@@ -299,12 +302,12 @@ function ReceiveDialog({
   open,
   onClose,
   po,
-  medicineName,
+  medicineRefs,
 }: {
   open: boolean;
   onClose: () => void;
   po: PurchaseOrder;
-  medicineName: Map<string, string>;
+  medicineRefs: Map<string, MedicineRef>;
 }) {
   const { t } = useTranslation();
   const createReceipt = useCreateReceiptMutation();
@@ -315,23 +318,33 @@ function ReceiveDialog({
 
   type LineDraft = {
     purchaseOrderItemId: string;
-    qty: number;
-    unitCostPrice: number;
+    qty: number; // in the PO line's purchasable unit
+    unitCostPrice: number; // per BASE unit (override; default = PO line's)
     batchNumber: string;
     expiryDate: string;
-    remaining: number;
+    remaining: number; // in the purchasable unit
+    unitName: string;
+    unitFactor: number;
+    medicineUnitId: string;
   };
   const initialLines = (items: PurchaseOrderItem[]): LineDraft[] =>
     items
       .filter((it) => it.receivedQty < it.orderedQty)
-      .map((it) => ({
-        purchaseOrderItemId: it.id,
-        qty: it.orderedQty - it.receivedQty,
-        unitCostPrice: Number(it.unitCostPrice),
-        batchNumber: "",
-        expiryDate: "",
-        remaining: it.orderedQty - it.receivedQty,
-      }));
+      .map((it) => {
+        const factor = Number(it.unitFactor) || 1;
+        const remainingUnit = (it.orderedQty - it.receivedQty) / factor;
+        return {
+          purchaseOrderItemId: it.id,
+          qty: remainingUnit,
+          unitCostPrice: Number(it.unitCostPrice),
+          batchNumber: "",
+          expiryDate: "",
+          remaining: remainingUnit,
+          unitName: it.unitName,
+          unitFactor: factor,
+          medicineUnitId: it.medicineUnitId,
+        };
+      });
   const [lines, setLines] = useState<LineDraft[]>(() => initialLines(po.items));
 
   // Reset when opening for a different PO.
@@ -358,6 +371,7 @@ function ReceiveDialog({
             unitCostPrice: BigInt(l.unitCostPrice),
             batchNumber: l.batchNumber,
             expiryDate: l.expiryDate,
+            medicineUnitId: l.medicineUnitId,
           })),
       });
       toast.success(t("purchasing.receipt") + " ✓");
@@ -423,34 +437,38 @@ function ReceiveDialog({
                       return (
                         <Table.Row key={l.purchaseOrderItemId}>
                           <Table.Cell>
-                            {poItem ? medicineName.get(poItem.medicineId) ?? poItem.medicineId.slice(0, 8) : "?"}
+                            {poItem ? medicineRefs.get(poItem.medicineId)?.name ?? "—" : "—"}
                             <Text fontSize="xs" color="fg.muted">
-                              remaining: {l.remaining}
+                              {t("purchasing.remaining")}: {l.remaining} {l.unitName}
                             </Text>
                           </Table.Cell>
                           <Table.Cell>
-                            <Input
-                              size="sm"
-                              type="number"
-                              value={l.qty}
-                              onChange={(e) =>
-                                updateLine(idx, { qty: parseInt(e.target.value, 10) || 0 })
-                              }
-                              w="80px"
-                              max={l.remaining}
-                            />
+                            <HStack gap={1}>
+                              <Input
+                                size="sm"
+                                type="number"
+                                value={l.qty}
+                                onChange={(e) =>
+                                  updateLine(idx, { qty: parseInt(e.target.value, 10) || 0 })
+                                }
+                                w="70px"
+                                max={l.remaining}
+                              />
+                              {l.unitFactor > 1 && (
+                                <Text fontSize="xs" color="fg.muted">
+                                  {l.unitName}
+                                </Text>
+                              )}
+                            </HStack>
                           </Table.Cell>
                           <Table.Cell>
-                            <Input
+                            <MoneyInput
                               size="sm"
-                              type="number"
+                              width="120px"
                               value={l.unitCostPrice}
-                              onChange={(e) =>
-                                updateLine(idx, {
-                                  unitCostPrice: parseInt(e.target.value, 10) || 0,
-                                })
+                              onChange={(raw) =>
+                                updateLine(idx, { unitCostPrice: Number(raw || 0) })
                               }
-                              w="120px"
                             />
                           </Table.Cell>
                           <Table.Cell>
@@ -557,11 +575,7 @@ function PayDialog({
                   <Text fontSize="xs" color="fg.muted" mb={1}>
                     {t("purchasing.amount")}
                   </Text>
-                  <Input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
+                  <MoneyInput value={amount} onChange={setAmount} />
                 </Box>
                 <Box>
                   <Text fontSize="xs" color="fg.muted" mb={1}>
@@ -586,6 +600,14 @@ function PayDialog({
       </Portal>
     </Dialog.Root>
   );
+}
+
+// fmtUnitQty renders a BASE-unit quantity in its purchasable unit, e.g.
+// (500, "box", 100n) -> "5 box". Falls back to the bare number when no unit.
+function fmtUnitQty(qty: number, unitName: string, factor: bigint): string {
+  const f = Number(factor) || 1;
+  const q = f > 1 ? qty / f : qty;
+  return unitName ? `${q} ${unitName}` : String(q);
 }
 
 function statusKey(s: POStatus): string {

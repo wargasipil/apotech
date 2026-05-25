@@ -21,13 +21,17 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, Lock, LogOut, Plus, Search, Trash2, UserRound, Warehouse as WarehouseIcon, X } from "lucide-react";
+import { FileText, Lock, LogOut, Minus, Plus, Search, Trash2, UserRound, Warehouse as WarehouseIcon, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { Medicine } from "../gen/inventory_iface/v1/medicine_pb";
-import { PaymentSource, Sale } from "../gen/pos_iface/v1/sale_pb";
+import EnumSelect from "../components/EnumSelect";
+import MoneyInput from "../components/MoneyInput";
+import WarehouseSelect from "../components/WarehouseSelect";
+import { Medicine, type MedicineUnit } from "../gen/inventory_iface/v1/medicine_pb";
+import { PaymentSource, Sale, SaleStatus, type SaleItem } from "../gen/pos_iface/v1/sale_pb";
 import { Customer } from "../gen/customer_iface/v1/customer_pb";
+import { saleClient } from "../lib/clients";
 import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toaster";
 import { useAuth } from "../lib/auth";
@@ -48,7 +52,6 @@ import {
   useSetItemQuantityMutation,
   useSetSaleCustomerMutation,
   useStartSaleMutation,
-  useVoidSaleMutation,
 } from "../queries/sales";
 
 export default function Pos() {
@@ -66,7 +69,6 @@ export default function Pos() {
   const attachRx = useAttachPrescriptionMutation();
   const detachRx = useDetachPrescriptionMutation();
   const completeSale = useCompleteSaleMutation();
-  const voidSale = useVoidSaleMutation();
 
   const [sale, setSale] = useState<Sale | null>(null);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -76,7 +78,7 @@ export default function Pos() {
   // we open the picker filtered to that medicine and defer the AddItem call.
   // The AttachPrescription -> AddItem chain runs in `onAttachRx` once the
   // cashier picks an Rx. Reset to null whenever the picker closes.
-  const [pendingAddMedicineId, setPendingAddMedicineId] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<{ medicineId: string; unitId: string } | null>(null);
   const [paymentSource, setPaymentSource] = useState<PaymentSource>(
     PaymentSource.CASH,
   );
@@ -93,6 +95,25 @@ export default function Pos() {
     }
   }, [sale, startSale]);
 
+  // Discard an abandoned cart when leaving POS. The active `sale` is always a
+  // DRAFT (doComplete nulls it on completion), so deleting it on unmount cleans
+  // up in-progress carts that never completed — they vanish entirely (no VOIDED
+  // trace, never reach order history). Best-effort: raw client call with errors
+  // swallowed (no global error toast). saleRef mirrors `sale` so the mount-once
+  // cleanup reads the latest value.
+  const saleRef = useRef<Sale | null>(null);
+  useEffect(() => {
+    saleRef.current = sale;
+  }, [sale]);
+  useEffect(() => {
+    return () => {
+      const s = saleRef.current;
+      if (s && s.status === SaleStatus.DRAFT) {
+        void saleClient.discardSale({ saleId: s.id }).catch(() => {});
+      }
+    };
+  }, []);
+
   // --- Warehouse gate: pick the selling warehouse before POS opens ----
   // POS is full-screen (no TopBar selector), so the cashier chooses the active
   // warehouse here. Auto-skipped when they have <=1 warehouse or one is already
@@ -100,6 +121,9 @@ export default function Pos() {
   // warehouse only). "Change warehouse" clears the choice to re-open the gate.
   const myWarehousesQ = useMyWarehousesQuery();
   const [gateDone, setGateDone] = useState(false);
+  const [currentWarehouse, setCurrentWarehouse] = useState<string>(
+    () => localStorage.getItem(WAREHOUSE_KEY) ?? "",
+  );
   const warehouses = myWarehousesQ.data?.warehouses ?? [];
 
   useEffect(() => {
@@ -112,11 +136,13 @@ export default function Pos() {
     }
     const persisted = localStorage.getItem(WAREHOUSE_KEY);
     if (persisted && data.warehouses.some((w) => w.id === persisted)) {
+      setCurrentWarehouse(persisted);
       setGateDone(true);
       return;
     }
     if (data.warehouses.length === 1) {
       localStorage.setItem(WAREHOUSE_KEY, data.warehouses[0].id);
+      setCurrentWarehouse(data.warehouses[0].id);
       setGateDone(true);
     }
     // else: multiple warehouses + nothing chosen yet -> show the gate.
@@ -125,26 +151,32 @@ export default function Pos() {
   const confirmWarehouse = useCallback((id: string) => {
     const prev = localStorage.getItem(WAREHOUSE_KEY);
     localStorage.setItem(WAREHOUSE_KEY, id);
+    setCurrentWarehouse(id);
     // Refetch warehouse-scoped data with the new header — no full reload.
     if (prev !== id) void queryClient.invalidateQueries();
     setGateDone(true);
   }, [queryClient]);
 
   const activeWarehouseName =
-    warehouses.find((w) => w.id === localStorage.getItem(WAREHOUSE_KEY))?.name ?? "";
+    warehouses.find((w) => w.id === currentWarehouse)?.name ?? "";
 
-  const changeWarehouse = useCallback(async () => {
-    if (sale) {
-      try {
-        await voidSale.mutateAsync({ saleId: sale.id });
-      } catch {
-        /* */
+  // Switch the selling warehouse in place from the header picker. Stock is
+  // per-warehouse, so the in-progress DRAFT cart is discarded (deleted, not
+  // voided); the next add lazily starts a fresh draft stamped with the new
+  // warehouse. Best-effort discard: raw client call, errors swallowed.
+  const switchWarehouse = useCallback(
+    async (id: string) => {
+      if (id === currentWarehouse) return;
+      if (sale) {
+        await saleClient.discardSale({ saleId: sale.id }).catch(() => {});
+        setSale(null);
       }
-      setSale(null);
-    }
-    localStorage.removeItem(WAREHOUSE_KEY);
-    setGateDone(false);
-  }, [sale, voidSale]);
+      localStorage.setItem(WAREHOUSE_KEY, id);
+      setCurrentWarehouse(id);
+      void queryClient.invalidateQueries();
+    },
+    [currentWarehouse, sale, queryClient],
+  );
 
   useEffect(() => {
     void ensureSale();
@@ -170,36 +202,52 @@ export default function Pos() {
   const [highlight, setHighlight] = useState(0);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  const filtered = useMemo(() => {
-    const all = medicinesQ.rows;
-    if (!query.trim()) return all.slice(0, 30);
-    const q = query.toLowerCase();
-    return all
-      .filter((m) =>
-        [m.sku, m.name, m.manufacturer].some((s) => s.toLowerCase().includes(q)),
-      )
-      .slice(0, 30);
-  }, [query, medicinesQ.rows]);
+  // Each sellable unit of each matching medicine is its own search row, so one
+  // click adds that exact unit. `available` = how many of that unit the current
+  // base stock can make (base ÷ factor).
+  type UnitRow = { med: Medicine; unit: MedicineUnit; available: number };
+  const MAX_ROWS = 40;
+  const unitRows = useMemo<UnitRow[]>(() => {
+    const q = query.trim().toLowerCase();
+    const meds = q
+      ? medicinesQ.rows.filter((m) =>
+          [m.sku, m.name, m.manufacturer].some((s) => s.toLowerCase().includes(q)),
+        )
+      : medicinesQ.rows;
+    const out: UnitRow[] = [];
+    for (const med of meds) {
+      const base = Number(stockByMedicine.get(med.id) ?? 0n);
+      for (const unit of med.units.filter((u) => u.sellable && u.active)) {
+        const factor = Number(unit.factor) || 1;
+        out.push({ med, unit, available: Math.floor(base / factor) });
+        if (out.length >= MAX_ROWS) return out;
+      }
+    }
+    return out;
+  }, [query, medicinesQ.rows, stockByMedicine]);
 
   useEffect(() => {
     setHighlight(0);
   }, [query]);
 
   const onAdd = useCallback(
-    async (medicine: Medicine) => {
+    async (medicine: Medicine, unitId: string, available?: number) => {
       const s = await ensureSale();
       if (!s) return;
-      const stock = Number(stockByMedicine.get(medicine.id) ?? 0n);
-      if (stock <= 0) {
+      const enough =
+        available !== undefined
+          ? available >= 1
+          : Number(stockByMedicine.get(medicine.id) ?? 0n) > 0;
+      if (!enough) {
         toast.error(t("pos.outOfStock"));
         return;
       }
       // Rx-required medicines without an attached prescription: reroute to
       // the picker (filtered to this medicine) instead of letting the
-      // backend reject the add. The actual addItem call happens in
-      // onAttachRx after the cashier picks an Rx.
+      // backend reject the add. The deferred addItem (at the chosen unit)
+      // happens in onAttachRx after the cashier picks an Rx.
       if (medicine.prescriptionRequired && !s.prescriptionId) {
-        setPendingAddMedicineId(medicine.id);
+        setPendingAdd({ medicineId: medicine.id, unitId });
         setRxOpen(true);
         return;
       }
@@ -207,6 +255,7 @@ export default function Pos() {
         const res = await addItem.mutateAsync({
           saleId: s.id,
           medicineId: medicine.id,
+          medicineUnitId: unitId,
           qty: 1,
         });
         if (res.sale) setSale(res.sale);
@@ -222,18 +271,23 @@ export default function Pos() {
   const onSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((h) => Math.min(filtered.length - 1, h + 1));
+      setHighlight((h) => Math.min(unitRows.length - 1, h + 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlight((h) => Math.max(0, h - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      // Barcode scanner: if exact SKU match, add it directly.
+      // Barcode scanner: exact SKU match adds the medicine at its base unit.
       const skuExact = medicinesQ.rows.find(
         (m) => m.sku.toLowerCase() === query.trim().toLowerCase(),
       );
-      const target = skuExact ?? filtered[highlight];
-      if (target) void onAdd(target);
+      if (skuExact) {
+        const baseId = skuExact.units.find((u) => u.isBase)?.id ?? "";
+        void onAdd(skuExact, baseId);
+        return;
+      }
+      const row = unitRows[highlight];
+      if (row) void onAdd(row.med, row.unit.id, row.available);
     } else if (e.key === "Escape") {
       setQuery("");
     }
@@ -291,6 +345,24 @@ export default function Pos() {
     }
   };
 
+  // Switch a cart line's selling unit (box/strip/tablet): remove + re-add at the
+  // new unit, keeping the same numeric qty.
+  const onChangeUnit = async (item: SaleItem, unitId: string) => {
+    if (!sale || unitId === item.medicineUnitId) return;
+    try {
+      await removeItem.mutateAsync({ saleId: sale.id, itemId: item.id });
+      const res = await addItem.mutateAsync({
+        saleId: sale.id,
+        medicineId: item.medicineId,
+        medicineUnitId: unitId,
+        qty: item.qty,
+      });
+      if (res.sale) setSale(res.sale);
+    } catch {
+      /* toast handled globally */
+    }
+  };
+
   const onAttachCustomer = async (customerId: string) => {
     if (!sale) return;
     try {
@@ -320,7 +392,7 @@ export default function Pos() {
 
   const onAttachRx = async (prescriptionId: string) => {
     if (!sale) return;
-    const pendingMedicineId = pendingAddMedicineId;
+    const pending = pendingAdd;
     try {
       const attachRes = await attachRx.mutateAsync({
         saleId: sale.id,
@@ -329,15 +401,16 @@ export default function Pos() {
       if (attachRes.sale) setSale(attachRes.sale);
       setRxOpen(false);
       // Pending-add chain: after a successful attach triggered by clicking
-      // an Rx-required medicine, fire the deferred addItem. If addItem
-      // fails (e.g., remaining qty insufficient), the Rx stays attached —
-      // the cashier sees the addItem error toast and can try another Rx.
-      if (pendingMedicineId) {
-        setPendingAddMedicineId(null);
+      // an Rx-required medicine, fire the deferred addItem at the chosen
+      // unit. If addItem fails (e.g., remaining qty insufficient), the Rx
+      // stays attached — the cashier sees the error toast and can retry.
+      if (pending) {
+        setPendingAdd(null);
         try {
           const addRes = await addItem.mutateAsync({
             saleId: sale.id,
-            medicineId: pendingMedicineId,
+            medicineId: pending.medicineId,
+            medicineUnitId: pending.unitId,
             qty: 1,
           });
           if (addRes.sale) setSale(addRes.sale);
@@ -348,8 +421,8 @@ export default function Pos() {
         }
       }
     } catch {
-      /* attach error toast surfaces globally; pendingAddMedicineId left set
-         so cashier can retry by closing/reopening the picker */
+      /* attach error toast surfaces globally; pendingAdd left set so the
+         cashier can retry by closing/reopening the picker */
     }
   };
 
@@ -389,17 +462,6 @@ export default function Pos() {
     }
   }, [canComplete, sale, completeSale, paymentSource, paidNum]);
 
-  const onCancelSale = async () => {
-    if (!sale) return;
-    try {
-      await voidSale.mutateAsync({ saleId: sale.id });
-      setSale(null);
-      setQuery("");
-    } catch {
-      /* */
-    }
-  };
-
   const onCloseReceipt = async () => {
     setCompletedSale(null);
     await ensureSale();
@@ -419,26 +481,12 @@ export default function Pos() {
         <Text fontSize="sm" color="fg.muted">
           {t("pos.selectWarehouseHint")}
         </Text>
-        <Stack gap={2} minW="320px" maxH="60vh" overflowY="auto" px={1}>
-          {warehouses.map((w) => (
-            <Button
-              key={w.id}
-              variant="outline"
-              justifyContent="flex-start"
-              colorPalette="blue"
-              flexShrink={0}
-              onClick={() => confirmWarehouse(w.id)}
-            >
-              <WarehouseIcon size={16} />
-              {w.code} · {w.name}
-            </Button>
-          ))}
-          {warehouses.length === 0 && (
-            <Text fontSize="sm" color="fg.muted" textAlign="center">
-              {myWarehousesQ.isLoading ? t("common.loading") : t("common.noResults")}
-            </Text>
-          )}
-        </Stack>
+        <WarehouseSelect
+          value=""
+          onChange={confirmWarehouse}
+          warehouses={warehouses}
+          width="320px"
+        />
         <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
           <LogOut size={16} />
           {t("pos.exit")}
@@ -459,12 +507,20 @@ export default function Pos() {
       >
         <Text fontWeight="semibold">{t("pos.title")}</Text>
         <HStack gap={2}>
-          {activeWarehouseName && (
-            <Button size="xs" variant="subtle" colorPalette="blue" onClick={changeWarehouse}>
+          {warehouses.length > 1 ? (
+            <WarehouseSelect
+              value={currentWarehouse}
+              onChange={switchWarehouse}
+              warehouses={warehouses}
+              size="xs"
+              width="190px"
+            />
+          ) : activeWarehouseName ? (
+            <HStack gap={1} color="fg.muted" px={2}>
               <WarehouseIcon size={14} />
-              {activeWarehouseName}
-            </Button>
-          )}
+              <Text fontSize="xs">{activeWarehouseName}</Text>
+            </HStack>
+          ) : null}
           {user && (
             <Text fontSize="sm" color="fg.muted">
               {user.name || user.email}
@@ -500,9 +556,9 @@ export default function Pos() {
             />
           </Box>
           <Stack gap={1}>
-            {filtered.map((m, i) => {
-              const stock = Number(stockByMedicine.get(m.id) ?? 0n);
-              const out = stock <= 0;
+            {unitRows.map((row, i) => {
+              const { med: m, unit, available } = row;
+              const out = available < 1;
               // Rx-required medicine with no prescription attached yet: dim it
               // with a cue, but keep it clickable — the click auto-opens the
               // prescription picker (handled in onAdd).
@@ -510,7 +566,7 @@ export default function Pos() {
               const active = i === highlight;
               return (
                 <Flex
-                  key={m.id}
+                  key={`${m.id}:${unit.id}`}
                   px={3}
                   py={2}
                   borderRadius="md"
@@ -522,12 +578,15 @@ export default function Pos() {
                   cursor={out ? "not-allowed" : "pointer"}
                   opacity={out ? 0.5 : needsRx ? 0.65 : 1}
                   onMouseEnter={() => setHighlight(i)}
-                  onClick={() => !out && onAdd(m)}
+                  onClick={() => !out && onAdd(m, unit.id, available)}
                 >
                   <Stack gap={0} flex="1">
                     <HStack gap={2}>
                       <Text fontSize="sm" fontWeight="medium">
                         {m.name}
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        · {unit.name}
                       </Text>
                       {m.prescriptionRequired && (
                         <Badge size="xs" colorPalette="red">
@@ -544,16 +603,16 @@ export default function Pos() {
                       )}
                     </HStack>
                     <Text fontSize="xs" color="fg.muted">
-                      {m.sku} · {stock} {t("pos.stock")}
+                      {m.sku} · {available} {unit.name}
                     </Text>
                   </Stack>
                   <Text fontSize="sm" fontFamily="mono">
-                    {formatMoney(m.unitPrice)}
+                    {formatMoney(unit.sellPrice)}
                   </Text>
                 </Flex>
               );
             })}
-            {filtered.length === 0 && (
+            {unitRows.length === 0 && (
               <Text color="fg.muted" fontSize="sm" textAlign="center" py={6}>
                 {t("common.noResults")}
               </Text>
@@ -601,14 +660,45 @@ export default function Pos() {
                         {formatMoney(it.unitPriceSnapshot)}
                       </Text>
                     </Stack>
+                    <IconButton
+                      aria-label="decrease quantity"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => onChangeQty(it.id, it.qty - 1)}
+                    >
+                      <Minus size={14} />
+                    </IconButton>
                     <Input
                       size="sm"
                       type="number"
                       value={it.qty}
                       onChange={(e) => onChangeQty(it.id, parseInt(e.target.value, 10) || 0)}
-                      w="64px"
-                      textAlign="right"
+                      w="48px"
+                      textAlign="center"
                     />
+                    <IconButton
+                      aria-label="increase quantity"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => onChangeQty(it.id, it.qty + 1)}
+                    >
+                      <Plus size={14} />
+                    </IconButton>
+                    {med && med.units.filter((u) => u.sellable && u.active).length > 1 ? (
+                      <EnumSelect
+                        size="sm"
+                        width="84px"
+                        value={it.medicineUnitId}
+                        onChange={(v) => onChangeUnit(it, v)}
+                        items={med.units.filter((u) => u.sellable && u.active)}
+                        itemToString={(u) => u.name}
+                        itemToValue={(u) => u.id}
+                      />
+                    ) : (
+                      <Text fontSize="xs" color="fg.muted" w="84px">
+                        {it.unitName || med?.unit}
+                      </Text>
+                    )}
                     <Text fontSize="sm" fontFamily="mono" w="80px" textAlign="right">
                       {formatMoney(it.lineTotal)}
                     </Text>
@@ -674,12 +764,10 @@ export default function Pos() {
                 <Stack gap={1}>
                   <HStack>
                     <Text fontSize="xs" color="fg.muted" minW="56px">{t("pos.paid")}</Text>
-                    <Input
+                    <MoneyInput
                       size="sm"
-                      type="number"
-                      inputMode="numeric"
                       value={paidAmount}
-                      onChange={(e) => setPaidAmount(e.target.value)}
+                      onChange={setPaidAmount}
                     />
                   </HStack>
                   <Flex justify="space-between">
@@ -693,16 +781,8 @@ export default function Pos() {
 
               <HStack gap={2} pt={2}>
                 <Button
-                  variant="outline"
-                  flex="1"
-                  onClick={onCancelSale}
-                  disabled={!sale}
-                >
-                  {t("pos.cancel")}
-                </Button>
-                <Button
                   colorPalette="blue"
-                  flex="2"
+                  flex="1"
                   onClick={doComplete}
                   disabled={!canComplete}
                   loading={completeSale.isPending}
@@ -730,11 +810,11 @@ export default function Pos() {
       <PrescriptionPickerDialog
         open={rxOpen}
         customerId={sale?.customerId ?? ""}
-        requiredMedicineId={pendingAddMedicineId}
+        requiredMedicineId={pendingAdd?.medicineId ?? null}
         medById={medById}
         onClose={() => {
           setRxOpen(false);
-          setPendingAddMedicineId(null);
+          setPendingAdd(null);
         }}
         onPick={onAttachRx}
       />
@@ -1066,7 +1146,9 @@ function ReceiptDialog({ sale, onClose }: { sale: Sale | null; onClose: () => vo
                   {sale.items.map((it) => (
                     <Flex key={it.id} justify="space-between" gap={2}>
                       <Text fontSize="sm" flex="1">
-                        {it.qty}× {medById.get(it.medicineId)?.name ?? it.medicineId.slice(0, 8)}
+                        {it.qty}
+                        {it.unitName ? ` ${it.unitName}` : ""}×{" "}
+                        {medById.get(it.medicineId)?.name ?? it.medicineId.slice(0, 8)}
                       </Text>
                       <Text fontSize="sm">{formatMoney(it.lineTotal)}</Text>
                     </Flex>

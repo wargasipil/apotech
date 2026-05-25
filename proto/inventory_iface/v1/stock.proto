@@ -53,6 +53,9 @@ message ListMovementsRequest {
   int32 limit = 3;
   int32 offset = 4;
   string medicine_id = 5;   // optional: all movements for a medicine's batches
+  string query = 6;         // ILIKE batch_number / medicine name / sku
+  int64 from_unix = 7;      // created_at range lower bound (0 = unbounded)
+  int64 to_unix = 8;        // created_at range upper bound (exclusive; 0 = unbounded)
 }
 message ListMovementsResponse {
   repeated StockMovement movements = 1;

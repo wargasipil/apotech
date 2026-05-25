@@ -266,8 +266,13 @@ type PurchaseOrderItem struct {
 	Subtotal        int64                  `protobuf:"varint,7,opt,name=subtotal,proto3" json:"subtotal,omitempty"`                            // ordered_qty * unit_cost_price
 	MedicineName    string                 `protobuf:"bytes,8,opt,name=medicine_name,json=medicineName,proto3" json:"medicine_name,omitempty"` // denormalized for list display
 	MedicineSku     string                 `protobuf:"bytes,9,opt,name=medicine_sku,json=medicineSku,proto3" json:"medicine_sku,omitempty"`    // denormalized for list display
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// ordered_qty / received_qty are in BASE units; these describe the purchasable
+	// unit the line was ordered in (for display / entry). unit_factor = base per 1.
+	MedicineUnitId string `protobuf:"bytes,10,opt,name=medicine_unit_id,json=medicineUnitId,proto3" json:"medicine_unit_id,omitempty"`
+	UnitName       string `protobuf:"bytes,11,opt,name=unit_name,json=unitName,proto3" json:"unit_name,omitempty"`
+	UnitFactor     int64  `protobuf:"varint,12,opt,name=unit_factor,json=unitFactor,proto3" json:"unit_factor,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PurchaseOrderItem) Reset() {
@@ -363,13 +368,35 @@ func (x *PurchaseOrderItem) GetMedicineSku() string {
 	return ""
 }
 
+func (x *PurchaseOrderItem) GetMedicineUnitId() string {
+	if x != nil {
+		return x.MedicineUnitId
+	}
+	return ""
+}
+
+func (x *PurchaseOrderItem) GetUnitName() string {
+	if x != nil {
+		return x.UnitName
+	}
+	return ""
+}
+
+func (x *PurchaseOrderItem) GetUnitFactor() int64 {
+	if x != nil {
+		return x.UnitFactor
+	}
+	return 0
+}
+
 type PurchaseOrderItemInput struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MedicineId    string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
-	OrderedQty    int32                  `protobuf:"varint,2,opt,name=ordered_qty,json=orderedQty,proto3" json:"ordered_qty,omitempty"`
-	UnitCostPrice int64                  `protobuf:"varint,3,opt,name=unit_cost_price,json=unitCostPrice,proto3" json:"unit_cost_price,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MedicineId     string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
+	OrderedQty     int32                  `protobuf:"varint,2,opt,name=ordered_qty,json=orderedQty,proto3" json:"ordered_qty,omitempty"`              // qty in the chosen purchasable unit (empty unit_id => base)
+	UnitCostPrice  int64                  `protobuf:"varint,3,opt,name=unit_cost_price,json=unitCostPrice,proto3" json:"unit_cost_price,omitempty"`   // per BASE unit (frontend derives from line total)
+	MedicineUnitId string                 `protobuf:"bytes,4,opt,name=medicine_unit_id,json=medicineUnitId,proto3" json:"medicine_unit_id,omitempty"` // purchasable unit; empty => base unit
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PurchaseOrderItemInput) Reset() {
@@ -421,6 +448,13 @@ func (x *PurchaseOrderItemInput) GetUnitCostPrice() int64 {
 		return x.UnitCostPrice
 	}
 	return 0
+}
+
+func (x *PurchaseOrderItemInput) GetMedicineUnitId() string {
+	if x != nil {
+		return x.MedicineUnitId
+	}
+	return ""
 }
 
 type ListPurchaseOrdersRequest struct {
@@ -1102,7 +1136,7 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\vreceived_at\x18\x10 \x01(\x03R\n" +
 	"receivedAt\x12\x1d\n" +
 	"\n" +
-	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\"\xc0\x02\n" +
+	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\"\xa8\x03\n" +
 	"\x11PurchaseOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11purchase_order_id\x18\x02 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +
@@ -1114,13 +1148,19 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\x0funit_cost_price\x18\x06 \x01(\x03R\runitCostPrice\x12\x1a\n" +
 	"\bsubtotal\x18\a \x01(\x03R\bsubtotal\x12#\n" +
 	"\rmedicine_name\x18\b \x01(\tR\fmedicineName\x12!\n" +
-	"\fmedicine_sku\x18\t \x01(\tR\vmedicineSku\"\x82\x01\n" +
+	"\fmedicine_sku\x18\t \x01(\tR\vmedicineSku\x12(\n" +
+	"\x10medicine_unit_id\x18\n" +
+	" \x01(\tR\x0emedicineUnitId\x12\x1b\n" +
+	"\tunit_name\x18\v \x01(\tR\bunitName\x12\x1f\n" +
+	"\vunit_factor\x18\f \x01(\x03R\n" +
+	"unitFactor\"\xac\x01\n" +
 	"\x16PurchaseOrderItemInput\x12\x1f\n" +
 	"\vmedicine_id\x18\x01 \x01(\tR\n" +
 	"medicineId\x12\x1f\n" +
 	"\vordered_qty\x18\x02 \x01(\x05R\n" +
 	"orderedQty\x12&\n" +
-	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\"\xb7\x02\n" +
+	"\x0funit_cost_price\x18\x03 \x01(\x03R\runitCostPrice\x12(\n" +
+	"\x10medicine_unit_id\x18\x04 \x01(\tR\x0emedicineUnitId\"\xb7\x02\n" +
 	"\x19ListPurchaseOrdersRequest\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.purchasing_iface.v1.POStatusR\x06status\x12\x1f\n" +
 	"\vsupplier_id\x18\x02 \x01(\tR\n" +

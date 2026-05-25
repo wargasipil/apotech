@@ -39,10 +39,10 @@ test.describe("SearchableSelect (async loadOptions)", () => {
     expect(rpcs.filter((u) => SEARCH.test(u)).length).toBeGreaterThanOrEqual(1);
 
     // Type a query into the supplier combobox; debounced loadOptions fires
-    // another search. A SearchableSelect renders an <input role=combobox>;
-    // target that (the TopBar warehouse selector is a <button role=combobox>).
+    // another search. Target it by placeholder — `.first()` over all comboboxes
+    // is fragile as the page chrome evolves (e.g. the warehouse picker).
     const beforeType = rpcs.filter((u) => SEARCH.test(u)).length;
-    await page.locator('input[role="combobox"]').first().fill("a");
+    await page.getByPlaceholder("Select supplier").fill("a");
     await page.waitForTimeout(700);
     expect(rpcs.filter((u) => SEARCH.test(u)).length).toBeGreaterThan(beforeType);
   });

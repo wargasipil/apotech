@@ -26,7 +26,7 @@ import { toast } from "../../lib/toaster";
 import { useBatchesQuery } from "../../queries/batches";
 import {
   useArchiveMedicineMutation,
-  useMedicinePricesQuery,
+  useMedicineUnitPricesQuery,
   useMedicineQuery,
 } from "../../queries/medicines";
 import { useMovementsQuery } from "../../queries/stock";
@@ -55,8 +55,8 @@ export default function MedicineDetail() {
 
   const medQ = useMedicineQuery(id);
   const archive = useArchiveMedicineMutation();
-  const pricesQ = useMedicinePricesQuery(id, !!id);
-  const batchesQ = useBatchesQuery({ medicineId: id, pageSize: ALL_LIMIT });
+  const unitPricesQ = useMedicineUnitPricesQuery(id, !!id);
+  const batchesQ = useBatchesQuery({ medicineId: id, onlyInStock: true, pageSize: ALL_LIMIT });
   const movementsQ = useMovementsQuery({ medicineId: id, pageSize: 10 });
 
   if (medQ.isLoading) {
@@ -134,7 +134,6 @@ export default function MedicineDetail() {
               value={med.onOrderStock > 0n ? med.onOrderStock.toString() : "—"}
               muted
             />
-            <Tile label={t("inventory.medicines.totalStock")} value={med.totalStock.toString()} />
             <Tile
               label={t("inventory.medicines.stockValuation")}
               value={formatMoney(med.stockValuation)}
@@ -156,6 +155,40 @@ export default function MedicineDetail() {
               </Badge>
             </Box>
           </SimpleGrid>
+
+          {/* Units of measure (base + larger packs). */}
+          <Box mt={4}>
+            <Text fontSize="xs" color="fg.muted" mb={2}>
+              {t("inventory.medicines.unitsSection")}
+            </Text>
+            <HStack gap={2} wrap="wrap">
+              {med.units.map((u) => (
+                <HStack
+                  key={u.id}
+                  gap={2}
+                  borderWidth="1px"
+                  borderRadius="md"
+                  px={3}
+                  py={1.5}
+                  bg="bg.subtle"
+                >
+                  <Text fontWeight="medium">{u.name}</Text>
+                  {u.isBase ? (
+                    <Badge size="sm" colorPalette="blue">
+                      {t("inventory.medicines.baseUnit")}
+                    </Badge>
+                  ) : (
+                    <Text fontSize="xs" color="fg.muted">
+                      ×{u.factor.toString()}
+                    </Text>
+                  )}
+                  <Text fontSize="sm" color="fg.muted">
+                    {formatMoney(u.sellPrice)}
+                  </Text>
+                </HStack>
+              ))}
+            </HStack>
+          </Box>
         </Box>
 
         {/* Batches / Price history / Movements as tabs */}
@@ -204,7 +237,7 @@ export default function MedicineDetail() {
           </Tabs.Content>
 
           <Tabs.Content value="prices">
-          {!pricesQ.data || pricesQ.data.length === 0 ? (
+          {!unitPricesQ.data || unitPricesQ.data.length === 0 ? (
             <Text fontSize="sm" color="fg.muted">
               {t("inventory.medicines.priceHistoryEmpty")}
             </Text>
@@ -212,21 +245,23 @@ export default function MedicineDetail() {
             <Table.Root size="sm" bg="bg.subtle" borderWidth="1px" borderRadius="lg">
               <Table.Header bg="bg.muted">
                 <Table.Row>
+                  <Table.ColumnHeader>{t("inventory.medicines.priceHistoryUnitCol")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("inventory.medicines.priceFrom")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("inventory.medicines.priceTo")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("inventory.medicines.pricePrice")}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {pricesQ.data.map((p) => (
+                {unitPricesQ.data.map((p) => (
                   <Table.Row key={p.id}>
+                    <Table.Cell>{p.unitName}</Table.Cell>
                     <Table.Cell>{formatUnix(p.effectiveFrom)}</Table.Cell>
                     <Table.Cell>
                       {p.effectiveTo > 0n
                         ? formatUnix(p.effectiveTo)
                         : t("inventory.medicines.priceCurrent")}
                     </Table.Cell>
-                    <Table.Cell>{formatMoney(p.unitPrice)}</Table.Cell>
+                    <Table.Cell>{formatMoney(p.unitSellPrice)}</Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>

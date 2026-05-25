@@ -27,8 +27,9 @@ import type { Prescription } from "../gen/prescription_iface/v1/prescription_pb"
 import { formatDate } from "../lib/format";
 import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
-import { searchCustomers, useAllCustomersQuery } from "../queries/customers";
+import { searchCustomers } from "../queries/customers";
 import { searchMedicines, useAllMedicinesQuery } from "../queries/medicines";
+import { useCustomerRefs } from "../queries/refs";
 import {
   useCreatePrescriptionMutation,
   usePrescriptionsQuery,
@@ -70,7 +71,6 @@ export default function Prescriptions() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Prescription | null>(null);
 
-  const customersQ = useAllCustomersQuery(false);
   const { page, setPage, pageSize, setPageSize } = usePageState(
     `${statusFilter}|${customerFilter}`,
   );
@@ -82,11 +82,14 @@ export default function Prescriptions() {
   });
   const voidMut = useVoidPrescriptionMutation();
 
-  const customerNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    customersQ.rows.forEach((c) => m.set(c.id, c.name));
-    return m;
-  }, [customersQ.rows]);
+  // Resolve names for the page's prescription customers + the active filter
+  // (resolve-by-IDs; the customer filter searches server-side via loadOptions).
+  const customerRefs = useCustomerRefs(
+    useMemo(
+      () => [customerFilter, ...rxQ.rows.map((rx) => rx.customerId)],
+      [customerFilter, rxQ.rows],
+    ),
+  );
 
   return (
     <Box>
@@ -133,7 +136,7 @@ export default function Prescriptions() {
             loadOptions={searchCustomers}
             itemToString={(c) => c.name}
             itemToValue={(c) => c.id}
-            selectedLabel={customerNameById.get(customerFilter)}
+            selectedLabel={customerRefs.get(customerFilter)?.name}
             placeholder={t("prescriptions.filterAll")}
           />
         </Box>
@@ -163,7 +166,7 @@ export default function Prescriptions() {
               return (
                 <Table.Row key={rx.id}>
                   <Table.Cell fontFamily="mono">{rx.rxNo}</Table.Cell>
-                  <Table.Cell>{customerNameById.get(rx.customerId) ?? rx.customerId}</Table.Cell>
+                  <Table.Cell>{customerRefs.get(rx.customerId)?.name ?? "—"}</Table.Cell>
                   <Table.Cell>{rx.issuerName}</Table.Cell>
                   <Table.Cell>{rx.issuedAt}</Table.Cell>
                   <Table.Cell>{rx.expiresAt}</Table.Cell>
@@ -247,7 +250,6 @@ function PrescriptionDrawer({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const customersQ = useAllCustomersQuery(false);
   const medicinesQ = useAllMedicinesQuery(false);
   const createMut = useCreatePrescriptionMutation();
   const updateMut = useUpdatePrescriptionMutation();
@@ -266,6 +268,11 @@ function PrescriptionDrawer({
           note: it.note,
         }))
       : [emptyLine],
+  );
+
+  // Resolve the selected customer's name for the trigger label (resolve-by-IDs).
+  const customerRefs = useCustomerRefs(
+    useMemo(() => (customerId ? [customerId] : []), [customerId]),
   );
 
   // Reset form when the drawer opens or the editing target changes.
@@ -357,9 +364,7 @@ function PrescriptionDrawer({
             loadOptions={searchCustomers}
             itemToString={(c) => c.name}
             itemToValue={(c) => c.id}
-            selectedLabel={
-              customersQ.rows.find((c) => c.id === customerId)?.name
-            }
+            selectedLabel={customerRefs.get(customerId)?.name}
             placeholder={t("prescriptions.selectCustomer")}
           />
         </Box>

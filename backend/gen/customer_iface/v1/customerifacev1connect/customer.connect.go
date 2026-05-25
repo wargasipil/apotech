@@ -42,6 +42,9 @@ const (
 	// CustomerServiceSearchCustomersProcedure is the fully-qualified name of the CustomerService's
 	// SearchCustomers RPC.
 	CustomerServiceSearchCustomersProcedure = "/customer_iface.v1.CustomerService/SearchCustomers"
+	// CustomerServiceResolveCustomersProcedure is the fully-qualified name of the CustomerService's
+	// ResolveCustomers RPC.
+	CustomerServiceResolveCustomersProcedure = "/customer_iface.v1.CustomerService/ResolveCustomers"
 	// CustomerServiceCreateCustomerProcedure is the fully-qualified name of the CustomerService's
 	// CreateCustomer RPC.
 	CustomerServiceCreateCustomerProcedure = "/customer_iface.v1.CustomerService/CreateCustomer"
@@ -58,6 +61,9 @@ type CustomerServiceClient interface {
 	ListCustomers(context.Context, *connect.Request[v1.ListCustomersRequest]) (*connect.Response[v1.ListCustomersResponse], error)
 	GetCustomer(context.Context, *connect.Request[v1.GetCustomerRequest]) (*connect.Response[v1.GetCustomerResponse], error)
 	SearchCustomers(context.Context, *connect.Request[v1.SearchCustomersRequest]) (*connect.Response[v1.SearchCustomersResponse], error)
+	// ResolveCustomers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveCustomers(context.Context, *connect.Request[v1.ResolveCustomersRequest]) (*connect.Response[v1.ResolveCustomersResponse], error)
 	CreateCustomer(context.Context, *connect.Request[v1.CreateCustomerRequest]) (*connect.Response[v1.CreateCustomerResponse], error)
 	UpdateCustomer(context.Context, *connect.Request[v1.UpdateCustomerRequest]) (*connect.Response[v1.UpdateCustomerResponse], error)
 	ArchiveCustomer(context.Context, *connect.Request[v1.ArchiveCustomerRequest]) (*connect.Response[v1.ArchiveCustomerResponse], error)
@@ -92,6 +98,12 @@ func NewCustomerServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(customerServiceMethods.ByName("SearchCustomers")),
 			connect.WithClientOptions(opts...),
 		),
+		resolveCustomers: connect.NewClient[v1.ResolveCustomersRequest, v1.ResolveCustomersResponse](
+			httpClient,
+			baseURL+CustomerServiceResolveCustomersProcedure,
+			connect.WithSchema(customerServiceMethods.ByName("ResolveCustomers")),
+			connect.WithClientOptions(opts...),
+		),
 		createCustomer: connect.NewClient[v1.CreateCustomerRequest, v1.CreateCustomerResponse](
 			httpClient,
 			baseURL+CustomerServiceCreateCustomerProcedure,
@@ -115,12 +127,13 @@ func NewCustomerServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // customerServiceClient implements CustomerServiceClient.
 type customerServiceClient struct {
-	listCustomers   *connect.Client[v1.ListCustomersRequest, v1.ListCustomersResponse]
-	getCustomer     *connect.Client[v1.GetCustomerRequest, v1.GetCustomerResponse]
-	searchCustomers *connect.Client[v1.SearchCustomersRequest, v1.SearchCustomersResponse]
-	createCustomer  *connect.Client[v1.CreateCustomerRequest, v1.CreateCustomerResponse]
-	updateCustomer  *connect.Client[v1.UpdateCustomerRequest, v1.UpdateCustomerResponse]
-	archiveCustomer *connect.Client[v1.ArchiveCustomerRequest, v1.ArchiveCustomerResponse]
+	listCustomers    *connect.Client[v1.ListCustomersRequest, v1.ListCustomersResponse]
+	getCustomer      *connect.Client[v1.GetCustomerRequest, v1.GetCustomerResponse]
+	searchCustomers  *connect.Client[v1.SearchCustomersRequest, v1.SearchCustomersResponse]
+	resolveCustomers *connect.Client[v1.ResolveCustomersRequest, v1.ResolveCustomersResponse]
+	createCustomer   *connect.Client[v1.CreateCustomerRequest, v1.CreateCustomerResponse]
+	updateCustomer   *connect.Client[v1.UpdateCustomerRequest, v1.UpdateCustomerResponse]
+	archiveCustomer  *connect.Client[v1.ArchiveCustomerRequest, v1.ArchiveCustomerResponse]
 }
 
 // ListCustomers calls customer_iface.v1.CustomerService.ListCustomers.
@@ -136,6 +149,11 @@ func (c *customerServiceClient) GetCustomer(ctx context.Context, req *connect.Re
 // SearchCustomers calls customer_iface.v1.CustomerService.SearchCustomers.
 func (c *customerServiceClient) SearchCustomers(ctx context.Context, req *connect.Request[v1.SearchCustomersRequest]) (*connect.Response[v1.SearchCustomersResponse], error) {
 	return c.searchCustomers.CallUnary(ctx, req)
+}
+
+// ResolveCustomers calls customer_iface.v1.CustomerService.ResolveCustomers.
+func (c *customerServiceClient) ResolveCustomers(ctx context.Context, req *connect.Request[v1.ResolveCustomersRequest]) (*connect.Response[v1.ResolveCustomersResponse], error) {
+	return c.resolveCustomers.CallUnary(ctx, req)
 }
 
 // CreateCustomer calls customer_iface.v1.CustomerService.CreateCustomer.
@@ -158,6 +176,9 @@ type CustomerServiceHandler interface {
 	ListCustomers(context.Context, *connect.Request[v1.ListCustomersRequest]) (*connect.Response[v1.ListCustomersResponse], error)
 	GetCustomer(context.Context, *connect.Request[v1.GetCustomerRequest]) (*connect.Response[v1.GetCustomerResponse], error)
 	SearchCustomers(context.Context, *connect.Request[v1.SearchCustomersRequest]) (*connect.Response[v1.SearchCustomersResponse], error)
+	// ResolveCustomers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveCustomers(context.Context, *connect.Request[v1.ResolveCustomersRequest]) (*connect.Response[v1.ResolveCustomersResponse], error)
 	CreateCustomer(context.Context, *connect.Request[v1.CreateCustomerRequest]) (*connect.Response[v1.CreateCustomerResponse], error)
 	UpdateCustomer(context.Context, *connect.Request[v1.UpdateCustomerRequest]) (*connect.Response[v1.UpdateCustomerResponse], error)
 	ArchiveCustomer(context.Context, *connect.Request[v1.ArchiveCustomerRequest]) (*connect.Response[v1.ArchiveCustomerResponse], error)
@@ -188,6 +209,12 @@ func NewCustomerServiceHandler(svc CustomerServiceHandler, opts ...connect.Handl
 		connect.WithSchema(customerServiceMethods.ByName("SearchCustomers")),
 		connect.WithHandlerOptions(opts...),
 	)
+	customerServiceResolveCustomersHandler := connect.NewUnaryHandler(
+		CustomerServiceResolveCustomersProcedure,
+		svc.ResolveCustomers,
+		connect.WithSchema(customerServiceMethods.ByName("ResolveCustomers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	customerServiceCreateCustomerHandler := connect.NewUnaryHandler(
 		CustomerServiceCreateCustomerProcedure,
 		svc.CreateCustomer,
@@ -214,6 +241,8 @@ func NewCustomerServiceHandler(svc CustomerServiceHandler, opts ...connect.Handl
 			customerServiceGetCustomerHandler.ServeHTTP(w, r)
 		case CustomerServiceSearchCustomersProcedure:
 			customerServiceSearchCustomersHandler.ServeHTTP(w, r)
+		case CustomerServiceResolveCustomersProcedure:
+			customerServiceResolveCustomersHandler.ServeHTTP(w, r)
 		case CustomerServiceCreateCustomerProcedure:
 			customerServiceCreateCustomerHandler.ServeHTTP(w, r)
 		case CustomerServiceUpdateCustomerProcedure:
@@ -239,6 +268,10 @@ func (UnimplementedCustomerServiceHandler) GetCustomer(context.Context, *connect
 
 func (UnimplementedCustomerServiceHandler) SearchCustomers(context.Context, *connect.Request[v1.SearchCustomersRequest]) (*connect.Response[v1.SearchCustomersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("customer_iface.v1.CustomerService.SearchCustomers is not implemented"))
+}
+
+func (UnimplementedCustomerServiceHandler) ResolveCustomers(context.Context, *connect.Request[v1.ResolveCustomersRequest]) (*connect.Response[v1.ResolveCustomersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("customer_iface.v1.CustomerService.ResolveCustomers is not implemented"))
 }
 
 func (UnimplementedCustomerServiceHandler) CreateCustomer(context.Context, *connect.Request[v1.CreateCustomerRequest]) (*connect.Response[v1.CreateCustomerResponse], error) {

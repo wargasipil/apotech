@@ -51,6 +51,9 @@ const (
 	// SupplierServiceSearchSuppliersProcedure is the fully-qualified name of the SupplierService's
 	// SearchSuppliers RPC.
 	SupplierServiceSearchSuppliersProcedure = "/inventory_iface.v1.SupplierService/SearchSuppliers"
+	// SupplierServiceResolveSuppliersProcedure is the fully-qualified name of the SupplierService's
+	// ResolveSuppliers RPC.
+	SupplierServiceResolveSuppliersProcedure = "/inventory_iface.v1.SupplierService/ResolveSuppliers"
 )
 
 // SupplierServiceClient is a client for the inventory_iface.v1.SupplierService service.
@@ -61,6 +64,9 @@ type SupplierServiceClient interface {
 	UpdateSupplier(context.Context, *connect.Request[v1.UpdateSupplierRequest]) (*connect.Response[v1.UpdateSupplierResponse], error)
 	ArchiveSupplier(context.Context, *connect.Request[v1.ArchiveSupplierRequest]) (*connect.Response[v1.ArchiveSupplierResponse], error)
 	SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error)
+	// ResolveSuppliers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveSuppliers(context.Context, *connect.Request[v1.ResolveSuppliersRequest]) (*connect.Response[v1.ResolveSuppliersResponse], error)
 }
 
 // NewSupplierServiceClient constructs a client for the inventory_iface.v1.SupplierService service.
@@ -110,17 +116,24 @@ func NewSupplierServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(supplierServiceMethods.ByName("SearchSuppliers")),
 			connect.WithClientOptions(opts...),
 		),
+		resolveSuppliers: connect.NewClient[v1.ResolveSuppliersRequest, v1.ResolveSuppliersResponse](
+			httpClient,
+			baseURL+SupplierServiceResolveSuppliersProcedure,
+			connect.WithSchema(supplierServiceMethods.ByName("ResolveSuppliers")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // supplierServiceClient implements SupplierServiceClient.
 type supplierServiceClient struct {
-	listSuppliers   *connect.Client[v1.ListSuppliersRequest, v1.ListSuppliersResponse]
-	getSupplier     *connect.Client[v1.GetSupplierRequest, v1.GetSupplierResponse]
-	createSupplier  *connect.Client[v1.CreateSupplierRequest, v1.CreateSupplierResponse]
-	updateSupplier  *connect.Client[v1.UpdateSupplierRequest, v1.UpdateSupplierResponse]
-	archiveSupplier *connect.Client[v1.ArchiveSupplierRequest, v1.ArchiveSupplierResponse]
-	searchSuppliers *connect.Client[v1.SearchSuppliersRequest, v1.SearchSuppliersResponse]
+	listSuppliers    *connect.Client[v1.ListSuppliersRequest, v1.ListSuppliersResponse]
+	getSupplier      *connect.Client[v1.GetSupplierRequest, v1.GetSupplierResponse]
+	createSupplier   *connect.Client[v1.CreateSupplierRequest, v1.CreateSupplierResponse]
+	updateSupplier   *connect.Client[v1.UpdateSupplierRequest, v1.UpdateSupplierResponse]
+	archiveSupplier  *connect.Client[v1.ArchiveSupplierRequest, v1.ArchiveSupplierResponse]
+	searchSuppliers  *connect.Client[v1.SearchSuppliersRequest, v1.SearchSuppliersResponse]
+	resolveSuppliers *connect.Client[v1.ResolveSuppliersRequest, v1.ResolveSuppliersResponse]
 }
 
 // ListSuppliers calls inventory_iface.v1.SupplierService.ListSuppliers.
@@ -153,6 +166,11 @@ func (c *supplierServiceClient) SearchSuppliers(ctx context.Context, req *connec
 	return c.searchSuppliers.CallUnary(ctx, req)
 }
 
+// ResolveSuppliers calls inventory_iface.v1.SupplierService.ResolveSuppliers.
+func (c *supplierServiceClient) ResolveSuppliers(ctx context.Context, req *connect.Request[v1.ResolveSuppliersRequest]) (*connect.Response[v1.ResolveSuppliersResponse], error) {
+	return c.resolveSuppliers.CallUnary(ctx, req)
+}
+
 // SupplierServiceHandler is an implementation of the inventory_iface.v1.SupplierService service.
 type SupplierServiceHandler interface {
 	ListSuppliers(context.Context, *connect.Request[v1.ListSuppliersRequest]) (*connect.Response[v1.ListSuppliersResponse], error)
@@ -161,6 +179,9 @@ type SupplierServiceHandler interface {
 	UpdateSupplier(context.Context, *connect.Request[v1.UpdateSupplierRequest]) (*connect.Response[v1.UpdateSupplierResponse], error)
 	ArchiveSupplier(context.Context, *connect.Request[v1.ArchiveSupplierRequest]) (*connect.Response[v1.ArchiveSupplierResponse], error)
 	SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error)
+	// ResolveSuppliers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; never a full-list preload).
+	ResolveSuppliers(context.Context, *connect.Request[v1.ResolveSuppliersRequest]) (*connect.Response[v1.ResolveSuppliersResponse], error)
 }
 
 // NewSupplierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -206,6 +227,12 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 		connect.WithSchema(supplierServiceMethods.ByName("SearchSuppliers")),
 		connect.WithHandlerOptions(opts...),
 	)
+	supplierServiceResolveSuppliersHandler := connect.NewUnaryHandler(
+		SupplierServiceResolveSuppliersProcedure,
+		svc.ResolveSuppliers,
+		connect.WithSchema(supplierServiceMethods.ByName("ResolveSuppliers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/inventory_iface.v1.SupplierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SupplierServiceListSuppliersProcedure:
@@ -220,6 +247,8 @@ func NewSupplierServiceHandler(svc SupplierServiceHandler, opts ...connect.Handl
 			supplierServiceArchiveSupplierHandler.ServeHTTP(w, r)
 		case SupplierServiceSearchSuppliersProcedure:
 			supplierServiceSearchSuppliersHandler.ServeHTTP(w, r)
+		case SupplierServiceResolveSuppliersProcedure:
+			supplierServiceResolveSuppliersHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -251,4 +280,8 @@ func (UnimplementedSupplierServiceHandler) ArchiveSupplier(context.Context, *con
 
 func (UnimplementedSupplierServiceHandler) SearchSuppliers(context.Context, *connect.Request[v1.SearchSuppliersRequest]) (*connect.Response[v1.SearchSuppliersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.SupplierService.SearchSuppliers is not implemented"))
+}
+
+func (UnimplementedSupplierServiceHandler) ResolveSuppliers(context.Context, *connect.Request[v1.ResolveSuppliersRequest]) (*connect.Response[v1.ResolveSuppliersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.SupplierService.ResolveSuppliers is not implemented"))
 }

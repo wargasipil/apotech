@@ -24,6 +24,7 @@ type Receipt struct {
 
 type ReceiptLine struct {
 	Qty       int32
+	UnitName  string // selling unit (e.g. "strip"); empty for legacy/base-only lines
 	Name      string
 	LineTotal int64
 }
@@ -81,6 +82,9 @@ func Render(r Receipt, s Settings) []byte {
 	// Items.
 	for _, it := range r.Items {
 		title := fmt.Sprintf("%d x %s", it.Qty, it.Name)
+		if it.UnitName != "" {
+			title = fmt.Sprintf("%d %s x %s", it.Qty, it.UnitName, it.Name)
+		}
 		amount := formatIDR(it.LineTotal)
 		b.Line(twoCol(s.Width, title, amount))
 	}

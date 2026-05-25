@@ -111,11 +111,23 @@ func (p *PurchaseReceipts) CreateReceipt(
 				return connect.NewError(connect.CodeInternal, err)
 			}
 
+			// Resolve the purchasable unit (default to the PO line's unit) and
+			// convert the entered qty to BASE units for all stock math.
+			unitID := line.MedicineUnitId
+			if unitID == "" && poItem.MedicineUnitID != nil {
+				unitID = *poItem.MedicineUnitID
+			}
+			unit, err := resolvePurchaseUnit(tx, poItem.MedicineID, unitID)
+			if err != nil {
+				return err
+			}
+			baseQty := line.Qty * int32(unit.Factor)
+
 			remaining := poItem.OrderedQty - poItem.ReceivedQty
-			if line.Qty > remaining {
+			if baseQty > remaining {
 				return connect.NewError(connect.CodeFailedPrecondition,
-					fmt.Errorf("line qty %d exceeds remaining %d for medicine %s",
-						line.Qty, remaining, poItem.MedicineID))
+					fmt.Errorf("line qty %d %s (%d base) exceeds remaining %d base for medicine %s",
+						line.Qty, unit.Name, baseQty, remaining, poItem.MedicineID))
 			}
 
 			unitCost := line.UnitCostPrice
@@ -141,7 +153,7 @@ func (p *PurchaseReceipts) CreateReceipt(
 			// PURCHASE stock_movement linked to this batch, into the active warehouse.
 			mv := model.StockMovement{
 				BatchID:     batch.ID,
-				Qty:         line.Qty,
+				Qty:         baseQty,
 				Type:        "PURCHASE",
 				Reason:      fmt.Sprintf("PO %s receipt %s", deref(po.PoNo), receiptNo),
 				UserID:      caller.UserID,
@@ -154,15 +166,19 @@ func (p *PurchaseReceipts) CreateReceipt(
 
 			// Receipt item row linking back to the batch we just created.
 			batchID := batch.ID
+			unitRef := unit.ID
 			rcvItem := model.PurchaseReceiptItem{
 				PurchaseReceiptID:   receipt.ID,
 				PurchaseOrderItemID: poItem.ID,
 				MedicineID:          poItem.MedicineID,
-				Qty:                 line.Qty,
+				Qty:                 baseQty,
 				UnitCostPrice:       unitCost,
 				BatchNumber:         strings.TrimSpace(line.BatchNumber),
 				ExpiryDate:          expiry,
 				BatchID:             &batchID,
+				MedicineUnitID:      &unitRef,
+				UnitName:            unit.Name,
+				UnitFactor:          unit.Factor,
 			}
 			if err := tx.Create(&rcvItem).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
@@ -171,7 +187,7 @@ func (p *PurchaseReceipts) CreateReceipt(
 			// Bump received_qty on the PO item.
 			if err := tx.Model(&model.PurchaseOrderItem{}).
 				Where("id = ?", poItem.ID).
-				Update("received_qty", gorm.Expr("received_qty + ?", line.Qty)).Error; err != nil {
+				Update("received_qty", gorm.Expr("received_qty + ?", baseQty)).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
 		}
@@ -258,6 +274,10 @@ func receiptToProto(r *model.PurchaseReceipt) *purchasingifacev1.PurchaseReceipt
 }
 
 func receiptItemToProto(it *model.PurchaseReceiptItem) *purchasingifacev1.PurchaseReceiptItem {
+	factor := it.UnitFactor
+	if factor < 1 {
+		factor = 1
+	}
 	out := &purchasingifacev1.PurchaseReceiptItem{
 		Id:                  it.ID,
 		PurchaseReceiptId:   it.PurchaseReceiptID,
@@ -267,9 +287,14 @@ func receiptItemToProto(it *model.PurchaseReceiptItem) *purchasingifacev1.Purcha
 		UnitCostPrice:       it.UnitCostPrice,
 		BatchNumber:         it.BatchNumber,
 		ExpiryDate:          it.ExpiryDate.Format("2006-01-02"),
+		UnitName:            it.UnitName,
+		UnitFactor:          factor,
 	}
 	if it.BatchID != nil {
 		out.BatchId = *it.BatchID
+	}
+	if it.MedicineUnitID != nil {
+		out.MedicineUnitId = *it.MedicineUnitID
 	}
 	return out
 }

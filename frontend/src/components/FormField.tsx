@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import type { InputHTMLAttributes } from "react";
 
 import DatePickerField from "./DatePicker";
+import MoneyInput from "./MoneyInput";
 
 type Props<TForm extends FieldValues> = {
   control: Control<TForm>;
@@ -24,6 +25,9 @@ type Props<TForm extends FieldValues> = {
   autoFocus?: boolean;
   // When type="password", render a show/hide eye toggle as the input's end element.
   passwordToggle?: boolean;
+  // When true, render the thousands-grouped MoneyInput (integer money; emits a
+  // raw digit string, so the field's zod schema should be z.coerce.bigint/number).
+  money?: boolean;
 };
 
 export default function FormField<TForm extends FieldValues>(props: Props<TForm>) {
@@ -38,6 +42,7 @@ export default function FormField<TForm extends FieldValues>(props: Props<TForm>
     placeholder,
     autoFocus,
     passwordToggle,
+    money,
   } = props;
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
@@ -58,6 +63,14 @@ export default function FormField<TForm extends FieldValues>(props: Props<TForm>
               value={field.value ?? ""}
               onChange={field.onChange}
               placeholder={placeholder}
+            />
+          ) : money ? (
+            <MoneyInput
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              placeholder={placeholder}
+              autoFocus={autoFocus}
             />
           ) : (
             <Input

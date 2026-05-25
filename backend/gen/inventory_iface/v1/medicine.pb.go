@@ -39,6 +39,7 @@ type Medicine struct {
 	LastRestockSupplier  string                 `protobuf:"bytes,13,opt,name=last_restock_supplier,json=lastRestockSupplier,proto3" json:"last_restock_supplier,omitempty"` // supplier of that batch (GetMedicine only)
 	TotalStock           int64                  `protobuf:"varint,14,opt,name=total_stock,json=totalStock,proto3" json:"total_stock,omitempty"`                             // global on-hand across all warehouses (GetMedicine only)
 	StockValuation       int64                  `protobuf:"varint,15,opt,name=stock_valuation,json=stockValuation,proto3" json:"stock_valuation,omitempty"`                 // global value at cost = Σ qty × cost_price (GetMedicine only)
+	Units                []*MedicineUnit        `protobuf:"bytes,16,rep,name=units,proto3" json:"units,omitempty"`                                                          // units of measure (base + larger packs)
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -178,6 +179,239 @@ func (x *Medicine) GetStockValuation() int64 {
 	return 0
 }
 
+func (x *Medicine) GetUnits() []*MedicineUnit {
+	if x != nil {
+		return x.Units
+	}
+	return nil
+}
+
+// A unit of measure for a medicine. Stock is stored in the base unit (factor 1);
+// larger units convert via `factor` (base units per 1 of this unit).
+type MedicineUnit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	MedicineId    string                 `protobuf:"bytes,2,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Factor        int64                  `protobuf:"varint,4,opt,name=factor,proto3" json:"factor,omitempty"` // base units per 1 of this unit (base = 1)
+	IsBase        bool                   `protobuf:"varint,5,opt,name=is_base,json=isBase,proto3" json:"is_base,omitempty"`
+	SellPrice     int64                  `protobuf:"varint,6,opt,name=sell_price,json=sellPrice,proto3" json:"sell_price,omitempty"` // independent, minor currency
+	Sellable      bool                   `protobuf:"varint,7,opt,name=sellable,proto3" json:"sellable,omitempty"`
+	Purchasable   bool                   `protobuf:"varint,8,opt,name=purchasable,proto3" json:"purchasable,omitempty"` // Phase 2
+	SortOrder     int32                  `protobuf:"varint,9,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	Active        bool                   `protobuf:"varint,10,opt,name=active,proto3" json:"active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MedicineUnit) Reset() {
+	*x = MedicineUnit{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MedicineUnit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MedicineUnit) ProtoMessage() {}
+
+func (x *MedicineUnit) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MedicineUnit.ProtoReflect.Descriptor instead.
+func (*MedicineUnit) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *MedicineUnit) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MedicineUnit) GetMedicineId() string {
+	if x != nil {
+		return x.MedicineId
+	}
+	return ""
+}
+
+func (x *MedicineUnit) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MedicineUnit) GetFactor() int64 {
+	if x != nil {
+		return x.Factor
+	}
+	return 0
+}
+
+func (x *MedicineUnit) GetIsBase() bool {
+	if x != nil {
+		return x.IsBase
+	}
+	return false
+}
+
+func (x *MedicineUnit) GetSellPrice() int64 {
+	if x != nil {
+		return x.SellPrice
+	}
+	return 0
+}
+
+func (x *MedicineUnit) GetSellable() bool {
+	if x != nil {
+		return x.Sellable
+	}
+	return false
+}
+
+func (x *MedicineUnit) GetPurchasable() bool {
+	if x != nil {
+		return x.Purchasable
+	}
+	return false
+}
+
+func (x *MedicineUnit) GetSortOrder() int32 {
+	if x != nil {
+		return x.SortOrder
+	}
+	return 0
+}
+
+func (x *MedicineUnit) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+type MedicineUnitInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // empty = create new
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Factor        int64                  `protobuf:"varint,3,opt,name=factor,proto3" json:"factor,omitempty"`
+	IsBase        bool                   `protobuf:"varint,4,opt,name=is_base,json=isBase,proto3" json:"is_base,omitempty"`
+	SellPrice     int64                  `protobuf:"varint,5,opt,name=sell_price,json=sellPrice,proto3" json:"sell_price,omitempty"`
+	Sellable      bool                   `protobuf:"varint,6,opt,name=sellable,proto3" json:"sellable,omitempty"`
+	Purchasable   bool                   `protobuf:"varint,7,opt,name=purchasable,proto3" json:"purchasable,omitempty"`
+	SortOrder     int32                  `protobuf:"varint,8,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	Active        bool                   `protobuf:"varint,9,opt,name=active,proto3" json:"active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MedicineUnitInput) Reset() {
+	*x = MedicineUnitInput{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MedicineUnitInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MedicineUnitInput) ProtoMessage() {}
+
+func (x *MedicineUnitInput) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MedicineUnitInput.ProtoReflect.Descriptor instead.
+func (*MedicineUnitInput) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *MedicineUnitInput) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MedicineUnitInput) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MedicineUnitInput) GetFactor() int64 {
+	if x != nil {
+		return x.Factor
+	}
+	return 0
+}
+
+func (x *MedicineUnitInput) GetIsBase() bool {
+	if x != nil {
+		return x.IsBase
+	}
+	return false
+}
+
+func (x *MedicineUnitInput) GetSellPrice() int64 {
+	if x != nil {
+		return x.SellPrice
+	}
+	return 0
+}
+
+func (x *MedicineUnitInput) GetSellable() bool {
+	if x != nil {
+		return x.Sellable
+	}
+	return false
+}
+
+func (x *MedicineUnitInput) GetPurchasable() bool {
+	if x != nil {
+		return x.Purchasable
+	}
+	return false
+}
+
+func (x *MedicineUnitInput) GetSortOrder() int32 {
+	if x != nil {
+		return x.SortOrder
+	}
+	return 0
+}
+
+func (x *MedicineUnitInput) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
 type MedicinePrice struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -192,7 +426,7 @@ type MedicinePrice struct {
 
 func (x *MedicinePrice) Reset() {
 	*x = MedicinePrice{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[1]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -204,7 +438,7 @@ func (x *MedicinePrice) String() string {
 func (*MedicinePrice) ProtoMessage() {}
 
 func (x *MedicinePrice) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[1]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -217,7 +451,7 @@ func (x *MedicinePrice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MedicinePrice.ProtoReflect.Descriptor instead.
 func (*MedicinePrice) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{1}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MedicinePrice) GetId() string {
@@ -262,6 +496,99 @@ func (x *MedicinePrice) GetChangedBy() string {
 	return ""
 }
 
+// Per-unit sell-price history (one open row per unit; effective_to 0 = current).
+type MedicineUnitPrice struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	MedicineUnitId string                 `protobuf:"bytes,2,opt,name=medicine_unit_id,json=medicineUnitId,proto3" json:"medicine_unit_id,omitempty"`
+	UnitName       string                 `protobuf:"bytes,3,opt,name=unit_name,json=unitName,proto3" json:"unit_name,omitempty"` // denormalized for display
+	UnitSellPrice  int64                  `protobuf:"varint,4,opt,name=unit_sell_price,json=unitSellPrice,proto3" json:"unit_sell_price,omitempty"`
+	EffectiveFrom  int64                  `protobuf:"varint,5,opt,name=effective_from,json=effectiveFrom,proto3" json:"effective_from,omitempty"`
+	EffectiveTo    int64                  `protobuf:"varint,6,opt,name=effective_to,json=effectiveTo,proto3" json:"effective_to,omitempty"` // 0 = open/current
+	ChangedBy      string                 `protobuf:"bytes,7,opt,name=changed_by,json=changedBy,proto3" json:"changed_by,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MedicineUnitPrice) Reset() {
+	*x = MedicineUnitPrice{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MedicineUnitPrice) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MedicineUnitPrice) ProtoMessage() {}
+
+func (x *MedicineUnitPrice) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MedicineUnitPrice.ProtoReflect.Descriptor instead.
+func (*MedicineUnitPrice) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MedicineUnitPrice) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MedicineUnitPrice) GetMedicineUnitId() string {
+	if x != nil {
+		return x.MedicineUnitId
+	}
+	return ""
+}
+
+func (x *MedicineUnitPrice) GetUnitName() string {
+	if x != nil {
+		return x.UnitName
+	}
+	return ""
+}
+
+func (x *MedicineUnitPrice) GetUnitSellPrice() int64 {
+	if x != nil {
+		return x.UnitSellPrice
+	}
+	return 0
+}
+
+func (x *MedicineUnitPrice) GetEffectiveFrom() int64 {
+	if x != nil {
+		return x.EffectiveFrom
+	}
+	return 0
+}
+
+func (x *MedicineUnitPrice) GetEffectiveTo() int64 {
+	if x != nil {
+		return x.EffectiveTo
+	}
+	return 0
+}
+
+func (x *MedicineUnitPrice) GetChangedBy() string {
+	if x != nil {
+		return x.ChangedBy
+	}
+	return ""
+}
+
 type ListMedicinesRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	IncludeInactive bool                   `protobuf:"varint,1,opt,name=include_inactive,json=includeInactive,proto3" json:"include_inactive,omitempty"`
@@ -274,7 +601,7 @@ type ListMedicinesRequest struct {
 
 func (x *ListMedicinesRequest) Reset() {
 	*x = ListMedicinesRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[2]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -286,7 +613,7 @@ func (x *ListMedicinesRequest) String() string {
 func (*ListMedicinesRequest) ProtoMessage() {}
 
 func (x *ListMedicinesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[2]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -299,7 +626,7 @@ func (x *ListMedicinesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMedicinesRequest.ProtoReflect.Descriptor instead.
 func (*ListMedicinesRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{2}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListMedicinesRequest) GetIncludeInactive() bool {
@@ -340,7 +667,7 @@ type ListMedicinesResponse struct {
 
 func (x *ListMedicinesResponse) Reset() {
 	*x = ListMedicinesResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[3]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -352,7 +679,7 @@ func (x *ListMedicinesResponse) String() string {
 func (*ListMedicinesResponse) ProtoMessage() {}
 
 func (x *ListMedicinesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[3]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -365,7 +692,7 @@ func (x *ListMedicinesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMedicinesResponse.ProtoReflect.Descriptor instead.
 func (*ListMedicinesResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{3}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListMedicinesResponse) GetMedicines() []*Medicine {
@@ -391,7 +718,7 @@ type GetMedicineRequest struct {
 
 func (x *GetMedicineRequest) Reset() {
 	*x = GetMedicineRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[4]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +730,7 @@ func (x *GetMedicineRequest) String() string {
 func (*GetMedicineRequest) ProtoMessage() {}
 
 func (x *GetMedicineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[4]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +743,7 @@ func (x *GetMedicineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMedicineRequest.ProtoReflect.Descriptor instead.
 func (*GetMedicineRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{4}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetMedicineRequest) GetId() string {
@@ -435,7 +762,7 @@ type GetMedicineResponse struct {
 
 func (x *GetMedicineResponse) Reset() {
 	*x = GetMedicineResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[5]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +774,7 @@ func (x *GetMedicineResponse) String() string {
 func (*GetMedicineResponse) ProtoMessage() {}
 
 func (x *GetMedicineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[5]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +787,7 @@ func (x *GetMedicineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMedicineResponse.ProtoReflect.Descriptor instead.
 func (*GetMedicineResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{5}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetMedicineResponse) GetMedicine() *Medicine {
@@ -475,16 +802,17 @@ type CreateMedicineRequest struct {
 	Sku                  string                 `protobuf:"bytes,1,opt,name=sku,proto3" json:"sku,omitempty"`
 	Name                 string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Manufacturer         string                 `protobuf:"bytes,3,opt,name=manufacturer,proto3" json:"manufacturer,omitempty"`
-	Unit                 string                 `protobuf:"bytes,4,opt,name=unit,proto3" json:"unit,omitempty"`
-	UnitPrice            int64                  `protobuf:"varint,5,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
+	Unit                 string                 `protobuf:"bytes,4,opt,name=unit,proto3" json:"unit,omitempty"`                             // base unit name (also used if `units` is empty)
+	UnitPrice            int64                  `protobuf:"varint,5,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"` // base unit sell price
 	PrescriptionRequired bool                   `protobuf:"varint,6,opt,name=prescription_required,json=prescriptionRequired,proto3" json:"prescription_required,omitempty"`
+	Units                []*MedicineUnitInput   `protobuf:"bytes,7,rep,name=units,proto3" json:"units,omitempty"` // optional; if empty, a base unit is created from unit/unit_price
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CreateMedicineRequest) Reset() {
 	*x = CreateMedicineRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[6]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -496,7 +824,7 @@ func (x *CreateMedicineRequest) String() string {
 func (*CreateMedicineRequest) ProtoMessage() {}
 
 func (x *CreateMedicineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[6]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -509,7 +837,7 @@ func (x *CreateMedicineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMedicineRequest.ProtoReflect.Descriptor instead.
 func (*CreateMedicineRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{6}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateMedicineRequest) GetSku() string {
@@ -554,6 +882,13 @@ func (x *CreateMedicineRequest) GetPrescriptionRequired() bool {
 	return false
 }
 
+func (x *CreateMedicineRequest) GetUnits() []*MedicineUnitInput {
+	if x != nil {
+		return x.Units
+	}
+	return nil
+}
+
 type CreateMedicineResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Medicine      *Medicine              `protobuf:"bytes,1,opt,name=medicine,proto3" json:"medicine,omitempty"`
@@ -563,7 +898,7 @@ type CreateMedicineResponse struct {
 
 func (x *CreateMedicineResponse) Reset() {
 	*x = CreateMedicineResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[7]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -575,7 +910,7 @@ func (x *CreateMedicineResponse) String() string {
 func (*CreateMedicineResponse) ProtoMessage() {}
 
 func (x *CreateMedicineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[7]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -588,7 +923,7 @@ func (x *CreateMedicineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMedicineResponse.ProtoReflect.Descriptor instead.
 func (*CreateMedicineResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{7}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateMedicineResponse) GetMedicine() *Medicine {
@@ -606,13 +941,14 @@ type UpdateMedicineRequest struct {
 	Unit                 string                 `protobuf:"bytes,4,opt,name=unit,proto3" json:"unit,omitempty"`
 	UnitPrice            int64                  `protobuf:"varint,5,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 	PrescriptionRequired bool                   `protobuf:"varint,6,opt,name=prescription_required,json=prescriptionRequired,proto3" json:"prescription_required,omitempty"`
+	Units                []*MedicineUnitInput   `protobuf:"bytes,7,rep,name=units,proto3" json:"units,omitempty"` // upsert the full unit set (exactly one is_base, base factor 1)
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *UpdateMedicineRequest) Reset() {
 	*x = UpdateMedicineRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[8]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -624,7 +960,7 @@ func (x *UpdateMedicineRequest) String() string {
 func (*UpdateMedicineRequest) ProtoMessage() {}
 
 func (x *UpdateMedicineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[8]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -637,7 +973,7 @@ func (x *UpdateMedicineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMedicineRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMedicineRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{8}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdateMedicineRequest) GetId() string {
@@ -682,6 +1018,13 @@ func (x *UpdateMedicineRequest) GetPrescriptionRequired() bool {
 	return false
 }
 
+func (x *UpdateMedicineRequest) GetUnits() []*MedicineUnitInput {
+	if x != nil {
+		return x.Units
+	}
+	return nil
+}
+
 type UpdateMedicineResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Medicine      *Medicine              `protobuf:"bytes,1,opt,name=medicine,proto3" json:"medicine,omitempty"`
@@ -691,7 +1034,7 @@ type UpdateMedicineResponse struct {
 
 func (x *UpdateMedicineResponse) Reset() {
 	*x = UpdateMedicineResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[9]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -703,7 +1046,7 @@ func (x *UpdateMedicineResponse) String() string {
 func (*UpdateMedicineResponse) ProtoMessage() {}
 
 func (x *UpdateMedicineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[9]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -716,7 +1059,7 @@ func (x *UpdateMedicineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMedicineResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMedicineResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{9}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateMedicineResponse) GetMedicine() *Medicine {
@@ -735,7 +1078,7 @@ type ArchiveMedicineRequest struct {
 
 func (x *ArchiveMedicineRequest) Reset() {
 	*x = ArchiveMedicineRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[10]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -747,7 +1090,7 @@ func (x *ArchiveMedicineRequest) String() string {
 func (*ArchiveMedicineRequest) ProtoMessage() {}
 
 func (x *ArchiveMedicineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[10]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -760,7 +1103,7 @@ func (x *ArchiveMedicineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveMedicineRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveMedicineRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{10}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ArchiveMedicineRequest) GetId() string {
@@ -779,7 +1122,7 @@ type ArchiveMedicineResponse struct {
 
 func (x *ArchiveMedicineResponse) Reset() {
 	*x = ArchiveMedicineResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[11]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +1134,7 @@ func (x *ArchiveMedicineResponse) String() string {
 func (*ArchiveMedicineResponse) ProtoMessage() {}
 
 func (x *ArchiveMedicineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[11]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +1147,7 @@ func (x *ArchiveMedicineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveMedicineResponse.ProtoReflect.Descriptor instead.
 func (*ArchiveMedicineResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{11}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ArchiveMedicineResponse) GetMedicine() *Medicine {
@@ -823,7 +1166,7 @@ type ListMedicinePricesRequest struct {
 
 func (x *ListMedicinePricesRequest) Reset() {
 	*x = ListMedicinePricesRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[12]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -835,7 +1178,7 @@ func (x *ListMedicinePricesRequest) String() string {
 func (*ListMedicinePricesRequest) ProtoMessage() {}
 
 func (x *ListMedicinePricesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[12]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -848,7 +1191,7 @@ func (x *ListMedicinePricesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMedicinePricesRequest.ProtoReflect.Descriptor instead.
 func (*ListMedicinePricesRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{12}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListMedicinePricesRequest) GetMedicineId() string {
@@ -867,7 +1210,7 @@ type ListMedicinePricesResponse struct {
 
 func (x *ListMedicinePricesResponse) Reset() {
 	*x = ListMedicinePricesResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[13]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +1222,7 @@ func (x *ListMedicinePricesResponse) String() string {
 func (*ListMedicinePricesResponse) ProtoMessage() {}
 
 func (x *ListMedicinePricesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[13]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,10 +1235,98 @@ func (x *ListMedicinePricesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMedicinePricesResponse.ProtoReflect.Descriptor instead.
 func (*ListMedicinePricesResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{13}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListMedicinePricesResponse) GetPrices() []*MedicinePrice {
+	if x != nil {
+		return x.Prices
+	}
+	return nil
+}
+
+type ListMedicineUnitPricesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MedicineId    string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMedicineUnitPricesRequest) Reset() {
+	*x = ListMedicineUnitPricesRequest{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMedicineUnitPricesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMedicineUnitPricesRequest) ProtoMessage() {}
+
+func (x *ListMedicineUnitPricesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMedicineUnitPricesRequest.ProtoReflect.Descriptor instead.
+func (*ListMedicineUnitPricesRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListMedicineUnitPricesRequest) GetMedicineId() string {
+	if x != nil {
+		return x.MedicineId
+	}
+	return ""
+}
+
+type ListMedicineUnitPricesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Prices        []*MedicineUnitPrice   `protobuf:"bytes,1,rep,name=prices,proto3" json:"prices,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMedicineUnitPricesResponse) Reset() {
+	*x = ListMedicineUnitPricesResponse{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMedicineUnitPricesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMedicineUnitPricesResponse) ProtoMessage() {}
+
+func (x *ListMedicineUnitPricesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMedicineUnitPricesResponse.ProtoReflect.Descriptor instead.
+func (*ListMedicineUnitPricesResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ListMedicineUnitPricesResponse) GetPrices() []*MedicineUnitPrice {
 	if x != nil {
 		return x.Prices
 	}
@@ -913,7 +1344,7 @@ type SearchMedicinesRequest struct {
 
 func (x *SearchMedicinesRequest) Reset() {
 	*x = SearchMedicinesRequest{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[14]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +1356,7 @@ func (x *SearchMedicinesRequest) String() string {
 func (*SearchMedicinesRequest) ProtoMessage() {}
 
 func (x *SearchMedicinesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[14]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1369,7 @@ func (x *SearchMedicinesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMedicinesRequest.ProtoReflect.Descriptor instead.
 func (*SearchMedicinesRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{14}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SearchMedicinesRequest) GetQuery() string {
@@ -971,7 +1402,7 @@ type SearchMedicinesResponse struct {
 
 func (x *SearchMedicinesResponse) Reset() {
 	*x = SearchMedicinesResponse{}
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[15]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -983,7 +1414,7 @@ func (x *SearchMedicinesResponse) String() string {
 func (*SearchMedicinesResponse) ProtoMessage() {}
 
 func (x *SearchMedicinesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[15]
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -996,10 +1427,159 @@ func (x *SearchMedicinesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMedicinesResponse.ProtoReflect.Descriptor instead.
 func (*SearchMedicinesResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{15}
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SearchMedicinesResponse) GetMedicines() []*Medicine {
+	if x != nil {
+		return x.Medicines
+	}
+	return nil
+}
+
+// Minimal display ref for resolve-by-IDs name lookups.
+type MedicineRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Sku           string                 `protobuf:"bytes,3,opt,name=sku,proto3" json:"sku,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MedicineRef) Reset() {
+	*x = MedicineRef{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MedicineRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MedicineRef) ProtoMessage() {}
+
+func (x *MedicineRef) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MedicineRef.ProtoReflect.Descriptor instead.
+func (*MedicineRef) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *MedicineRef) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MedicineRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MedicineRef) GetSku() string {
+	if x != nil {
+		return x.Sku
+	}
+	return ""
+}
+
+type ResolveMedicinesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveMedicinesRequest) Reset() {
+	*x = ResolveMedicinesRequest{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveMedicinesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveMedicinesRequest) ProtoMessage() {}
+
+func (x *ResolveMedicinesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveMedicinesRequest.ProtoReflect.Descriptor instead.
+func (*ResolveMedicinesRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ResolveMedicinesRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type ResolveMedicinesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Medicines     []*MedicineRef         `protobuf:"bytes,1,rep,name=medicines,proto3" json:"medicines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveMedicinesResponse) Reset() {
+	*x = ResolveMedicinesResponse{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveMedicinesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveMedicinesResponse) ProtoMessage() {}
+
+func (x *ResolveMedicinesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveMedicinesResponse.ProtoReflect.Descriptor instead.
+func (*ResolveMedicinesResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ResolveMedicinesResponse) GetMedicines() []*MedicineRef {
 	if x != nil {
 		return x.Medicines
 	}
@@ -1010,7 +1590,7 @@ var File_inventory_iface_v1_medicine_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\n" +
-	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xf4\x03\n" +
+	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xac\x04\n" +
 	"\bMedicine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03sku\x18\x02 \x01(\tR\x03sku\x12\x12\n" +
@@ -1031,7 +1611,35 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x15last_restock_supplier\x18\r \x01(\tR\x13lastRestockSupplier\x12\x1f\n" +
 	"\vtotal_stock\x18\x0e \x01(\x03R\n" +
 	"totalStock\x12'\n" +
-	"\x0fstock_valuation\x18\x0f \x01(\x03R\x0estockValuation\"\xc8\x01\n" +
+	"\x0fstock_valuation\x18\x0f \x01(\x03R\x0estockValuation\x126\n" +
+	"\x05units\x18\x10 \x03(\v2 .inventory_iface.v1.MedicineUnitR\x05units\"\x98\x02\n" +
+	"\fMedicineUnit\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vmedicine_id\x18\x02 \x01(\tR\n" +
+	"medicineId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
+	"\x06factor\x18\x04 \x01(\x03R\x06factor\x12\x17\n" +
+	"\ais_base\x18\x05 \x01(\bR\x06isBase\x12\x1d\n" +
+	"\n" +
+	"sell_price\x18\x06 \x01(\x03R\tsellPrice\x12\x1a\n" +
+	"\bsellable\x18\a \x01(\bR\bsellable\x12 \n" +
+	"\vpurchasable\x18\b \x01(\bR\vpurchasable\x12\x1d\n" +
+	"\n" +
+	"sort_order\x18\t \x01(\x05R\tsortOrder\x12\x16\n" +
+	"\x06active\x18\n" +
+	" \x01(\bR\x06active\"\xfc\x01\n" +
+	"\x11MedicineUnitInput\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06factor\x18\x03 \x01(\x03R\x06factor\x12\x17\n" +
+	"\ais_base\x18\x04 \x01(\bR\x06isBase\x12\x1d\n" +
+	"\n" +
+	"sell_price\x18\x05 \x01(\x03R\tsellPrice\x12\x1a\n" +
+	"\bsellable\x18\x06 \x01(\bR\bsellable\x12 \n" +
+	"\vpurchasable\x18\a \x01(\bR\vpurchasable\x12\x1d\n" +
+	"\n" +
+	"sort_order\x18\b \x01(\x05R\tsortOrder\x12\x16\n" +
+	"\x06active\x18\t \x01(\bR\x06active\"\xc8\x01\n" +
 	"\rMedicinePrice\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vmedicine_id\x18\x02 \x01(\tR\n" +
@@ -1041,7 +1649,16 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x0eeffective_from\x18\x04 \x01(\x03R\reffectiveFrom\x12!\n" +
 	"\feffective_to\x18\x05 \x01(\x03R\veffectiveTo\x12\x1d\n" +
 	"\n" +
-	"changed_by\x18\x06 \x01(\tR\tchangedBy\"\x85\x01\n" +
+	"changed_by\x18\x06 \x01(\tR\tchangedBy\"\xfb\x01\n" +
+	"\x11MedicineUnitPrice\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12(\n" +
+	"\x10medicine_unit_id\x18\x02 \x01(\tR\x0emedicineUnitId\x12\x1b\n" +
+	"\tunit_name\x18\x03 \x01(\tR\bunitName\x12&\n" +
+	"\x0funit_sell_price\x18\x04 \x01(\x03R\runitSellPrice\x12%\n" +
+	"\x0eeffective_from\x18\x05 \x01(\x03R\reffectiveFrom\x12!\n" +
+	"\feffective_to\x18\x06 \x01(\x03R\veffectiveTo\x12\x1d\n" +
+	"\n" +
+	"changed_by\x18\a \x01(\tR\tchangedBy\"\x85\x01\n" +
 	"\x14ListMedicinesRequest\x12)\n" +
 	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
@@ -1053,7 +1670,7 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x12GetMedicineRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"O\n" +
 	"\x13GetMedicineResponse\x128\n" +
-	"\bmedicine\x18\x01 \x01(\v2\x1c.inventory_iface.v1.MedicineR\bmedicine\"\xc9\x01\n" +
+	"\bmedicine\x18\x01 \x01(\v2\x1c.inventory_iface.v1.MedicineR\bmedicine\"\x86\x02\n" +
 	"\x15CreateMedicineRequest\x12\x10\n" +
 	"\x03sku\x18\x01 \x01(\tR\x03sku\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
@@ -1061,9 +1678,10 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x04unit\x18\x04 \x01(\tR\x04unit\x12\x1d\n" +
 	"\n" +
 	"unit_price\x18\x05 \x01(\x03R\tunitPrice\x123\n" +
-	"\x15prescription_required\x18\x06 \x01(\bR\x14prescriptionRequired\"R\n" +
+	"\x15prescription_required\x18\x06 \x01(\bR\x14prescriptionRequired\x12;\n" +
+	"\x05units\x18\a \x03(\v2%.inventory_iface.v1.MedicineUnitInputR\x05units\"R\n" +
 	"\x16CreateMedicineResponse\x128\n" +
-	"\bmedicine\x18\x01 \x01(\v2\x1c.inventory_iface.v1.MedicineR\bmedicine\"\xc7\x01\n" +
+	"\bmedicine\x18\x01 \x01(\v2\x1c.inventory_iface.v1.MedicineR\bmedicine\"\x84\x02\n" +
 	"\x15UpdateMedicineRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
@@ -1071,7 +1689,8 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x04unit\x18\x04 \x01(\tR\x04unit\x12\x1d\n" +
 	"\n" +
 	"unit_price\x18\x05 \x01(\x03R\tunitPrice\x123\n" +
-	"\x15prescription_required\x18\x06 \x01(\bR\x14prescriptionRequired\"R\n" +
+	"\x15prescription_required\x18\x06 \x01(\bR\x14prescriptionRequired\x12;\n" +
+	"\x05units\x18\a \x03(\v2%.inventory_iface.v1.MedicineUnitInputR\x05units\"R\n" +
 	"\x16UpdateMedicineResponse\x128\n" +
 	"\bmedicine\x18\x01 \x01(\v2\x1c.inventory_iface.v1.MedicineR\bmedicine\"(\n" +
 	"\x16ArchiveMedicineRequest\x12\x0e\n" +
@@ -1082,21 +1701,36 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\vmedicine_id\x18\x01 \x01(\tR\n" +
 	"medicineId\"W\n" +
 	"\x1aListMedicinePricesResponse\x129\n" +
-	"\x06prices\x18\x01 \x03(\v2!.inventory_iface.v1.MedicinePriceR\x06prices\"o\n" +
+	"\x06prices\x18\x01 \x03(\v2!.inventory_iface.v1.MedicinePriceR\x06prices\"@\n" +
+	"\x1dListMedicineUnitPricesRequest\x12\x1f\n" +
+	"\vmedicine_id\x18\x01 \x01(\tR\n" +
+	"medicineId\"_\n" +
+	"\x1eListMedicineUnitPricesResponse\x12=\n" +
+	"\x06prices\x18\x01 \x03(\v2%.inventory_iface.v1.MedicineUnitPriceR\x06prices\"o\n" +
 	"\x16SearchMedicinesRequest\x12\x14\n" +
 	"\x05query\x18\x01 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12)\n" +
 	"\x10include_inactive\x18\x03 \x01(\bR\x0fincludeInactive\"U\n" +
 	"\x17SearchMedicinesResponse\x12:\n" +
-	"\tmedicines\x18\x01 \x03(\v2\x1c.inventory_iface.v1.MedicineR\tmedicines2\xb1\x06\n" +
+	"\tmedicines\x18\x01 \x03(\v2\x1c.inventory_iface.v1.MedicineR\tmedicines\"C\n" +
+	"\vMedicineRef\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
+	"\x03sku\x18\x03 \x01(\tR\x03sku\"+\n" +
+	"\x17ResolveMedicinesRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"Y\n" +
+	"\x18ResolveMedicinesResponse\x12=\n" +
+	"\tmedicines\x18\x01 \x03(\v2\x1f.inventory_iface.v1.MedicineRefR\tmedicines2\xb3\b\n" +
 	"\x0fMedicineService\x12m\n" +
 	"\rListMedicines\x12(.inventory_iface.v1.ListMedicinesRequest\x1a).inventory_iface.v1.ListMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12g\n" +
 	"\vGetMedicine\x12&.inventory_iface.v1.GetMedicineRequest\x1a'.inventory_iface.v1.GetMedicineResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12o\n" +
 	"\x0eCreateMedicine\x12).inventory_iface.v1.CreateMedicineRequest\x1a*.inventory_iface.v1.CreateMedicineResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12o\n" +
 	"\x0eUpdateMedicine\x12).inventory_iface.v1.UpdateMedicineRequest\x1a*.inventory_iface.v1.UpdateMedicineResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12r\n" +
 	"\x0fArchiveMedicine\x12*.inventory_iface.v1.ArchiveMedicineRequest\x1a+.inventory_iface.v1.ArchiveMedicineResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12{\n" +
-	"\x12ListMedicinePrices\x12-.inventory_iface.v1.ListMedicinePricesRequest\x1a..inventory_iface.v1.ListMedicinePricesResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12s\n" +
-	"\x0fSearchMedicines\x12*.inventory_iface.v1.SearchMedicinesRequest\x1a+.inventory_iface.v1.SearchMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
+	"\x12ListMedicinePrices\x12-.inventory_iface.v1.ListMedicinePricesRequest\x1a..inventory_iface.v1.ListMedicinePricesResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12\x87\x01\n" +
+	"\x16ListMedicineUnitPrices\x121.inventory_iface.v1.ListMedicineUnitPricesRequest\x1a2.inventory_iface.v1.ListMedicineUnitPricesResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12s\n" +
+	"\x0fSearchMedicines\x12*.inventory_iface.v1.SearchMedicinesRequest\x1a+.inventory_iface.v1.SearchMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12v\n" +
+	"\x10ResolveMedicines\x12+.inventory_iface.v1.ResolveMedicinesRequest\x1a,.inventory_iface.v1.ResolveMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
 
 var (
 	file_inventory_iface_v1_medicine_proto_rawDescOnce sync.Once
@@ -1110,52 +1744,69 @@ func file_inventory_iface_v1_medicine_proto_rawDescGZIP() []byte {
 	return file_inventory_iface_v1_medicine_proto_rawDescData
 }
 
-var file_inventory_iface_v1_medicine_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_inventory_iface_v1_medicine_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_inventory_iface_v1_medicine_proto_goTypes = []any{
-	(*Medicine)(nil),                   // 0: inventory_iface.v1.Medicine
-	(*MedicinePrice)(nil),              // 1: inventory_iface.v1.MedicinePrice
-	(*ListMedicinesRequest)(nil),       // 2: inventory_iface.v1.ListMedicinesRequest
-	(*ListMedicinesResponse)(nil),      // 3: inventory_iface.v1.ListMedicinesResponse
-	(*GetMedicineRequest)(nil),         // 4: inventory_iface.v1.GetMedicineRequest
-	(*GetMedicineResponse)(nil),        // 5: inventory_iface.v1.GetMedicineResponse
-	(*CreateMedicineRequest)(nil),      // 6: inventory_iface.v1.CreateMedicineRequest
-	(*CreateMedicineResponse)(nil),     // 7: inventory_iface.v1.CreateMedicineResponse
-	(*UpdateMedicineRequest)(nil),      // 8: inventory_iface.v1.UpdateMedicineRequest
-	(*UpdateMedicineResponse)(nil),     // 9: inventory_iface.v1.UpdateMedicineResponse
-	(*ArchiveMedicineRequest)(nil),     // 10: inventory_iface.v1.ArchiveMedicineRequest
-	(*ArchiveMedicineResponse)(nil),    // 11: inventory_iface.v1.ArchiveMedicineResponse
-	(*ListMedicinePricesRequest)(nil),  // 12: inventory_iface.v1.ListMedicinePricesRequest
-	(*ListMedicinePricesResponse)(nil), // 13: inventory_iface.v1.ListMedicinePricesResponse
-	(*SearchMedicinesRequest)(nil),     // 14: inventory_iface.v1.SearchMedicinesRequest
-	(*SearchMedicinesResponse)(nil),    // 15: inventory_iface.v1.SearchMedicinesResponse
+	(*Medicine)(nil),                       // 0: inventory_iface.v1.Medicine
+	(*MedicineUnit)(nil),                   // 1: inventory_iface.v1.MedicineUnit
+	(*MedicineUnitInput)(nil),              // 2: inventory_iface.v1.MedicineUnitInput
+	(*MedicinePrice)(nil),                  // 3: inventory_iface.v1.MedicinePrice
+	(*MedicineUnitPrice)(nil),              // 4: inventory_iface.v1.MedicineUnitPrice
+	(*ListMedicinesRequest)(nil),           // 5: inventory_iface.v1.ListMedicinesRequest
+	(*ListMedicinesResponse)(nil),          // 6: inventory_iface.v1.ListMedicinesResponse
+	(*GetMedicineRequest)(nil),             // 7: inventory_iface.v1.GetMedicineRequest
+	(*GetMedicineResponse)(nil),            // 8: inventory_iface.v1.GetMedicineResponse
+	(*CreateMedicineRequest)(nil),          // 9: inventory_iface.v1.CreateMedicineRequest
+	(*CreateMedicineResponse)(nil),         // 10: inventory_iface.v1.CreateMedicineResponse
+	(*UpdateMedicineRequest)(nil),          // 11: inventory_iface.v1.UpdateMedicineRequest
+	(*UpdateMedicineResponse)(nil),         // 12: inventory_iface.v1.UpdateMedicineResponse
+	(*ArchiveMedicineRequest)(nil),         // 13: inventory_iface.v1.ArchiveMedicineRequest
+	(*ArchiveMedicineResponse)(nil),        // 14: inventory_iface.v1.ArchiveMedicineResponse
+	(*ListMedicinePricesRequest)(nil),      // 15: inventory_iface.v1.ListMedicinePricesRequest
+	(*ListMedicinePricesResponse)(nil),     // 16: inventory_iface.v1.ListMedicinePricesResponse
+	(*ListMedicineUnitPricesRequest)(nil),  // 17: inventory_iface.v1.ListMedicineUnitPricesRequest
+	(*ListMedicineUnitPricesResponse)(nil), // 18: inventory_iface.v1.ListMedicineUnitPricesResponse
+	(*SearchMedicinesRequest)(nil),         // 19: inventory_iface.v1.SearchMedicinesRequest
+	(*SearchMedicinesResponse)(nil),        // 20: inventory_iface.v1.SearchMedicinesResponse
+	(*MedicineRef)(nil),                    // 21: inventory_iface.v1.MedicineRef
+	(*ResolveMedicinesRequest)(nil),        // 22: inventory_iface.v1.ResolveMedicinesRequest
+	(*ResolveMedicinesResponse)(nil),       // 23: inventory_iface.v1.ResolveMedicinesResponse
 }
 var file_inventory_iface_v1_medicine_proto_depIdxs = []int32{
-	0,  // 0: inventory_iface.v1.ListMedicinesResponse.medicines:type_name -> inventory_iface.v1.Medicine
-	0,  // 1: inventory_iface.v1.GetMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
-	0,  // 2: inventory_iface.v1.CreateMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
-	0,  // 3: inventory_iface.v1.UpdateMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
-	0,  // 4: inventory_iface.v1.ArchiveMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
-	1,  // 5: inventory_iface.v1.ListMedicinePricesResponse.prices:type_name -> inventory_iface.v1.MedicinePrice
-	0,  // 6: inventory_iface.v1.SearchMedicinesResponse.medicines:type_name -> inventory_iface.v1.Medicine
-	2,  // 7: inventory_iface.v1.MedicineService.ListMedicines:input_type -> inventory_iface.v1.ListMedicinesRequest
-	4,  // 8: inventory_iface.v1.MedicineService.GetMedicine:input_type -> inventory_iface.v1.GetMedicineRequest
-	6,  // 9: inventory_iface.v1.MedicineService.CreateMedicine:input_type -> inventory_iface.v1.CreateMedicineRequest
-	8,  // 10: inventory_iface.v1.MedicineService.UpdateMedicine:input_type -> inventory_iface.v1.UpdateMedicineRequest
-	10, // 11: inventory_iface.v1.MedicineService.ArchiveMedicine:input_type -> inventory_iface.v1.ArchiveMedicineRequest
-	12, // 12: inventory_iface.v1.MedicineService.ListMedicinePrices:input_type -> inventory_iface.v1.ListMedicinePricesRequest
-	14, // 13: inventory_iface.v1.MedicineService.SearchMedicines:input_type -> inventory_iface.v1.SearchMedicinesRequest
-	3,  // 14: inventory_iface.v1.MedicineService.ListMedicines:output_type -> inventory_iface.v1.ListMedicinesResponse
-	5,  // 15: inventory_iface.v1.MedicineService.GetMedicine:output_type -> inventory_iface.v1.GetMedicineResponse
-	7,  // 16: inventory_iface.v1.MedicineService.CreateMedicine:output_type -> inventory_iface.v1.CreateMedicineResponse
-	9,  // 17: inventory_iface.v1.MedicineService.UpdateMedicine:output_type -> inventory_iface.v1.UpdateMedicineResponse
-	11, // 18: inventory_iface.v1.MedicineService.ArchiveMedicine:output_type -> inventory_iface.v1.ArchiveMedicineResponse
-	13, // 19: inventory_iface.v1.MedicineService.ListMedicinePrices:output_type -> inventory_iface.v1.ListMedicinePricesResponse
-	15, // 20: inventory_iface.v1.MedicineService.SearchMedicines:output_type -> inventory_iface.v1.SearchMedicinesResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	1,  // 0: inventory_iface.v1.Medicine.units:type_name -> inventory_iface.v1.MedicineUnit
+	0,  // 1: inventory_iface.v1.ListMedicinesResponse.medicines:type_name -> inventory_iface.v1.Medicine
+	0,  // 2: inventory_iface.v1.GetMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
+	2,  // 3: inventory_iface.v1.CreateMedicineRequest.units:type_name -> inventory_iface.v1.MedicineUnitInput
+	0,  // 4: inventory_iface.v1.CreateMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
+	2,  // 5: inventory_iface.v1.UpdateMedicineRequest.units:type_name -> inventory_iface.v1.MedicineUnitInput
+	0,  // 6: inventory_iface.v1.UpdateMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
+	0,  // 7: inventory_iface.v1.ArchiveMedicineResponse.medicine:type_name -> inventory_iface.v1.Medicine
+	3,  // 8: inventory_iface.v1.ListMedicinePricesResponse.prices:type_name -> inventory_iface.v1.MedicinePrice
+	4,  // 9: inventory_iface.v1.ListMedicineUnitPricesResponse.prices:type_name -> inventory_iface.v1.MedicineUnitPrice
+	0,  // 10: inventory_iface.v1.SearchMedicinesResponse.medicines:type_name -> inventory_iface.v1.Medicine
+	21, // 11: inventory_iface.v1.ResolveMedicinesResponse.medicines:type_name -> inventory_iface.v1.MedicineRef
+	5,  // 12: inventory_iface.v1.MedicineService.ListMedicines:input_type -> inventory_iface.v1.ListMedicinesRequest
+	7,  // 13: inventory_iface.v1.MedicineService.GetMedicine:input_type -> inventory_iface.v1.GetMedicineRequest
+	9,  // 14: inventory_iface.v1.MedicineService.CreateMedicine:input_type -> inventory_iface.v1.CreateMedicineRequest
+	11, // 15: inventory_iface.v1.MedicineService.UpdateMedicine:input_type -> inventory_iface.v1.UpdateMedicineRequest
+	13, // 16: inventory_iface.v1.MedicineService.ArchiveMedicine:input_type -> inventory_iface.v1.ArchiveMedicineRequest
+	15, // 17: inventory_iface.v1.MedicineService.ListMedicinePrices:input_type -> inventory_iface.v1.ListMedicinePricesRequest
+	17, // 18: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:input_type -> inventory_iface.v1.ListMedicineUnitPricesRequest
+	19, // 19: inventory_iface.v1.MedicineService.SearchMedicines:input_type -> inventory_iface.v1.SearchMedicinesRequest
+	22, // 20: inventory_iface.v1.MedicineService.ResolveMedicines:input_type -> inventory_iface.v1.ResolveMedicinesRequest
+	6,  // 21: inventory_iface.v1.MedicineService.ListMedicines:output_type -> inventory_iface.v1.ListMedicinesResponse
+	8,  // 22: inventory_iface.v1.MedicineService.GetMedicine:output_type -> inventory_iface.v1.GetMedicineResponse
+	10, // 23: inventory_iface.v1.MedicineService.CreateMedicine:output_type -> inventory_iface.v1.CreateMedicineResponse
+	12, // 24: inventory_iface.v1.MedicineService.UpdateMedicine:output_type -> inventory_iface.v1.UpdateMedicineResponse
+	14, // 25: inventory_iface.v1.MedicineService.ArchiveMedicine:output_type -> inventory_iface.v1.ArchiveMedicineResponse
+	16, // 26: inventory_iface.v1.MedicineService.ListMedicinePrices:output_type -> inventory_iface.v1.ListMedicinePricesResponse
+	18, // 27: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:output_type -> inventory_iface.v1.ListMedicineUnitPricesResponse
+	20, // 28: inventory_iface.v1.MedicineService.SearchMedicines:output_type -> inventory_iface.v1.SearchMedicinesResponse
+	23, // 29: inventory_iface.v1.MedicineService.ResolveMedicines:output_type -> inventory_iface.v1.ResolveMedicinesResponse
+	21, // [21:30] is the sub-list for method output_type
+	12, // [12:21] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_inventory_iface_v1_medicine_proto_init() }
@@ -1169,7 +1820,7 @@ func file_inventory_iface_v1_medicine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_iface_v1_medicine_proto_rawDesc), len(file_inventory_iface_v1_medicine_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

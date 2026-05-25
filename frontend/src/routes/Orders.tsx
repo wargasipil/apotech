@@ -14,12 +14,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import DateRangeFilter, { resolveRange, type DateRange } from "../components/DateRangeFilter";
+import ExportButton from "../components/ExportButton";
 import PageHeader from "../components/PageHeader";
 import Pagination from "../components/Pagination";
 import { SaleStatus, type SaleItem } from "../gen/pos_iface/v1/sale_pb";
+import { downloadCsv } from "../lib/csv";
 import { formatMoney, formatUnix } from "../lib/format";
 import { usePageState } from "../lib/pagination";
-import { useListSalesQuery, useSalesSummaryQuery } from "../queries/sales";
+import { fetchSalesForExport, useListSalesQuery, useSalesSummaryQuery } from "../queries/sales";
 
 const PAYMENT_KEY: Record<number, string> = {
   0: "unspecified",
@@ -83,6 +85,36 @@ export default function Orders() {
   const summaryQ = useSalesSummaryQuery({ query, status, fromUnix, toUnix });
   const summary = summaryQ.data;
 
+  const onExport = async () => {
+    const rows = await fetchSalesForExport({ query, status, fromUnix, toUnix });
+    downloadCsv(
+      `order-history-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows.map((s) => ({
+        saleNo: s.saleNo || s.id.slice(0, 8),
+        date: formatUnix(s.createdAt),
+        customer: s.customerName || "",
+        items: s.items
+          .map(
+            (it) =>
+              `${it.medicineName || it.medicineId.slice(0, 8)} ×${it.qty}${it.unitName ? " " + it.unitName : ""}`,
+          )
+          .join("; "),
+        payment: t(`orders.payments.${PAYMENT_KEY[s.paymentSource] ?? "unspecified"}`),
+        total: Number(s.total),
+        status: t(`orders.states.${statusKey(s.status)}`),
+      })),
+      [
+        { key: "saleNo", header: t("orders.saleNo") },
+        { key: "date", header: t("orders.date") },
+        { key: "customer", header: t("orders.customer") },
+        { key: "items", header: t("orders.items") },
+        { key: "payment", header: t("orders.payment") },
+        { key: "total", header: t("orders.total") },
+        { key: "status", header: t("orders.status") },
+      ],
+    );
+  };
+
   return (
     <Box>
       <PageHeader breadcrumbs={[{ label: t("orders.title") }]} title={t("orders.title")} />
@@ -98,7 +130,6 @@ export default function Orders() {
           <Tabs.Trigger value={String(SaleStatus.UNSPECIFIED)}>{t("orders.statusAll")}</Tabs.Trigger>
           <Tabs.Trigger value={String(SaleStatus.COMPLETED)}>{t("orders.states.completed")}</Tabs.Trigger>
           <Tabs.Trigger value={String(SaleStatus.VOIDED)}>{t("orders.states.voided")}</Tabs.Trigger>
-          <Tabs.Trigger value={String(SaleStatus.DRAFT)}>{t("orders.states.draft")}</Tabs.Trigger>
         </Tabs.List>
       </Tabs.Root>
 
@@ -118,6 +149,7 @@ export default function Orders() {
           />
         </Box>
         <DateRangeFilter value={range} onChange={setRange} />
+        <ExportButton onExport={onExport} />
       </HStack>
 
       {/* Summary over all matching orders (server-side aggregate). */}
@@ -218,7 +250,10 @@ function ItemsSummary({ items, moreLabel }: { items: SaleItem[]; moreLabel: stri
     <Stack gap={0}>
       {shown.map((it) => (
         <Text key={it.id} fontSize="xs">
-          {(it.medicineName || it.medicineId.slice(0, 8)) + " ×" + it.qty}
+          {(it.medicineName || it.medicineId.slice(0, 8)) +
+            " ×" +
+            it.qty +
+            (it.unitName ? " " + it.unitName : "")}
         </Text>
       ))}
       {extra > 0 && (

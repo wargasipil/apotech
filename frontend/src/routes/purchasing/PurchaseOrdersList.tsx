@@ -17,16 +17,19 @@ import { useNavigate } from "react-router-dom";
 
 import DateRangeFilter, { resolveRange, type DateRange } from "../../components/DateRangeFilter";
 import EnumSelect from "../../components/EnumSelect";
+import ExportButton from "../../components/ExportButton";
 import Pagination from "../../components/Pagination";
 import SearchableSelect from "../../components/SearchableSelect";
 import {
   POStatus,
   type PurchaseOrder,
 } from "../../gen/purchasing_iface/v1/order_pb";
+import { downloadCsv } from "../../lib/csv";
 import { formatMoney, formatDate } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
-import { usePurchaseOrdersQuery } from "../../queries/purchasing";
-import { searchSuppliers, useAllSuppliersQuery } from "../../queries/suppliers";
+import { fetchPurchaseOrdersForExport, usePurchaseOrdersQuery } from "../../queries/purchasing";
+import { searchSuppliers } from "../../queries/suppliers";
+import { resolveSupplierMap, useSupplierRefs } from "../../queries/refs";
 
 type Props = { status?: POStatus };
 
@@ -59,12 +62,6 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
     return () => clearTimeout(h);
   }, [searchInput]);
 
-  const suppliersQ = useAllSuppliersQuery(false);
-  const supplierLabel = useMemo(
-    () => new Map(suppliersQ.rows.map((s) => [s.id, `${s.code} · ${s.name}`])),
-    [suppliersQ.rows],
-  );
-
   const useRange = dateField !== "off";
   const { page, setPage, pageSize, setPageSize } = usePageState(
     `${status}|${supplierFilter}|${onlyOutstanding}|${query}|${dateField}|${useRange ? range.fromUnix : 0}|${useRange ? range.toUnix : 0}`,
@@ -80,6 +77,65 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
     limit: pageSize,
     offset: page * pageSize,
   });
+
+  // Resolve supplier names for the current page's rows + the active filter
+  // (resolve-by-IDs; not a full supplier-list preload).
+  const supplierRefs = useSupplierRefs(
+    useMemo(
+      () => [supplierFilter, ...posQ.rows.map((po) => po.supplierId)],
+      [supplierFilter, posQ.rows],
+    ),
+  );
+  const supplierLabelOf = (id: string) => {
+    const r = supplierRefs.get(id);
+    return r ? `${r.code} · ${r.name}` : undefined;
+  };
+
+  const onExport = async () => {
+    const rows = await fetchPurchaseOrdersForExport({
+      status,
+      supplierId: supplierFilter,
+      onlyOutstanding,
+      query,
+      fromUnix: useRange ? BigInt(range.fromUnix) : 0n,
+      toUnix: useRange ? BigInt(range.toUnix) : 0n,
+      dateField: useRange ? dateField : "",
+    });
+    const sup = await resolveSupplierMap(rows.map((po) => po.supplierId));
+    downloadCsv(
+      `restock-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows.map((po) => {
+        const r = sup.get(po.supplierId);
+        return {
+          poNo: po.poNo || po.id.slice(0, 8),
+          supplier: r ? `${r.code} · ${r.name}` : "—",
+          items: po.items
+            .map(
+              (it) =>
+                `${it.medicineName || it.medicineId.slice(0, 8)} ×${fmtUnitQty(it.orderedQty, it.unitName, it.unitFactor)}`,
+            )
+            .join("; "),
+          status: t(`purchasing.states.${statusKey(po.status)}`),
+          created: formatDate(new Date(Number(po.createdAt) * 1000)),
+          received: po.receivedAt > 0n ? formatDate(new Date(Number(po.receivedAt) * 1000)) : "",
+          invoiceNo: po.invoiceNo || "",
+          total: Number(po.orderedTotal),
+          outstanding: Number(po.outstanding),
+        };
+      }),
+      [
+        { key: "poNo", header: t("purchasing.poNo") },
+        { key: "supplier", header: t("purchasing.supplier") },
+        { key: "items", header: t("purchasing.item") },
+        { key: "status", header: t("purchasing.status") },
+        { key: "created", header: t("purchasing.created") },
+        { key: "received", header: t("purchasing.received") },
+        { key: "invoiceNo", header: t("purchasing.invoiceNo") },
+        { key: "total", header: t("purchasing.totalOrdered") },
+        { key: "outstanding", header: t("purchasing.outstanding") },
+      ],
+    );
+  };
 
   return (
     <Stack gap={4}>
@@ -106,7 +162,7 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
             loadOptions={searchSuppliers}
             itemToString={(s) => `${s.code} · ${s.name}`}
             itemToValue={(s) => s.id}
-            selectedLabel={supplierLabel.get(supplierFilter)}
+            selectedLabel={supplierLabelOf(supplierFilter)}
             placeholder={`${t("purchasing.supplier")} —`}
           />
           <EnumSelect
@@ -129,10 +185,13 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
             <Switch.Label>{t("purchasing.outstandingToggle")}</Switch.Label>
           </Switch.Root>
         </HStack>
-        <Button colorPalette="blue" onClick={() => navigate("/purchasing/new")}>
-          <Plus size={16} />
-          {t("purchasing.newPo")}
-        </Button>
+        <HStack gap={2}>
+          <ExportButton onExport={onExport} />
+          <Button colorPalette="blue" onClick={() => navigate("/purchasing/new")}>
+            <Plus size={16} />
+            {t("purchasing.newPo")}
+          </Button>
+        </HStack>
       </HStack>
 
       {posQ.isLoading ? (
@@ -163,7 +222,7 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
                 _hover={{ bg: "bg.muted" }}
               >
                 <Table.Cell fontFamily="mono">{po.poNo || po.id.slice(0, 8)}</Table.Cell>
-                <Table.Cell>{supplierLabel.get(po.supplierId) ?? po.supplierId.slice(0, 8)}</Table.Cell>
+                <Table.Cell>{supplierLabelOf(po.supplierId) ?? "—"}</Table.Cell>
                 <Table.Cell>
                   <ItemsList po={po} moreLabel={t("purchasing.itemsMore")} />
                 </Table.Cell>
@@ -205,6 +264,14 @@ export default function PurchaseOrdersList({ status = POStatus.PO_STATUS_UNSPECI
   );
 }
 
+// fmtUnitQty renders a BASE-unit quantity in its purchasable unit, e.g.
+// (500, "box", 100n) -> "5 box". Falls back to the bare number when no unit.
+function fmtUnitQty(qty: number, unitName: string, factor: bigint): string {
+  const f = Number(factor) || 1;
+  const q = f > 1 ? qty / f : qty;
+  return unitName ? `${q} ${unitName}` : String(q);
+}
+
 function ItemsList({ po, moreLabel }: { po: PurchaseOrder; moreLabel: string }) {
   if (po.items.length === 0) return <Text color="fg.muted">—</Text>;
   const shown = po.items.slice(0, 3);
@@ -217,7 +284,7 @@ function ItemsList({ po, moreLabel }: { po: PurchaseOrder; moreLabel: string }) 
             {it.medicineName || it.medicineId.slice(0, 8)}
             {it.medicineSku ? ` (${it.medicineSku})` : ""}
           </Text>
-          {" ×" + it.orderedQty}
+          {" ×" + fmtUnitQty(it.orderedQty, it.unitName, it.unitFactor)}
         </Text>
       ))}
       {extra > 0 && (

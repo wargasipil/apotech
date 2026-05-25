@@ -1,19 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
   HStack,
+  Input,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import DateRangeFilter, { resolveRange, type DateRange } from "../../components/DateRangeFilter";
+import EnumSelect from "../../components/EnumSelect";
 import EntityDrawer from "../../components/EntityDrawer";
 import ExpiryBadge from "../../components/ExpiryBadge";
 import FormField from "../../components/FormField";
@@ -25,7 +28,7 @@ import { formatMoney } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import { useBatchesQuery, useCreateBatchMutation } from "../../queries/batches";
-import { useAllMedicinesQuery } from "../../queries/medicines";
+import { useMedicineRefs } from "../../queries/refs";
 
 const Schema = z.object({
   medicineId: z.string().min(1),
@@ -41,20 +44,67 @@ type FormValues = z.infer<typeof Schema>;
 export default function Batches() {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { page, setPage, pageSize, setPageSize } = usePageState("");
-  const batchesQ = useBatchesQuery({ page, pageSize });
-  // Kept for the medicine-name column display on the batches table; the
-  // selects inside CreateDrawer use server-side search via loadOptions.
-  const medicinesQ = useAllMedicinesQuery();
-
-  const medById = useMemo(
-    () => new Map(medicinesQ.rows.map((m) => [m.id, m])),
-    [medicinesQ.rows],
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const h = setTimeout(() => setQuery(searchInput.trim()), 250);
+    return () => clearTimeout(h);
+  }, [searchInput]);
+  const [dateField, setDateField] = useState<"off" | "received" | "expiry">("off");
+  const [range, setRange] = useState<DateRange>(() => resolveRange("30d"));
+  const useRange = dateField !== "off";
+  const { page, setPage, pageSize, setPageSize } = usePageState(
+    `${query}|${dateField}|${useRange ? range.fromUnix : 0}|${useRange ? range.toUnix : 0}`,
+  );
+  const batchesQ = useBatchesQuery({
+    // Scope rows to the active warehouse: only lots with stock here (backend
+    // HAVING SUM(qty in warehouse) > 0). Qty is already active-warehouse.
+    onlyInStock: true,
+    query,
+    dateField: useRange ? dateField : "",
+    fromUnix: useRange ? range.fromUnix : 0,
+    toUnix: useRange ? range.toUnix : 0,
+    page,
+    pageSize,
+  });
+  // Resolve the page's medicine names (resolve-by-IDs; the CreateDrawer selects
+  // use server-side search via loadOptions).
+  const medRefs = useMedicineRefs(
+    useMemo(() => batchesQ.rows.map((b) => b.medicineId), [batchesQ.rows]),
   );
 
   return (
     <Stack gap={4}>
-      <HStack justify="flex-end">
+      <HStack justify="space-between" wrap="wrap" gap={2}>
+        <HStack gap={2} wrap="wrap">
+          <Box position="relative">
+            <Box position="absolute" left={2} top="50%" transform="translateY(-50%)" color="fg.muted">
+              <Search size={14} />
+            </Box>
+            <Input
+              size="sm"
+              pl={7}
+              width="240px"
+              placeholder={t("inventory.batches.searchPlaceholder")}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </Box>
+          <EnumSelect
+            size="sm"
+            width="150px"
+            value={dateField}
+            onChange={(v) => setDateField(v as "off" | "received" | "expiry")}
+            items={[
+              { value: "off", label: t("common.anyDate") },
+              { value: "received", label: t("inventory.batches.byReceived") },
+              { value: "expiry", label: t("inventory.batches.byExpiry") },
+            ]}
+            itemToString={(o) => o.label}
+            itemToValue={(o) => o.value}
+          />
+          {useRange && <DateRangeFilter value={range} onChange={setRange} />}
+        </HStack>
         <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
           <Plus size={16} />
           {t("inventory.batches.addTitle")}
@@ -79,7 +129,7 @@ export default function Batches() {
           <Table.Body>
             {batchesQ.rows.map((b) => (
               <Table.Row key={b.id}>
-                <Table.Cell>{medById.get(b.medicineId)?.name ?? b.medicineId}</Table.Cell>
+                <Table.Cell>{medRefs.get(b.medicineId)?.name ?? "—"}</Table.Cell>
                 <Table.Cell>{b.batchNumber || "—"}</Table.Cell>
                 <Table.Cell>
                   <HStack gap={2}>
@@ -213,8 +263,7 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
             control={form.control}
             name="costPrice"
             label={t("inventory.batches.costPerUnit")}
-            type="number"
-            inputMode="numeric"
+            money
           />
           <FormField
             control={form.control}

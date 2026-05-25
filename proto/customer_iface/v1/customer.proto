@@ -34,6 +34,13 @@ service CustomerService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  // ResolveCustomers returns minimal display refs for a set of ids (batch
+  // lookup-by-IDs for name resolution; never a full-list preload).
+  rpc ResolveCustomers(ResolveCustomersRequest) returns (ResolveCustomersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
   rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
@@ -70,6 +77,14 @@ message SearchCustomersRequest {
 message SearchCustomersResponse {
   repeated Customer customers = 1;
 }
+
+// Minimal display ref for resolve-by-IDs name lookups.
+message CustomerRef {
+  string id = 1;
+  string name = 2;
+}
+message ResolveCustomersRequest { repeated string ids = 1; }
+message ResolveCustomersResponse { repeated CustomerRef customers = 1; }
 
 message CreateCustomerRequest {
   string name = 1;

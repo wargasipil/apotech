@@ -22,6 +22,34 @@ message Medicine {
   string last_restock_supplier = 13;  // supplier of that batch (GetMedicine only)
   int64 total_stock = 14;             // global on-hand across all warehouses (GetMedicine only)
   int64 stock_valuation = 15;         // global value at cost = Σ qty × cost_price (GetMedicine only)
+  repeated MedicineUnit units = 16;   // units of measure (base + larger packs)
+}
+
+// A unit of measure for a medicine. Stock is stored in the base unit (factor 1);
+// larger units convert via `factor` (base units per 1 of this unit).
+message MedicineUnit {
+  string id = 1;
+  string medicine_id = 2;
+  string name = 3;
+  int64 factor = 4;          // base units per 1 of this unit (base = 1)
+  bool is_base = 5;
+  int64 sell_price = 6;      // independent, minor currency
+  bool sellable = 7;
+  bool purchasable = 8;      // Phase 2
+  int32 sort_order = 9;
+  bool active = 10;
+}
+
+message MedicineUnitInput {
+  string id = 1;             // empty = create new
+  string name = 2;
+  int64 factor = 3;
+  bool is_base = 4;
+  int64 sell_price = 5;
+  bool sellable = 6;
+  bool purchasable = 7;
+  int32 sort_order = 8;
+  bool active = 9;
 }
 
 message MedicinePrice {
@@ -31,6 +59,17 @@ message MedicinePrice {
   int64 effective_from = 4;
   int64 effective_to = 5;
   string changed_by = 6;
+}
+
+// Per-unit sell-price history (one open row per unit; effective_to 0 = current).
+message MedicineUnitPrice {
+  string id = 1;
+  string medicine_unit_id = 2;
+  string unit_name = 3;          // denormalized for display
+  int64 unit_sell_price = 4;
+  int64 effective_from = 5;
+  int64 effective_to = 6;        // 0 = open/current
+  string changed_by = 7;
 }
 
 service MedicineService {
@@ -60,7 +99,18 @@ service MedicineService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  rpc ListMedicineUnitPrices(ListMedicineUnitPricesRequest) returns (ListMedicineUnitPricesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
   rpc SearchMedicines(SearchMedicinesRequest) returns (SearchMedicinesResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  // ResolveMedicines returns minimal display refs for a set of ids (batch
+  // lookup-by-IDs for name resolution; never a full-list preload).
+  rpc ResolveMedicines(ResolveMedicinesRequest) returns (ResolveMedicinesResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
@@ -85,9 +135,10 @@ message CreateMedicineRequest {
   string sku = 1;
   string name = 2;
   string manufacturer = 3;
-  string unit = 4;
-  int64 unit_price = 5;
+  string unit = 4;            // base unit name (also used if `units` is empty)
+  int64 unit_price = 5;       // base unit sell price
   bool prescription_required = 6;
+  repeated MedicineUnitInput units = 7;  // optional; if empty, a base unit is created from unit/unit_price
 }
 message CreateMedicineResponse { Medicine medicine = 1; }
 
@@ -98,6 +149,7 @@ message UpdateMedicineRequest {
   string unit = 4;
   int64 unit_price = 5;
   bool prescription_required = 6;
+  repeated MedicineUnitInput units = 7;  // upsert the full unit set (exactly one is_base, base factor 1)
 }
 message UpdateMedicineResponse { Medicine medicine = 1; }
 
@@ -109,6 +161,11 @@ message ListMedicinePricesResponse {
   repeated MedicinePrice prices = 1;
 }
 
+message ListMedicineUnitPricesRequest { string medicine_id = 1; }
+message ListMedicineUnitPricesResponse {
+  repeated MedicineUnitPrice prices = 1;
+}
+
 message SearchMedicinesRequest {
   string query = 1;
   int32 limit = 2;
@@ -117,3 +174,12 @@ message SearchMedicinesRequest {
 message SearchMedicinesResponse {
   repeated Medicine medicines = 1;
 }
+
+// Minimal display ref for resolve-by-IDs name lookups.
+message MedicineRef {
+  string id = 1;
+  string name = 2;
+  string sku = 3;
+}
+message ResolveMedicinesRequest { repeated string ids = 1; }
+message ResolveMedicinesResponse { repeated MedicineRef medicines = 1; }

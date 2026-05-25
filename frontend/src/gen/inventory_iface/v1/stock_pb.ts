@@ -203,6 +203,27 @@ export class ListMovementsRequest extends Message<ListMovementsRequest> {
    */
   medicineId = "";
 
+  /**
+   * ILIKE batch_number / medicine name / sku
+   *
+   * @generated from field: string query = 6;
+   */
+  query = "";
+
+  /**
+   * created_at range lower bound (0 = unbounded)
+   *
+   * @generated from field: int64 from_unix = 7;
+   */
+  fromUnix = protoInt64.zero;
+
+  /**
+   * created_at range upper bound (exclusive; 0 = unbounded)
+   *
+   * @generated from field: int64 to_unix = 8;
+   */
+  toUnix = protoInt64.zero;
+
   constructor(data?: PartialMessage<ListMovementsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -216,6 +237,9 @@ export class ListMovementsRequest extends Message<ListMovementsRequest> {
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMovementsRequest {

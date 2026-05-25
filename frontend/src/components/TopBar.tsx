@@ -8,7 +8,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 
-import EnumSelect from "./EnumSelect";
+import WarehouseSelect from "./WarehouseSelect";
 import { useQueryClient } from "@tanstack/react-query";
 import { Languages, LogOut, Menu as MenuIcon, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -150,7 +150,7 @@ function WarehouseSelector() {
   if (!myWarehousesQ.data || myWarehousesQ.data.warehouses.length <= 1) return null;
 
   return (
-    <EnumSelect
+    <WarehouseSelect
       size="sm"
       width="180px"
       value={current}
@@ -161,9 +161,7 @@ function WarehouseSelector() {
         // (the transport reads localStorage per request) — no full page reload.
         void queryClient.invalidateQueries();
       }}
-      items={myWarehousesQ.data.warehouses}
-      itemToString={(w) => `${w.code} · ${w.name}`}
-      itemToValue={(w) => w.id}
+      warehouses={myWarehousesQ.data.warehouses}
     />
   );
 }

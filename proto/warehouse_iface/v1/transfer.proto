@@ -63,6 +63,9 @@ message ListTransfersRequest {
   string warehouse_id = 1;           // empty = all; matches from OR to
   int32 limit = 2;
   int32 offset = 3;
+  string query = 4;                  // ILIKE transfer_no / note
+  int64 from_unix = 5;               // created_at range lower bound (0 = unbounded)
+  int64 to_unix = 6;                 // created_at range upper bound (exclusive; 0 = unbounded)
 }
 message ListTransfersResponse {
   repeated StockTransfer transfers = 1;

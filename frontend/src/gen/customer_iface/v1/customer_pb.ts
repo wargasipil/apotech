@@ -348,6 +348,125 @@ export class SearchCustomersResponse extends Message<SearchCustomersResponse> {
 }
 
 /**
+ * Minimal display ref for resolve-by-IDs name lookups.
+ *
+ * @generated from message customer_iface.v1.CustomerRef
+ */
+export class CustomerRef extends Message<CustomerRef> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  constructor(data?: PartialMessage<CustomerRef>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "customer_iface.v1.CustomerRef";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CustomerRef {
+    return new CustomerRef().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CustomerRef {
+    return new CustomerRef().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CustomerRef {
+    return new CustomerRef().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CustomerRef | PlainMessage<CustomerRef> | undefined, b: CustomerRef | PlainMessage<CustomerRef> | undefined): boolean {
+    return proto3.util.equals(CustomerRef, a, b);
+  }
+}
+
+/**
+ * @generated from message customer_iface.v1.ResolveCustomersRequest
+ */
+export class ResolveCustomersRequest extends Message<ResolveCustomersRequest> {
+  /**
+   * @generated from field: repeated string ids = 1;
+   */
+  ids: string[] = [];
+
+  constructor(data?: PartialMessage<ResolveCustomersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "customer_iface.v1.ResolveCustomersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveCustomersRequest {
+    return new ResolveCustomersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveCustomersRequest {
+    return new ResolveCustomersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveCustomersRequest {
+    return new ResolveCustomersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveCustomersRequest | PlainMessage<ResolveCustomersRequest> | undefined, b: ResolveCustomersRequest | PlainMessage<ResolveCustomersRequest> | undefined): boolean {
+    return proto3.util.equals(ResolveCustomersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message customer_iface.v1.ResolveCustomersResponse
+ */
+export class ResolveCustomersResponse extends Message<ResolveCustomersResponse> {
+  /**
+   * @generated from field: repeated customer_iface.v1.CustomerRef customers = 1;
+   */
+  customers: CustomerRef[] = [];
+
+  constructor(data?: PartialMessage<ResolveCustomersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "customer_iface.v1.ResolveCustomersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "customers", kind: "message", T: CustomerRef, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ResolveCustomersResponse {
+    return new ResolveCustomersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ResolveCustomersResponse {
+    return new ResolveCustomersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ResolveCustomersResponse {
+    return new ResolveCustomersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ResolveCustomersResponse | PlainMessage<ResolveCustomersResponse> | undefined, b: ResolveCustomersResponse | PlainMessage<ResolveCustomersResponse> | undefined): boolean {
+    return proto3.util.equals(ResolveCustomersResponse, a, b);
+  }
+}
+
+/**
  * @generated from message customer_iface.v1.CreateCustomerRequest
  */
 export class CreateCustomerRequest extends Message<CreateCustomerRequest> {

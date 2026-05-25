@@ -235,11 +235,19 @@ func (p *PurchaseOrders) CreatePurchaseOrder(
 			if in.UnitCostPrice < 0 {
 				return connect.NewError(connect.CodeInvalidArgument, errors.New("unit_cost_price must be >= 0"))
 			}
+			unit, err := resolvePurchaseUnit(tx, in.MedicineId, in.MedicineUnitId)
+			if err != nil {
+				return err
+			}
+			baseQty := in.OrderedQty * int32(unit.Factor) // ordered_qty stored in BASE units
 			it := model.PurchaseOrderItem{
-				MedicineID:    in.MedicineId,
-				OrderedQty:    in.OrderedQty,
-				UnitCostPrice: in.UnitCostPrice,
-				Subtotal:      int64(in.OrderedQty) * in.UnitCostPrice,
+				MedicineID:     in.MedicineId,
+				OrderedQty:     baseQty,
+				UnitCostPrice:  in.UnitCostPrice, // per base unit
+				Subtotal:       int64(baseQty) * in.UnitCostPrice,
+				MedicineUnitID: &unit.ID,
+				UnitName:       unit.Name,
+				UnitFactor:     unit.Factor,
 			}
 			subtotal += it.Subtotal
 			items = append(items, it)
@@ -309,12 +317,20 @@ func (p *PurchaseOrders) UpdatePurchaseOrder(
 				if in.OrderedQty <= 0 {
 					return connect.NewError(connect.CodeInvalidArgument, errors.New("ordered_qty must be > 0"))
 				}
+				unit, err := resolvePurchaseUnit(tx, in.MedicineId, in.MedicineUnitId)
+				if err != nil {
+					return err
+				}
+				baseQty := in.OrderedQty * int32(unit.Factor) // ordered_qty stored in BASE units
 				it := model.PurchaseOrderItem{
 					PurchaseOrderID: po.ID,
 					MedicineID:      in.MedicineId,
-					OrderedQty:      in.OrderedQty,
-					UnitCostPrice:   in.UnitCostPrice,
-					Subtotal:        int64(in.OrderedQty) * in.UnitCostPrice,
+					OrderedQty:      baseQty,
+					UnitCostPrice:   in.UnitCostPrice, // per base unit
+					Subtotal:        int64(baseQty) * in.UnitCostPrice,
+					MedicineUnitID:  &unit.ID,
+					UnitName:        unit.Name,
+					UnitFactor:      unit.Factor,
 				}
 				subtotal += it.Subtotal
 				items = append(items, it)
@@ -534,6 +550,30 @@ func maybeCloseIfPaid(tx *gorm.DB, po *model.PurchaseOrder) error {
 	return nil
 }
 
+// resolvePurchaseUnit returns the medicine's purchasable unit for the given unit
+// id, or its base unit when unitID is empty. Errors if the unit isn't
+// purchasable/active or doesn't belong to the medicine. Mirrors resolveSellUnit.
+func resolvePurchaseUnit(tx *gorm.DB, medicineID, unitID string) (*model.MedicineUnit, error) {
+	var u model.MedicineUnit
+	q := tx.Where("medicine_id = ? AND active", medicineID)
+	if unitID != "" {
+		q = q.Where("id = ? AND purchasable", unitID)
+	} else {
+		q = q.Where("is_base")
+	}
+	if err := q.First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("purchase unit not found or not purchasable"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if u.Factor < 1 {
+		u.Factor = 1
+	}
+	return &u, nil
+}
+
 // ---------- Proto mapping ----------
 
 func poToProto(po *model.PurchaseOrder) *purchasingifacev1.PurchaseOrder {
@@ -570,7 +610,11 @@ func poToProto(po *model.PurchaseOrder) *purchasingifacev1.PurchaseOrder {
 }
 
 func poItemToProto(it *model.PurchaseOrderItem) *purchasingifacev1.PurchaseOrderItem {
-	return &purchasingifacev1.PurchaseOrderItem{
+	factor := it.UnitFactor
+	if factor < 1 {
+		factor = 1
+	}
+	out := &purchasingifacev1.PurchaseOrderItem{
 		Id:              it.ID,
 		PurchaseOrderId: it.PurchaseOrderID,
 		MedicineId:      it.MedicineID,
@@ -578,7 +622,13 @@ func poItemToProto(it *model.PurchaseOrderItem) *purchasingifacev1.PurchaseOrder
 		ReceivedQty:     it.ReceivedQty,
 		UnitCostPrice:   it.UnitCostPrice,
 		Subtotal:        it.Subtotal,
+		UnitName:        it.UnitName,
+		UnitFactor:      factor,
 	}
+	if it.MedicineUnitID != nil {
+		out.MedicineUnitId = *it.MedicineUnitID
+	}
+	return out
 }
 
 func poStatusToString(s purchasingifacev1.POStatus) string {

@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveSupplierRequest, ArchiveSupplierResponse, CreateSupplierRequest, CreateSupplierResponse, GetSupplierRequest, GetSupplierResponse, ListSuppliersRequest, ListSuppliersResponse, SearchSuppliersRequest, SearchSuppliersResponse, UpdateSupplierRequest, UpdateSupplierResponse } from "./supplier_pb.js";
+import { ArchiveSupplierRequest, ArchiveSupplierResponse, CreateSupplierRequest, CreateSupplierResponse, GetSupplierRequest, GetSupplierResponse, ListSuppliersRequest, ListSuppliersResponse, ResolveSuppliersRequest, ResolveSuppliersResponse, SearchSuppliersRequest, SearchSuppliersResponse, UpdateSupplierRequest, UpdateSupplierResponse } from "./supplier_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -64,6 +64,18 @@ export const SupplierService = {
       name: "SearchSuppliers",
       I: SearchSuppliersRequest,
       O: SearchSuppliersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ResolveSuppliers returns minimal display refs for a set of ids (batch
+     * lookup-by-IDs for name resolution; never a full-list preload).
+     *
+     * @generated from rpc inventory_iface.v1.SupplierService.ResolveSuppliers
+     */
+    resolveSuppliers: {
+      name: "ResolveSuppliers",
+      I: ResolveSuppliersRequest,
+      O: ResolveSuppliersResponse,
       kind: MethodKind.Unary,
     },
   }

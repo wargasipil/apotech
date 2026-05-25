@@ -100,6 +100,10 @@ func main() {
 		log.Fatalf("bootstrap: %v", err) // intentionally fatal — server can't start
 	}
 
+	// Background sweeper: hard-delete abandoned DRAFT carts the POS client missed
+	// (crashes, lost sessions). In-process, single-node — like the rate limiter.
+	service.StartDraftSweeper(gormDB)
+
 	// Connect RPC handlers live on apiMux and are mounted under /api so the
 	// embedded SPA can share the same origin (frontend transport baseUrl="/api").
 	apiMux := http.NewServeMux()

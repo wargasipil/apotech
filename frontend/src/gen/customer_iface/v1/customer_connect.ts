@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveCustomerRequest, ArchiveCustomerResponse, CreateCustomerRequest, CreateCustomerResponse, GetCustomerRequest, GetCustomerResponse, ListCustomersRequest, ListCustomersResponse, SearchCustomersRequest, SearchCustomersResponse, UpdateCustomerRequest, UpdateCustomerResponse } from "./customer_pb.js";
+import { ArchiveCustomerRequest, ArchiveCustomerResponse, CreateCustomerRequest, CreateCustomerResponse, GetCustomerRequest, GetCustomerResponse, ListCustomersRequest, ListCustomersResponse, ResolveCustomersRequest, ResolveCustomersResponse, SearchCustomersRequest, SearchCustomersResponse, UpdateCustomerRequest, UpdateCustomerResponse } from "./customer_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -37,6 +37,18 @@ export const CustomerService = {
       name: "SearchCustomers",
       I: SearchCustomersRequest,
       O: SearchCustomersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ResolveCustomers returns minimal display refs for a set of ids (batch
+     * lookup-by-IDs for name resolution; never a full-list preload).
+     *
+     * @generated from rpc customer_iface.v1.CustomerService.ResolveCustomers
+     */
+    resolveCustomers: {
+      name: "ResolveCustomers",
+      I: ResolveCustomersRequest,
+      O: ResolveCustomersResponse,
       kind: MethodKind.Unary,
     },
     /**

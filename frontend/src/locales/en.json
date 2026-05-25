@@ -13,6 +13,8 @@
   },
   "common": {
     "loading": "Loading…",
+    "exportCsv": "Export CSV",
+    "selectWarehouse": "Select warehouse",
     "save": "Save",
     "cancel": "Cancel",
     "create": "Create",
@@ -21,6 +23,8 @@
     "archive": "Archive",
     "close": "Close",
     "search": "Search",
+    "anyDate": "Any date",
+    "dateRange": "Date range",
     "add": "Add",
     "yes": "Yes",
     "no": "No",
@@ -121,7 +125,9 @@
     "outstandingToggle": "Outstanding only",
     "itemsMore": "+{{count}} more",
     "lineTotalInput": "Total cost (IDR)",
-    "unitCostDerived": "Cost / unit",
+    "unitCostDerived": "Cost / base unit",
+    "unit": "Unit",
+    "remaining": "Remaining",
     "statusTabs": {
       "all": "All"
     }
@@ -374,6 +380,7 @@
       "rxShort": "Rx",
       "priceHistory": "Price history",
       "priceHistoryEmpty": "No price changes recorded.",
+      "priceHistoryUnitCol": "Unit",
       "priceFrom": "From",
       "priceTo": "To",
       "priceCurrent": "(current)",
@@ -387,7 +394,15 @@
       "confirmArchive": "Archive this medicine?",
       "lastRestock": "Last restock",
       "totalStock": "Total stock",
-      "stockValuation": "Stock valuation"
+      "stockValuation": "Stock valuation",
+      "baseUnit": "Base unit",
+      "basePrice": "Base price (per base unit)",
+      "unitsSection": "Units",
+      "unitsBaseNote": "Base unit: {{unit}}. Add larger packs (box, strip…) below; factor = base units per pack.",
+      "unitName": "Unit",
+      "unitFactor": "Per base",
+      "unitSellPrice": "Sell price",
+      "addUnit": "Add unit"
     },
     "suppliers": {
       "title": "Suppliers",
@@ -400,6 +415,9 @@
     "batches": {
       "title": "Batches",
       "addTitle": "Receive batch",
+      "searchPlaceholder": "Search medicine / batch no…",
+      "byReceived": "By received",
+      "byExpiry": "By expiry",
       "medicine": "Medicine",
       "supplier": "Supplier",
       "supplierNone": "— none —",
@@ -419,6 +437,7 @@
       "recordTitle": "Record movement (adjustment / write-off)",
       "filterByBatch": "Filter by batch:",
       "filterAll": "— all —",
+      "searchPlaceholder": "Search batch / medicine…",
       "when": "When",
       "batch": "Batch",
       "type": "Type",
@@ -501,6 +520,7 @@
   "transfers": {
     "intro": "Move stock between warehouses. Each transfer is recorded with a number and history.",
     "newTransfer": "New transfer",
+    "searchPlaceholder": "Search transfer no / note…",
     "transferNo": "Transfer #",
     "route": "From / To",
     "lines": "Items",

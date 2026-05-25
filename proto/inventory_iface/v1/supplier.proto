@@ -41,6 +41,12 @@ service SupplierService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  // ResolveSuppliers returns minimal display refs for a set of ids (batch
+  // lookup-by-IDs for name resolution; never a full-list preload).
+  rpc ResolveSuppliers(ResolveSuppliersRequest) returns (ResolveSuppliersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
 }
 
 message ListSuppliersRequest {
@@ -84,3 +90,12 @@ message SearchSuppliersRequest {
 message SearchSuppliersResponse {
   repeated Supplier suppliers = 1;
 }
+
+// Minimal display ref for resolve-by-IDs name lookups.
+message SupplierRef {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+}
+message ResolveSuppliersRequest { repeated string ids = 1; }
+message ResolveSuppliersResponse { repeated SupplierRef suppliers = 1; }

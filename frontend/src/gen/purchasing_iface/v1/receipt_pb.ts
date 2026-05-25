@@ -148,6 +148,23 @@ export class PurchaseReceiptItem extends Message<PurchaseReceiptItem> {
    */
   batchId = "";
 
+  /**
+   * qty is in BASE units; these describe the purchasable unit received in.
+   *
+   * @generated from field: string medicine_unit_id = 10;
+   */
+  medicineUnitId = "";
+
+  /**
+   * @generated from field: string unit_name = 11;
+   */
+  unitName = "";
+
+  /**
+   * @generated from field: int64 unit_factor = 12;
+   */
+  unitFactor = protoInt64.zero;
+
   constructor(data?: PartialMessage<PurchaseReceiptItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -165,6 +182,9 @@ export class PurchaseReceiptItem extends Message<PurchaseReceiptItem> {
     { no: 7, name: "batch_number", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "expiry_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 9, name: "batch_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "unit_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "unit_factor", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseReceiptItem {
@@ -194,12 +214,14 @@ export class ReceiveLineInput extends Message<ReceiveLineInput> {
   purchaseOrderItemId = "";
 
   /**
+   * qty in the chosen purchasable unit
+   *
    * @generated from field: int32 qty = 2;
    */
   qty = 0;
 
   /**
-   * overrideable
+   * per BASE unit; overrideable
    *
    * @generated from field: int64 unit_cost_price = 3;
    */
@@ -217,6 +239,13 @@ export class ReceiveLineInput extends Message<ReceiveLineInput> {
    */
   expiryDate = "";
 
+  /**
+   * purchasable unit; empty => PO line's unit
+   *
+   * @generated from field: string medicine_unit_id = 6;
+   */
+  medicineUnitId = "";
+
   constructor(data?: PartialMessage<ReceiveLineInput>) {
     super();
     proto3.util.initPartial(data, this);
@@ -230,6 +259,7 @@ export class ReceiveLineInput extends Message<ReceiveLineInput> {
     { no: 3, name: "unit_cost_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 4, name: "batch_number", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "expiry_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "medicine_unit_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ReceiveLineInput {

@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
+import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, ListMedicineUnitPricesRequest, ListMedicineUnitPricesResponse, ResolveMedicinesRequest, ResolveMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -67,12 +67,33 @@ export const MedicineService = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc inventory_iface.v1.MedicineService.ListMedicineUnitPrices
+     */
+    listMedicineUnitPrices: {
+      name: "ListMedicineUnitPrices",
+      I: ListMedicineUnitPricesRequest,
+      O: ListMedicineUnitPricesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * @generated from rpc inventory_iface.v1.MedicineService.SearchMedicines
      */
     searchMedicines: {
       name: "SearchMedicines",
       I: SearchMedicinesRequest,
       O: SearchMedicinesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ResolveMedicines returns minimal display refs for a set of ids (batch
+     * lookup-by-IDs for name resolution; never a full-list preload).
+     *
+     * @generated from rpc inventory_iface.v1.MedicineService.ResolveMedicines
+     */
+    resolveMedicines: {
+      name: "ResolveMedicines",
+      I: ResolveMedicinesRequest,
+      O: ResolveMedicinesResponse,
       kind: MethodKind.Unary,
     },
   }
