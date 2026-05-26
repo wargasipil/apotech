@@ -23,6 +23,7 @@ message Medicine {
   int64 total_stock = 14;             // global on-hand across all warehouses (GetMedicine only)
   int64 stock_valuation = 15;         // global value at cost = Σ qty × cost_price (GetMedicine only)
   repeated MedicineUnit units = 16;   // units of measure (base + larger packs)
+  int64 reference_cost = 17;          // latest batch cost_price, per base unit (GetMedicine only; 0 if none)
 }
 
 // A unit of measure for a medicine. Stock is stored in the base unit (factor 1);

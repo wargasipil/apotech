@@ -402,7 +402,11 @@
       "unitName": "Satuan",
       "unitFactor": "Per dasar",
       "unitSellPrice": "Harga jual",
-      "addUnit": "Tambah satuan"
+      "addUnit": "Tambah satuan",
+      "markup": "Markup",
+      "lastCost": "Harga modal terakhir",
+      "costLabel": "Modal",
+      "marginPct": "margin {{pct}}%"
     },
     "suppliers": {
       "title": "Pemasok",

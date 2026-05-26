@@ -391,13 +391,28 @@ func TestGetMedicine_EnrichAndMovementsByMedicine(t *testing.T) {
 	require.Equal(t, "Restock Sup", got.Msg.Medicine.LastRestockSupplier, "last restock supplier")
 	require.Equal(t, int64(7), got.Msg.Medicine.TotalStock, "total stock (all warehouses)")
 	require.Equal(t, int64(3500), got.Msg.Medicine.StockValuation, "valuation = 7 × 500")
+	require.Equal(t, int64(500), got.Msg.Medicine.ReferenceCost, "reference cost = the only batch's cost")
 
-	// medB has no batch → no last-restock.
+	// A newer batch at a higher cost → reference_cost follows the latest received.
+	_, err = env.Batches.CreateBatch(ctx, whReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medA, BatchNumber: "MD-A2", ExpiryDate: "2099-12-31",
+			CostPrice: 700, InitialQuantity: 3,
+			SupplierId: sup.Msg.Supplier.Id, ReceivedAt: "2026-05-22",
+		}, wh))
+	require.NoError(t, err)
+	got2, err := env.Medicines.GetMedicine(ctx, whReq(env, t,
+		&inventoryifacev1.GetMedicineRequest{Id: medA}, wh))
+	require.NoError(t, err)
+	require.Equal(t, int64(700), got2.Msg.Medicine.ReferenceCost, "reference cost = latest batch (700)")
+
+	// medB has no batch → no last-restock, no reference cost.
 	gotB, err := env.Medicines.GetMedicine(ctx, whReq(env, t,
 		&inventoryifacev1.GetMedicineRequest{Id: medB}, wh))
 	require.NoError(t, err)
 	require.Empty(t, gotB.Msg.Medicine.LastRestockDate)
 	require.Empty(t, gotB.Msg.Medicine.LastRestockSupplier)
+	require.Equal(t, int64(0), gotB.Msg.Medicine.ReferenceCost, "no batch → reference cost 0")
 
 	// ListMovements{medicine_id: medA} → at least the PURCHASE movement; all rows
 	// belong to medA's batch (medB has none). Movements are scoped to the active

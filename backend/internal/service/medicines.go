@@ -196,6 +196,22 @@ func (m *Medicines) GetMedicine(
 	}
 	out.TotalStock = v.TotalStock
 	out.StockValuation = v.Valuation
+	// Reference cost = the latest purchase cost (most recent batch's cost_price,
+	// per base unit, global). Drives the markup/margin readout in the medicine
+	// form. Detail-only; 0 when the medicine has no batch yet.
+	var refCost *int64
+	if err := m.db.WithContext(ctx).
+		Model(&model.Batch{}).
+		Where("medicine_id = ?", med.ID).
+		Order("received_at DESC, created_at DESC").
+		Limit(1).
+		Select("cost_price").
+		Scan(&refCost).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if refCost != nil {
+		out.ReferenceCost = *refCost
+	}
 	if err := m.attachUnits(ctx, []*inventoryifacev1.Medicine{out}); err != nil {
 		return nil, err
 	}

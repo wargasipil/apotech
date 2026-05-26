@@ -40,6 +40,7 @@ type Medicine struct {
 	TotalStock           int64                  `protobuf:"varint,14,opt,name=total_stock,json=totalStock,proto3" json:"total_stock,omitempty"`                             // global on-hand across all warehouses (GetMedicine only)
 	StockValuation       int64                  `protobuf:"varint,15,opt,name=stock_valuation,json=stockValuation,proto3" json:"stock_valuation,omitempty"`                 // global value at cost = Σ qty × cost_price (GetMedicine only)
 	Units                []*MedicineUnit        `protobuf:"bytes,16,rep,name=units,proto3" json:"units,omitempty"`                                                          // units of measure (base + larger packs)
+	ReferenceCost        int64                  `protobuf:"varint,17,opt,name=reference_cost,json=referenceCost,proto3" json:"reference_cost,omitempty"`                    // latest batch cost_price, per base unit (GetMedicine only; 0 if none)
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -184,6 +185,13 @@ func (x *Medicine) GetUnits() []*MedicineUnit {
 		return x.Units
 	}
 	return nil
+}
+
+func (x *Medicine) GetReferenceCost() int64 {
+	if x != nil {
+		return x.ReferenceCost
+	}
+	return 0
 }
 
 // A unit of measure for a medicine. Stock is stored in the base unit (factor 1);
@@ -1590,7 +1598,7 @@ var File_inventory_iface_v1_medicine_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\n" +
-	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xac\x04\n" +
+	"!inventory_iface/v1/medicine.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xd3\x04\n" +
 	"\bMedicine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03sku\x18\x02 \x01(\tR\x03sku\x12\x12\n" +
@@ -1612,7 +1620,8 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\vtotal_stock\x18\x0e \x01(\x03R\n" +
 	"totalStock\x12'\n" +
 	"\x0fstock_valuation\x18\x0f \x01(\x03R\x0estockValuation\x126\n" +
-	"\x05units\x18\x10 \x03(\v2 .inventory_iface.v1.MedicineUnitR\x05units\"\x98\x02\n" +
+	"\x05units\x18\x10 \x03(\v2 .inventory_iface.v1.MedicineUnitR\x05units\x12%\n" +
+	"\x0ereference_cost\x18\x11 \x01(\x03R\rreferenceCost\"\x98\x02\n" +
 	"\fMedicineUnit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vmedicine_id\x18\x02 \x01(\tR\n" +

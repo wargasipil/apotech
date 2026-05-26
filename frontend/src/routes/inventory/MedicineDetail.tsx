@@ -21,6 +21,7 @@ import ExpiryBadge from "../../components/ExpiryBadge";
 import PageHeader from "../../components/PageHeader";
 import { MovementType } from "../../gen/inventory_iface/v1/stock_pb";
 import { formatMoney, formatUnix } from "../../lib/format";
+import { marginPct } from "../../lib/pricing";
 import { ALL_LIMIT } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import { useBatchesQuery } from "../../queries/batches";
@@ -120,6 +121,10 @@ export default function MedicineDetail() {
             <Field label={t("inventory.medicines.unit")} value={med.unit} />
             <Field label={t("inventory.medicines.unitPrice")} value={formatMoney(med.unitPrice)} />
             <Field
+              label={t("inventory.medicines.lastCost")}
+              value={med.referenceCost > 0n ? formatMoney(med.referenceCost) : "—"}
+            />
+            <Field
               label={t("inventory.medicines.lastRestock")}
               value={
                 med.lastRestockDate
@@ -162,31 +167,39 @@ export default function MedicineDetail() {
               {t("inventory.medicines.unitsSection")}
             </Text>
             <HStack gap={2} wrap="wrap">
-              {med.units.map((u) => (
-                <HStack
-                  key={u.id}
-                  gap={2}
-                  borderWidth="1px"
-                  borderRadius="md"
-                  px={3}
-                  py={1.5}
-                  bg="bg.subtle"
-                >
-                  <Text fontWeight="medium">{u.name}</Text>
-                  {u.isBase ? (
-                    <Badge size="sm" colorPalette="blue">
-                      {t("inventory.medicines.baseUnit")}
-                    </Badge>
-                  ) : (
-                    <Text fontSize="xs" color="fg.muted">
-                      ×{u.factor.toString()}
+              {med.units.map((u) => {
+                const m = marginPct(u.sellPrice, med.referenceCost * u.factor);
+                return (
+                  <HStack
+                    key={u.id}
+                    gap={2}
+                    borderWidth="1px"
+                    borderRadius="md"
+                    px={3}
+                    py={1.5}
+                    bg="bg.subtle"
+                  >
+                    <Text fontWeight="medium">{u.name}</Text>
+                    {u.isBase ? (
+                      <Badge size="sm" colorPalette="blue">
+                        {t("inventory.medicines.baseUnit")}
+                      </Badge>
+                    ) : (
+                      <Text fontSize="xs" color="fg.muted">
+                        ×{u.factor.toString()}
+                      </Text>
+                    )}
+                    <Text fontSize="sm" color="fg.muted">
+                      {formatMoney(u.sellPrice)}
                     </Text>
-                  )}
-                  <Text fontSize="sm" color="fg.muted">
-                    {formatMoney(u.sellPrice)}
-                  </Text>
-                </HStack>
-              ))}
+                    {m != null && (
+                      <Text fontSize="xs" color="fg.muted">
+                        · {t("inventory.medicines.marginPct", { pct: m.toFixed(0) })}
+                      </Text>
+                    )}
+                  </HStack>
+                );
+              })}
             </HStack>
           </Box>
         </Box>

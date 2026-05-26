@@ -104,6 +104,13 @@ export class Medicine extends Message<Medicine> {
    */
   units: MedicineUnit[] = [];
 
+  /**
+   * latest batch cost_price, per base unit (GetMedicine only; 0 if none)
+   *
+   * @generated from field: int64 reference_cost = 17;
+   */
+  referenceCost = protoInt64.zero;
+
   constructor(data?: PartialMessage<Medicine>) {
     super();
     proto3.util.initPartial(data, this);
@@ -128,6 +135,7 @@ export class Medicine extends Message<Medicine> {
     { no: 14, name: "total_stock", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 15, name: "stock_valuation", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 16, name: "units", kind: "message", T: MedicineUnit, repeated: true },
+    { no: 17, name: "reference_cost", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Medicine {

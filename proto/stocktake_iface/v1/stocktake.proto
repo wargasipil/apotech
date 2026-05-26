@@ -24,6 +24,9 @@ message StocktakeSession {
   int32 line_count = 9;
   int32 counted_count = 10;
   int32 variance_count = 11;
+
+  string warehouse_id = 12;      // the warehouse this session counts
+  string warehouse_name = 13;    // hydrated for display
 }
 
 message StocktakeLine {

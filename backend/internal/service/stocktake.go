@@ -47,22 +47,23 @@ func (s *Stocktakes) StartStocktake(
 	if err != nil {
 		return nil, err
 	}
-	// Reject if another DRAFT session is open globally — keeps two
-	// pharmacists from counting the same batch in two sessions.
-	var existing int64
-	if err := s.db.WithContext(ctx).Model(&model.StocktakeSession{}).
-		Where("status = ?", stocktakeStatusDraft).Count(&existing).Error; err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if existing > 0 {
-		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			errors.New("another draft stocktake session is already in progress"))
-	}
-
 	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
 	if err != nil {
 		return nil, err
 	}
+	// One DRAFT per warehouse — reject only if a draft is already open in THIS
+	// warehouse (counting two warehouses concurrently is allowed).
+	var existing int64
+	if err := s.db.WithContext(ctx).Model(&model.StocktakeSession{}).
+		Where("status = ? AND warehouse_id = ?", stocktakeStatusDraft, warehouseID).
+		Count(&existing).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if existing > 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("a draft stocktake is already open in this warehouse"))
+	}
+
 	session := model.StocktakeSession{
 		Name:        strings.TrimSpace(req.Msg.Name),
 		Status:      stocktakeStatusDraft,
@@ -72,9 +73,11 @@ func (s *Stocktakes) StartStocktake(
 	if err := s.db.WithContext(ctx).Create(&session).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&stocktakeifacev1.StartStocktakeResponse{
-		Session: sessionToProto(&session, 0, 0, 0),
-	}), nil
+	out, err := s.hydrateSession(ctx, &session)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&stocktakeifacev1.StartStocktakeResponse{Session: out}), nil
 }
 
 func (s *Stocktakes) AddBatchesToSession(
@@ -457,8 +460,18 @@ func (s *Stocktakes) ListStocktakes(
 	ctx context.Context,
 	req *connect.Request[stocktakeifacev1.ListStocktakesRequest],
 ) (*connect.Response[stocktakeifacev1.ListStocktakesResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
+		// Scope to the caller's active warehouse (header-driven, like ListMovements).
+		q = q.Where("warehouse_id = ?", warehouseID)
 		if st := strings.TrimSpace(strings.ToUpper(req.Msg.Status)); st != "" {
 			q = q.Where("status = ?", st)
 		}
@@ -607,7 +620,16 @@ func (s *Stocktakes) hydrateSession(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return sessionToProto(sess, c.Total, c.Counted, c.Variance), nil
+	out := sessionToProto(sess, c.Total, c.Counted, c.Variance)
+	// Resolve the warehouse name for display.
+	if sess.WarehouseID != nil && *sess.WarehouseID != "" {
+		var wh model.Warehouse
+		if err := s.db.WithContext(ctx).Select("name").
+			Where("id = ?", *sess.WarehouseID).First(&wh).Error; err == nil {
+			out.WarehouseName = wh.Name
+		}
+	}
+	return out, nil
 }
 
 // ---------- proto mapping ----------
@@ -625,6 +647,9 @@ func sessionToProto(s *model.StocktakeSession, total, counted, variance int32) *
 	}
 	if s.BranchID != nil {
 		out.BranchId = *s.BranchID
+	}
+	if s.WarehouseID != nil {
+		out.WarehouseId = *s.WarehouseID
 	}
 	if s.CompletedAt != nil {
 		out.CompletedAt = s.CompletedAt.Unix()

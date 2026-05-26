@@ -121,6 +121,11 @@ export default function StocktakeDetail() {
                 session?.status ?? "",
               )}
             </Badge>
+            {session?.warehouseName && (
+              <Badge colorPalette="blue" variant="surface">
+                {session.warehouseName}
+              </Badge>
+            )}
           </HStack>
           <Text fontSize="sm" color="fg.muted">
             {t("inventory.stocktake.summary", {

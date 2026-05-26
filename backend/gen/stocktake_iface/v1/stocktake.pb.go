@@ -37,9 +37,11 @@ type StocktakeSession struct {
 	CompletedAt int64                  `protobuf:"varint,7,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
 	VoidedAt    int64                  `protobuf:"varint,8,opt,name=voided_at,json=voidedAt,proto3" json:"voided_at,omitempty"`
 	// Hydrated summary counts (computed server-side from lines).
-	LineCount     int32 `protobuf:"varint,9,opt,name=line_count,json=lineCount,proto3" json:"line_count,omitempty"`
-	CountedCount  int32 `protobuf:"varint,10,opt,name=counted_count,json=countedCount,proto3" json:"counted_count,omitempty"`
-	VarianceCount int32 `protobuf:"varint,11,opt,name=variance_count,json=varianceCount,proto3" json:"variance_count,omitempty"`
+	LineCount     int32  `protobuf:"varint,9,opt,name=line_count,json=lineCount,proto3" json:"line_count,omitempty"`
+	CountedCount  int32  `protobuf:"varint,10,opt,name=counted_count,json=countedCount,proto3" json:"counted_count,omitempty"`
+	VarianceCount int32  `protobuf:"varint,11,opt,name=variance_count,json=varianceCount,proto3" json:"variance_count,omitempty"`
+	WarehouseId   string `protobuf:"bytes,12,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`       // the warehouse this session counts
+	WarehouseName string `protobuf:"bytes,13,opt,name=warehouse_name,json=warehouseName,proto3" json:"warehouse_name,omitempty"` // hydrated for display
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -149,6 +151,20 @@ func (x *StocktakeSession) GetVarianceCount() int32 {
 		return x.VarianceCount
 	}
 	return 0
+}
+
+func (x *StocktakeSession) GetWarehouseId() string {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return ""
+}
+
+func (x *StocktakeSession) GetWarehouseName() string {
+	if x != nil {
+		return x.WarehouseName
+	}
+	return ""
 }
 
 type StocktakeLine struct {
@@ -1281,7 +1297,7 @@ var File_stocktake_iface_v1_stocktake_proto protoreflect.FileDescriptor
 
 const file_stocktake_iface_v1_stocktake_proto_rawDesc = "" +
 	"\n" +
-	"\"stocktake_iface/v1/stocktake.proto\x12\x12stocktake_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xd4\x02\n" +
+	"\"stocktake_iface/v1/stocktake.proto\x12\x12stocktake_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\x9e\x03\n" +
 	"\x10StocktakeSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -1297,7 +1313,9 @@ const file_stocktake_iface_v1_stocktake_proto_rawDesc = "" +
 	"line_count\x18\t \x01(\x05R\tlineCount\x12#\n" +
 	"\rcounted_count\x18\n" +
 	" \x01(\x05R\fcountedCount\x12%\n" +
-	"\x0evariance_count\x18\v \x01(\x05R\rvarianceCount\"\xf3\x03\n" +
+	"\x0evariance_count\x18\v \x01(\x05R\rvarianceCount\x12!\n" +
+	"\fwarehouse_id\x18\f \x01(\tR\vwarehouseId\x12%\n" +
+	"\x0ewarehouse_name\x18\r \x01(\tR\rwarehouseName\"\xf3\x03\n" +
 	"\rStocktakeLine\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +

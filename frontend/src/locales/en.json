@@ -402,7 +402,11 @@
       "unitName": "Unit",
       "unitFactor": "Per base",
       "unitSellPrice": "Sell price",
-      "addUnit": "Add unit"
+      "addUnit": "Add unit",
+      "markup": "Markup",
+      "lastCost": "Last cost",
+      "costLabel": "Cost",
+      "marginPct": "{{pct}}% margin"
     },
     "suppliers": {
       "title": "Suppliers",

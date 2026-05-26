@@ -74,6 +74,20 @@ export class StocktakeSession extends Message<StocktakeSession> {
    */
   varianceCount = 0;
 
+  /**
+   * the warehouse this session counts
+   *
+   * @generated from field: string warehouse_id = 12;
+   */
+  warehouseId = "";
+
+  /**
+   * hydrated for display
+   *
+   * @generated from field: string warehouse_name = 13;
+   */
+  warehouseName = "";
+
   constructor(data?: PartialMessage<StocktakeSession>) {
     super();
     proto3.util.initPartial(data, this);
@@ -93,6 +107,8 @@ export class StocktakeSession extends Message<StocktakeSession> {
     { no: 9, name: "line_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 10, name: "counted_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 11, name: "variance_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "warehouse_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StocktakeSession {

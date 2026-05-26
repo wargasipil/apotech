@@ -275,6 +275,68 @@ func TestStocktake_Void(t *testing.T) {
 	require.Equal(t, int64(0), c, "Voided session must not produce movements")
 }
 
+// TestStocktake_WarehouseScoped asserts a session is stamped + displayed with
+// its warehouse, ListStocktakes is scoped to the active warehouse, and DRAFTs
+// are one-per-warehouse (not global).
+func TestStocktake_WarehouseScoped(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	whA := makeWarehouse(env, t, ctx, fmt.Sprintf("STA%d", uniq%100000))
+	whB := makeWarehouse(env, t, ctx, fmt.Sprintf("STB%d", uniq%100000))
+
+	// Start a draft in WH-A → stamped + name hydrated.
+	startA, err := env.Stocktakes.StartStocktake(ctx, whReq(env, t,
+		&stocktakeifacev1.StartStocktakeRequest{Name: "WH-A count"}, whA))
+	require.NoError(t, err)
+	sessA := startA.Msg.Session.Id
+	require.Equal(t, whA, startA.Msg.Session.WarehouseId, "session stamped with WH-A")
+	require.NotEmpty(t, startA.Msg.Session.WarehouseName, "warehouse name hydrated")
+	t.Cleanup(func() {
+		_, _ = env.Stocktakes.VoidStocktake(ctx, whReq(env, t,
+			&stocktakeifacev1.VoidStocktakeRequest{SessionId: sessA}, whA))
+	})
+
+	// ListStocktakes is warehouse-scoped: WH-A sees it, WH-B doesn't.
+	listA, err := env.Stocktakes.ListStocktakes(ctx, whReq(env, t,
+		&stocktakeifacev1.ListStocktakesRequest{Limit: 200}, whA))
+	require.NoError(t, err)
+	require.True(t, stHasSession(listA.Msg.Sessions, sessA), "WH-A list includes the WH-A session")
+	listB, err := env.Stocktakes.ListStocktakes(ctx, whReq(env, t,
+		&stocktakeifacev1.ListStocktakesRequest{Limit: 200}, whB))
+	require.NoError(t, err)
+	require.False(t, stHasSession(listB.Msg.Sessions, sessA), "WH-B list excludes the WH-A session")
+
+	// One DRAFT per warehouse: WH-B can start while WH-A's draft is open.
+	startB, err := env.Stocktakes.StartStocktake(ctx, whReq(env, t,
+		&stocktakeifacev1.StartStocktakeRequest{Name: "WH-B count"}, whB))
+	require.NoError(t, err, "a draft in another warehouse must be allowed")
+	sessB := startB.Msg.Session.Id
+	require.Equal(t, whB, startB.Msg.Session.WarehouseId)
+	t.Cleanup(func() {
+		_, _ = env.Stocktakes.VoidStocktake(ctx, whReq(env, t,
+			&stocktakeifacev1.VoidStocktakeRequest{SessionId: sessB}, whB))
+	})
+
+	// But a SECOND draft in WH-A is rejected.
+	_, err = env.Stocktakes.StartStocktake(ctx, whReq(env, t,
+		&stocktakeifacev1.StartStocktakeRequest{Name: "WH-A second"}, whA))
+	require.Error(t, err, "second draft in the same warehouse must fail")
+	var cerr *connect.Error
+	require.True(t, errors.As(err, &cerr))
+	require.Equal(t, connect.CodeFailedPrecondition, cerr.Code())
+}
+
+func stHasSession(sessions []*stocktakeifacev1.StocktakeSession, id string) bool {
+	for _, s := range sessions {
+		if s.Id == id {
+			return true
+		}
+	}
+	return false
+}
+
 // ---------- test helpers ----------
 
 // cleanupLeftoverDrafts voids any DRAFT stocktake session the global rule
