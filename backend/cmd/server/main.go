@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/apotech/backend/gen/analytics_iface/v1/analyticsifacev1connect"
+	"github.com/apotech/backend/gen/backup_iface/v1/backupifacev1connect"
 	"github.com/apotech/backend/gen/bpjs_iface/v1/bpjsifacev1connect"
 	"github.com/apotech/backend/gen/branch_iface/v1/branchifacev1connect"
 	"github.com/apotech/backend/gen/customer_iface/v1/customerifacev1connect"
@@ -24,6 +25,7 @@ import (
 	"github.com/apotech/backend/gen/pos_iface/v1/posifacev1connect"
 	"github.com/apotech/backend/gen/prescription_iface/v1/prescriptionifacev1connect"
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
+	"github.com/apotech/backend/gen/settings_iface/v1/settingsifacev1connect"
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	"github.com/apotech/backend/gen/tax_iface/v1/taxifacev1connect"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
@@ -82,9 +84,7 @@ func main() {
 	stockSvc := service.NewStock(gormDB)
 	customerSvc := service.NewCustomers(gormDB)
 	saleSvc := service.NewSales(gormDB, cfg.Printer)
-	salesAnalyticsSvc := service.NewSalesAnalytics(gormDB)
-	inventoryAnalyticsSvc := service.NewInventoryAnalytics(gormDB)
-	marginAnalyticsSvc := service.NewMarginAnalytics(gormDB)
+	analyticsSvc := service.NewAnalytics(gormDB)
 	purchaseOrdersSvc := service.NewPurchaseOrders(gormDB)
 	purchaseReceiptsSvc := service.NewPurchaseReceipts(gormDB)
 	purchasePaymentsSvc := service.NewPurchasePayments(gormDB)
@@ -95,6 +95,8 @@ func main() {
 	stocktakesSvc := service.NewStocktakes(gormDB)
 	warehousesSvc := service.NewWarehouses(gormDB)
 	transfersSvc := service.NewTransfers(gormDB)
+	settingsSvc := service.NewSettings(gormDB)
+	backupSvc := service.NewBackups(gormDB, cfg)
 
 	if err := userSvc.EnsureBootstrapOwner(context.Background(), cfg.Bootstrap); err != nil {
 		log.Fatalf("bootstrap: %v", err) // intentionally fatal — server can't start
@@ -116,9 +118,7 @@ func main() {
 	apiMux.Handle(inventoryifacev1connect.NewStockMovementServiceHandler(stockSvc, interceptors))
 	apiMux.Handle(customerifacev1connect.NewCustomerServiceHandler(customerSvc, interceptors))
 	apiMux.Handle(posifacev1connect.NewSaleServiceHandler(saleSvc, interceptors))
-	apiMux.Handle(analyticsifacev1connect.NewSalesAnalyticsServiceHandler(salesAnalyticsSvc, interceptors))
-	apiMux.Handle(analyticsifacev1connect.NewInventoryAnalyticsServiceHandler(inventoryAnalyticsSvc, interceptors))
-	apiMux.Handle(analyticsifacev1connect.NewMarginAnalyticsServiceHandler(marginAnalyticsSvc, interceptors))
+	apiMux.Handle(analyticsifacev1connect.NewAnalyticsServiceHandler(analyticsSvc, interceptors))
 	apiMux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(purchaseOrdersSvc, interceptors))
 	apiMux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(purchaseReceiptsSvc, interceptors))
 	apiMux.Handle(purchasingifacev1connect.NewPurchasePaymentServiceHandler(purchasePaymentsSvc, interceptors))
@@ -129,6 +129,8 @@ func main() {
 	apiMux.Handle(stocktakeifacev1connect.NewStocktakeServiceHandler(stocktakesSvc, interceptors))
 	apiMux.Handle(warehouseifacev1connect.NewWarehouseServiceHandler(warehousesSvc, interceptors))
 	apiMux.Handle(warehouseifacev1connect.NewStockTransferServiceHandler(transfersSvc, interceptors))
+	apiMux.Handle(settingsifacev1connect.NewSettingsServiceHandler(settingsSvc, interceptors))
+	apiMux.Handle(backupifacev1connect.NewBackupServiceHandler(backupSvc, interceptors))
 
 	// Root mux: /api/* → Connect handlers, /healthz → liveness probe,
 	// everything else → the embedded SPA (single self-contained binary).

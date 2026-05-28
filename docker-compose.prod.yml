@@ -43,6 +43,11 @@ services:
       TZ: ${APOTECH_TZ:-Asia/Jakarta}
     ports:
       - "8080:8080"
+    volumes:
+      # BackupService writes here (config.docker.yaml -> backup.directory).
+      # Named volume so backup_<ts>/ dirs survive container restarts.
+      - apotech-backups:/var/lib/apotech/backups
 
 volumes:
   apotech-pgdata:
+  apotech-backups:

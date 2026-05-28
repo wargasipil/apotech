@@ -10,10 +10,13 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	"github.com/apotech/backend/gen/analytics_iface/v1/analyticsifacev1connect"
+	"github.com/apotech/backend/gen/backup_iface/v1/backupifacev1connect"
 	"github.com/apotech/backend/gen/customer_iface/v1/customerifacev1connect"
 	"github.com/apotech/backend/gen/inventory_iface/v1/inventoryifacev1connect"
 	posifacev1connect "github.com/apotech/backend/gen/pos_iface/v1/posifacev1connect"
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
+	"github.com/apotech/backend/gen/settings_iface/v1/settingsifacev1connect"
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	userifacev1 "github.com/apotech/backend/gen/user_iface/v1"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
@@ -49,7 +52,17 @@ type Env struct {
 	Transfers  warehouseifacev1connect.StockTransferServiceClient
 	POs        purchasingifacev1connect.PurchaseOrderServiceClient
 	Receipts   purchasingifacev1connect.PurchaseReceiptServiceClient
-	Owner      TestUser
+	Settings   settingsifacev1connect.SettingsServiceClient
+	Backups    backupifacev1connect.BackupServiceClient
+	Analytics  analyticsifacev1connect.AnalyticsServiceClient
+	// BackupDir is t.TempDir() — Setup wires Backups against this directory via
+	// NewBackupsWithDir so tests can't write to the real ./backups.
+	BackupDir string
+	// Cfg is the loaded config — needed by tests that construct a service
+	// standalone (e.g. TestBackup_CleanupOnPgDumpFailure clones Database with
+	// bad credentials).
+	Cfg   *config.Config
+	Owner TestUser
 }
 
 // AuthHeader returns "Bearer <access_token>" after logging in the owner.
@@ -125,6 +138,12 @@ func SetupEnv(t *testing.T) *Env {
 	transferSvc := service.NewTransfers(gormDB)
 	poSvc := service.NewPurchaseOrders(gormDB)
 	receiptSvc := service.NewPurchaseReceipts(gormDB)
+	settingsSvc := service.NewSettings(gormDB)
+	// Wire BackupService against a per-test temp dir so backup_<ts>/ never
+	// pollutes the real ./backups; the test can read files under backupDir.
+	backupDir := t.TempDir()
+	backupSvc := service.NewBackupsWithDir(gormDB, cfg, backupDir)
+	analyticsSvc := service.NewAnalytics(gormDB)
 
 	if cfg.Bootstrap.OwnerEmail == "" {
 		t.Fatalf("config.bootstrap.owner_email is empty; set it in config.yaml so tests have a known user")
@@ -147,6 +166,9 @@ func SetupEnv(t *testing.T) *Env {
 	mux.Handle(warehouseifacev1connect.NewStockTransferServiceHandler(transferSvc, interceptors))
 	mux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(poSvc, interceptors))
 	mux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(receiptSvc, interceptors))
+	mux.Handle(settingsifacev1connect.NewSettingsServiceHandler(settingsSvc, interceptors))
+	mux.Handle(backupifacev1connect.NewBackupServiceHandler(backupSvc, interceptors))
+	mux.Handle(analyticsifacev1connect.NewAnalyticsServiceHandler(analyticsSvc, interceptors))
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -167,6 +189,11 @@ func SetupEnv(t *testing.T) *Env {
 		Transfers:  warehouseifacev1connect.NewStockTransferServiceClient(srv.Client(), srv.URL),
 		POs:        purchasingifacev1connect.NewPurchaseOrderServiceClient(srv.Client(), srv.URL),
 		Receipts:   purchasingifacev1connect.NewPurchaseReceiptServiceClient(srv.Client(), srv.URL),
+		Settings:   settingsifacev1connect.NewSettingsServiceClient(srv.Client(), srv.URL),
+		Backups:    backupifacev1connect.NewBackupServiceClient(srv.Client(), srv.URL),
+		Analytics:  analyticsifacev1connect.NewAnalyticsServiceClient(srv.Client(), srv.URL),
+		BackupDir:  backupDir,
+		Cfg:        cfg,
 		Owner: TestUser{
 			Email:    cfg.Bootstrap.OwnerEmail,
 			Password: cfg.Bootstrap.OwnerPassword,

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package settings_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/settings_iface/v1;settingsifacev1";
+
+// App-wide settings (one row in app_settings per key). Today only the
+// low-stock threshold is wired; the table + proto are open for future keys.
+message Settings {
+  // Warn when a medicine's ready_stock in the active warehouse is <= this
+  // number. Default 10 when no row exists yet.
+  int32 low_stock_threshold = 1;
+}
+
+service SettingsService {
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+}
+
+message GetSettingsRequest {}
+message GetSettingsResponse { Settings settings = 1; }
+
+message UpdateSettingsRequest {
+  int32 low_stock_threshold = 1;
+}
+message UpdateSettingsResponse { Settings settings = 1; }

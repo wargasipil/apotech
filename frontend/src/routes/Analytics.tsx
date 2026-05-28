@@ -9,19 +9,19 @@ export default function Analytics() {
   const { t } = useTranslation();
   const location = useLocation();
   const tabs = [
-    { value: "sales", to: "/analytics/sales", label: t("analytics.tabs.sales") },
-    { value: "inventory", to: "/analytics/inventory", label: t("analytics.tabs.inventory") },
-    { value: "margins", to: "/analytics/margins", label: t("analytics.tabs.margins") },
+    { value: "daily", to: "/analytics/daily", label: t("analytics.menu.daily") },
+    { value: "product", to: "/analytics/product", label: t("analytics.menu.product") },
+    { value: "user", to: "/analytics/user", label: t("analytics.menu.user") },
   ];
   const activeKey =
-    tabs.find((tab) => location.pathname.startsWith(tab.to))?.value ?? "sales";
+    tabs.find((tab) => location.pathname.startsWith(tab.to))?.value ?? "daily";
 
   return (
     <Box>
       <PageHeader
         breadcrumbs={[
           { label: t("analytics.title") },
-          { label: t(`analytics.tabs.${activeKey}`) },
+          { label: t(`analytics.menu.${activeKey}`) },
         ]}
         title={t("analytics.title")}
       />

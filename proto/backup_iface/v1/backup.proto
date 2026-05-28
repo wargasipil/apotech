@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package backup_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/backup_iface/v1;backupifacev1";
+
+// One backup directory on disk:
+//   <config.backup.directory>/backup_<YYYY-mm-dd_HHMMSS>/
+//     database.sql.gz
+//     manifest.txt
+message Backup {
+  // Directory name (e.g. "backup_2026-05-26_152400"). The name doubles as the
+  // delete key; the directory layout is documented above.
+  string name = 1;
+  // Unix seconds — parsed from `name`.
+  int64 created_at = 2;
+  // Size of database.sql.gz in bytes.
+  int64 size_bytes = 3;
+  // Latest goose migration version applied at backup time (read from
+  // goose_db_version). Persisted in manifest.txt for restore validation.
+  int32 schema_version = 4;
+}
+
+// All BackupService RPCs are OWNER-only.
+service BackupService {
+  // CreateBackup subprocesses pg_dump (compressed) into a fresh
+  // backup_<timestamp>/ directory and writes manifest.txt next to it.
+  rpc CreateBackup(CreateBackupRequest) returns (CreateBackupResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  // ListBackups returns every backup_<timestamp>/ directory under the
+  // configured backup root, newest first.
+  rpc ListBackups(ListBackupsRequest) returns (ListBackupsResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  // DeleteBackup removes a single backup_<timestamp>/ directory. `name` is
+  // validated against the regex to refuse path traversal.
+  rpc DeleteBackup(DeleteBackupRequest) returns (DeleteBackupResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+}
+
+message CreateBackupRequest {}
+message CreateBackupResponse { Backup backup = 1; }
+
+message ListBackupsRequest {}
+message ListBackupsResponse { repeated Backup backups = 1; }
+
+message DeleteBackupRequest { string name = 1; }
+message DeleteBackupResponse {}

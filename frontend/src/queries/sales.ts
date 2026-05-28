@@ -150,10 +150,26 @@ export async function fetchSalesForExport(filters: PartialMessage<ListSalesReque
   return res.sales;
 }
 
-export function useTodaySnapshotQuery() {
+// useSaleQuery loads one sale by id (drives the OrderDetail page). The Connect
+// response carries the full proto incl. items preloaded; the detail page
+// resolves referenced names (customer, cashier, medicines) via the existing
+// Resolve<Domain> hooks.
+export function useSaleQuery(id: string) {
   return useQuery({
-    queryKey: saleKeys.todaySnapshot(),
-    queryFn: async () => saleClient.getTodaySnapshot({}),
+    queryKey: saleKeys.detail(id),
+    queryFn: async () => {
+      const res = await saleClient.getSale({ id });
+      return res.sale;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useTodaySnapshotQuery(opts: { cashierUserId?: string } = {}) {
+  const cashierUserId = opts.cashierUserId ?? "";
+  return useQuery({
+    queryKey: [...saleKeys.todaySnapshot(), { cashierUserId }],
+    queryFn: async () => saleClient.getTodaySnapshot({ cashierUserId }),
     staleTime: 30_000,
   });
 }

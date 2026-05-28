@@ -10,8 +10,9 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 import DateRangeFilter, { resolveRange, type DateRange } from "../components/DateRangeFilter";
 import ExportButton from "../components/ExportButton";
@@ -21,6 +22,7 @@ import { SaleStatus, type SaleItem } from "../gen/pos_iface/v1/sale_pb";
 import { downloadCsv } from "../lib/csv";
 import { formatMoney, formatUnix } from "../lib/format";
 import { usePageState } from "../lib/pagination";
+import { resolveUserMap, useUserRefs } from "../queries/refs";
 import { fetchSalesForExport, useListSalesQuery, useSalesSummaryQuery } from "../queries/sales";
 
 const PAYMENT_KEY: Record<number, string> = {
@@ -52,6 +54,7 @@ function statusKey(s: SaleStatus): string {
 
 export default function Orders() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -85,13 +88,28 @@ export default function Orders() {
   const summaryQ = useSalesSummaryQuery({ query, status, fromUnix, toUnix });
   const summary = summaryQ.data;
 
+  // Resolve cashier names for the "Created by" column. Sale rows already carry
+  // cashier_user_id; the metric RPC pattern keeps names off the wire and the
+  // frontend looks them up via the shared Resolve<Domain>(ids) hook.
+  const cashierIds = useMemo(
+    () => salesQ.rows.map((s) => s.cashierUserId).filter(Boolean),
+    [salesQ.rows],
+  );
+  const userRefs = useUserRefs(cashierIds);
+  const createdByLabel = (cashierId: string) =>
+    userRefs.get(cashierId)?.name || userRefs.get(cashierId)?.email || "—";
+
   const onExport = async () => {
     const rows = await fetchSalesForExport({ query, status, fromUnix, toUnix });
+    // Bulk-resolve cashier names for the export's rows (mirrors how the
+    // page table resolves them, but imperative since this isn't a hook).
+    const users = await resolveUserMap(rows.map((s) => s.cashierUserId).filter(Boolean));
     downloadCsv(
       `order-history-${new Date().toISOString().slice(0, 10)}.csv`,
       rows.map((s) => ({
         saleNo: s.saleNo || s.id.slice(0, 8),
         date: formatUnix(s.createdAt),
+        createdBy: users.get(s.cashierUserId)?.name || users.get(s.cashierUserId)?.email || "",
         customer: s.customerName || "",
         items: s.items
           .map(
@@ -106,6 +124,7 @@ export default function Orders() {
       [
         { key: "saleNo", header: t("orders.saleNo") },
         { key: "date", header: t("orders.date") },
+        { key: "createdBy", header: t("orders.createdBy") },
         { key: "customer", header: t("orders.customer") },
         { key: "items", header: t("orders.items") },
         { key: "payment", header: t("orders.payment") },
@@ -178,6 +197,7 @@ export default function Orders() {
             <Table.Row>
               <Table.ColumnHeader>{t("orders.saleNo")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.date")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("orders.createdBy")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.customer")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.items")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("orders.payment")}</Table.ColumnHeader>
@@ -187,9 +207,15 @@ export default function Orders() {
           </Table.Header>
           <Table.Body>
             {salesQ.rows.map((s) => (
-              <Table.Row key={s.id}>
+              <Table.Row
+                key={s.id}
+                cursor="pointer"
+                _hover={{ bg: "bg.muted" }}
+                onClick={() => navigate(`/orders/${s.id}`)}
+              >
                 <Table.Cell fontFamily="mono">{s.saleNo || s.id.slice(0, 8)}</Table.Cell>
                 <Table.Cell>{formatUnix(s.createdAt)}</Table.Cell>
+                <Table.Cell>{createdByLabel(s.cashierUserId)}</Table.Cell>
                 <Table.Cell>{s.customerName || "—"}</Table.Cell>
                 <Table.Cell>
                   <ItemsSummary items={s.items} moreLabel={t("orders.itemsMore")} />
@@ -205,7 +231,7 @@ export default function Orders() {
             ))}
             {salesQ.rows.length === 0 && (
               <Table.Row>
-                <Table.Cell colSpan={7}>
+                <Table.Cell colSpan={8}>
                   <Text color="fg.muted" textAlign="center" py={4}>
                     {t("common.noResults")}
                   </Text>

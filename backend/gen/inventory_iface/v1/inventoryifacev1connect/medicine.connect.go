@@ -60,6 +60,9 @@ const (
 	// MedicineServiceResolveMedicinesProcedure is the fully-qualified name of the MedicineService's
 	// ResolveMedicines RPC.
 	MedicineServiceResolveMedicinesProcedure = "/inventory_iface.v1.MedicineService/ResolveMedicines"
+	// MedicineServiceListLowStockProcedure is the fully-qualified name of the MedicineService's
+	// ListLowStock RPC.
+	MedicineServiceListLowStockProcedure = "/inventory_iface.v1.MedicineService/ListLowStock"
 )
 
 // MedicineServiceClient is a client for the inventory_iface.v1.MedicineService service.
@@ -75,6 +78,10 @@ type MedicineServiceClient interface {
 	// ResolveMedicines returns minimal display refs for a set of ids (batch
 	// lookup-by-IDs for name resolution; never a full-list preload).
 	ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error)
+	// ListLowStock returns active medicines whose ready_stock in the caller's
+	// active warehouse is <= the low-stock threshold (Settings.low_stock_threshold).
+	// Drives the TopBar bell.
+	ListLowStock(context.Context, *connect.Request[v1.ListLowStockRequest]) (*connect.Response[v1.ListLowStockResponse], error)
 }
 
 // NewMedicineServiceClient constructs a client for the inventory_iface.v1.MedicineService service.
@@ -142,6 +149,12 @@ func NewMedicineServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(medicineServiceMethods.ByName("ResolveMedicines")),
 			connect.WithClientOptions(opts...),
 		),
+		listLowStock: connect.NewClient[v1.ListLowStockRequest, v1.ListLowStockResponse](
+			httpClient,
+			baseURL+MedicineServiceListLowStockProcedure,
+			connect.WithSchema(medicineServiceMethods.ByName("ListLowStock")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -156,6 +169,7 @@ type medicineServiceClient struct {
 	listMedicineUnitPrices *connect.Client[v1.ListMedicineUnitPricesRequest, v1.ListMedicineUnitPricesResponse]
 	searchMedicines        *connect.Client[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse]
 	resolveMedicines       *connect.Client[v1.ResolveMedicinesRequest, v1.ResolveMedicinesResponse]
+	listLowStock           *connect.Client[v1.ListLowStockRequest, v1.ListLowStockResponse]
 }
 
 // ListMedicines calls inventory_iface.v1.MedicineService.ListMedicines.
@@ -203,6 +217,11 @@ func (c *medicineServiceClient) ResolveMedicines(ctx context.Context, req *conne
 	return c.resolveMedicines.CallUnary(ctx, req)
 }
 
+// ListLowStock calls inventory_iface.v1.MedicineService.ListLowStock.
+func (c *medicineServiceClient) ListLowStock(ctx context.Context, req *connect.Request[v1.ListLowStockRequest]) (*connect.Response[v1.ListLowStockResponse], error) {
+	return c.listLowStock.CallUnary(ctx, req)
+}
+
 // MedicineServiceHandler is an implementation of the inventory_iface.v1.MedicineService service.
 type MedicineServiceHandler interface {
 	ListMedicines(context.Context, *connect.Request[v1.ListMedicinesRequest]) (*connect.Response[v1.ListMedicinesResponse], error)
@@ -216,6 +235,10 @@ type MedicineServiceHandler interface {
 	// ResolveMedicines returns minimal display refs for a set of ids (batch
 	// lookup-by-IDs for name resolution; never a full-list preload).
 	ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error)
+	// ListLowStock returns active medicines whose ready_stock in the caller's
+	// active warehouse is <= the low-stock threshold (Settings.low_stock_threshold).
+	// Drives the TopBar bell.
+	ListLowStock(context.Context, *connect.Request[v1.ListLowStockRequest]) (*connect.Response[v1.ListLowStockResponse], error)
 }
 
 // NewMedicineServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -279,6 +302,12 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 		connect.WithSchema(medicineServiceMethods.ByName("ResolveMedicines")),
 		connect.WithHandlerOptions(opts...),
 	)
+	medicineServiceListLowStockHandler := connect.NewUnaryHandler(
+		MedicineServiceListLowStockProcedure,
+		svc.ListLowStock,
+		connect.WithSchema(medicineServiceMethods.ByName("ListLowStock")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/inventory_iface.v1.MedicineService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MedicineServiceListMedicinesProcedure:
@@ -299,6 +328,8 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 			medicineServiceSearchMedicinesHandler.ServeHTTP(w, r)
 		case MedicineServiceResolveMedicinesProcedure:
 			medicineServiceResolveMedicinesHandler.ServeHTTP(w, r)
+		case MedicineServiceListLowStockProcedure:
+			medicineServiceListLowStockHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -342,4 +373,8 @@ func (UnimplementedMedicineServiceHandler) SearchMedicines(context.Context, *con
 
 func (UnimplementedMedicineServiceHandler) ResolveMedicines(context.Context, *connect.Request[v1.ResolveMedicinesRequest]) (*connect.Response[v1.ResolveMedicinesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ResolveMedicines is not implemented"))
+}
+
+func (UnimplementedMedicineServiceHandler) ListLowStock(context.Context, *connect.Request[v1.ListLowStockRequest]) (*connect.Response[v1.ListLowStockResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ListLowStock is not implemented"))
 }

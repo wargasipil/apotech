@@ -116,6 +116,13 @@ service MedicineService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  // ListLowStock returns active medicines whose ready_stock in the caller's
+  // active warehouse is <= the low-stock threshold (Settings.low_stock_threshold).
+  // Drives the TopBar bell.
+  rpc ListLowStock(ListLowStockRequest) returns (ListLowStockResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
 }
 
 message ListMedicinesRequest {
@@ -184,3 +191,10 @@ message MedicineRef {
 }
 message ResolveMedicinesRequest { repeated string ids = 1; }
 message ResolveMedicinesResponse { repeated MedicineRef medicines = 1; }
+
+message ListLowStockRequest {}
+message ListLowStockResponse {
+  repeated Medicine medicines = 1;     // ready_stock set (active warehouse)
+  int32 threshold = 2;                 // the current low_stock_threshold setting
+  int32 total = 3;                     // count of matching medicines (bell badge)
+}

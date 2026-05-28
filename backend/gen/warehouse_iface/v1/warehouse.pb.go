@@ -189,6 +189,8 @@ func (x *UserWarehouseMembership) GetIsDefault() bool {
 type ListWarehousesRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	IncludeInactive bool                   `protobuf:"varint,1,opt,name=include_inactive,json=includeInactive,proto3" json:"include_inactive,omitempty"`
+	Limit           int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset          int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -230,9 +232,24 @@ func (x *ListWarehousesRequest) GetIncludeInactive() bool {
 	return false
 }
 
+func (x *ListWarehousesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListWarehousesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type ListWarehousesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Warehouses    []*Warehouse           `protobuf:"bytes,1,rep,name=warehouses,proto3" json:"warehouses,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -272,6 +289,13 @@ func (x *ListWarehousesResponse) GetWarehouses() []*Warehouse {
 		return x.Warehouses
 	}
 	return nil
+}
+
+func (x *ListWarehousesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type CreateWarehouseRequest struct {
@@ -992,13 +1016,16 @@ const file_warehouse_iface_v1_warehouse_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
 	"\fwarehouse_id\x18\x02 \x01(\tR\vwarehouseId\x12\x1d\n" +
 	"\n" +
-	"is_default\x18\x03 \x01(\bR\tisDefault\"B\n" +
+	"is_default\x18\x03 \x01(\bR\tisDefault\"p\n" +
 	"\x15ListWarehousesRequest\x12)\n" +
-	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\"W\n" +
+	"\x10include_inactive\x18\x01 \x01(\bR\x0fincludeInactive\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"m\n" +
 	"\x16ListWarehousesResponse\x12=\n" +
 	"\n" +
 	"warehouses\x18\x01 \x03(\v2\x1d.warehouse_iface.v1.WarehouseR\n" +
-	"warehouses\"p\n" +
+	"warehouses\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"p\n" +
 	"\x16CreateWarehouseRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +

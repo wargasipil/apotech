@@ -59,7 +59,33 @@
     "branches": "Branches",
     "warehouses": "Warehouses",
     "orders": "Order history",
+    "settings": "Settings",
     "signOut": "Sign out"
+  },
+  "settings": {
+    "title": "Settings",
+    "lowStockThreshold": "Low-stock threshold",
+    "lowStockHelp": "Show a notification when a medicine's ready stock in the active warehouse is at or below this number.",
+    "invalidThreshold": "Threshold must be a non-negative integer",
+    "backups": {
+      "title": "Database backups",
+      "help": "Snapshots are written to the server's backup directory, one folder per timestamp. Restore is manual — see the deployment runbook.",
+      "create": "Create backup",
+      "empty": "No backups yet.",
+      "name": "Name",
+      "created": "Created",
+      "size": "Size",
+      "createdToast": "Backup created",
+      "deletedToast": "Backup deleted",
+      "confirmTitle": "Delete backup?",
+      "confirmBody": "This permanently removes {{name}} from the server. This action cannot be undone."
+    }
+  },
+  "notifications": {
+    "bellAria": "Notifications",
+    "lowStockTitle": "Low stock · {{count}}",
+    "empty": "No low-stock items",
+    "viewSettings": "Open settings"
   },
   "purchasing": {
     "title": "Restock",
@@ -150,6 +176,29 @@
       "pharmacist": "Pharmacist",
       "cashier": "Cashier",
       "unknown": "Unknown"
+    },
+    "section": {
+      "ownerHealth": "Business health · today",
+      "inventoryHealth": "Inventory health",
+      "myShift": "My shift · today"
+    },
+    "tile": {
+      "revenueToday": "Revenue today",
+      "profitToday": "Profit today",
+      "salesToday": "Sales today",
+      "itemsToday": "Items sold today",
+      "avgBasket": "Avg basket",
+      "lowStock": "Low stock",
+      "expiring30d": "Expiring in 30 days",
+      "activeRx": "Active prescriptions",
+      "myRevenue": "My revenue",
+      "mySales": "My sales",
+      "myItems": "My items",
+      "myLastSale": "My last sale",
+      "lastSaleNone": "—"
+    },
+    "trend": {
+      "last7d": "Last 7 days · revenue"
     }
   },
   "users": {
@@ -163,10 +212,10 @@
   },
   "analytics": {
     "title": "Analytics",
-    "tabs": {
-      "sales": "Sales",
-      "inventory": "Inventory",
-      "margins": "Margins"
+    "menu": {
+      "daily": "Daily",
+      "product": "Product",
+      "user": "User"
     },
     "range": {
       "today": "Today",
@@ -177,49 +226,38 @@
       "custom": "Custom"
     },
     "exportCsv": "Export CSV",
-    "sales": {
-      "revenueTrend": "Revenue trend",
-      "topSellers": "Top sellers",
-      "paymentMix": "Payment mix",
-      "byCashier": "Sales by cashier",
-      "hourHeatmap": "Sales by hour of day",
-      "metric": "Metric",
-      "qty": "Qty sold",
-      "revenue": "Revenue",
-      "count": "Sales",
-      "medicine": "Medicine",
-      "paymentSource": "Payment",
-      "cashier": "Cashier"
+    "metric": {
+      "group": {
+        "order": "Order",
+        "stock": "Stock"
+      },
+      "order": {
+        "terjual": "Terjual",
+        "hpp": "HPP",
+        "profit": "Profit"
+      },
+      "stock": {
+        "ready": "Ready",
+        "ongoing": "Ongoing"
+      }
     },
-    "inventory": {
-      "turnover": "Turnover (period)",
-      "deadStock": "Dead stock",
-      "daysRemaining": "Days of stock remaining",
-      "expiryRisk": "Expiry risk forecast",
-      "ratio": "Turnover ratio",
-      "sold": "Sold",
-      "avgInventory": "Avg inventory",
-      "currentQty": "On hand",
-      "avgDaily": "Avg daily",
-      "daysLeft": "Days left",
-      "noMovementDays": "No movement (days)",
-      "expiringIn": "Expiring in",
-      "next30d": "Next 30 days",
-      "next90d": "Next 90 days",
-      "next180d": "Next 180 days",
-      "qtyAtRisk": "Qty at risk"
+    "granularity": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
     },
-    "margin": {
-      "perMedicine": "Margin per medicine",
-      "topMargin": "Top margin",
-      "supplierCostTrend": "Supplier cost trend",
-      "revenue": "Revenue",
-      "cogs": "COGS",
-      "gross": "Gross",
-      "marginPct": "Margin %",
-      "supplier": "Supplier",
-      "selectMedicine": "(any medicine)",
-      "selectSupplier": "Select supplier"
+    "tab": {
+      "table": "Table",
+      "graph": "Graph"
+    },
+    "errors": {
+      "userStockUnsupported": "Stock metric is not supported on the User menu."
+    },
+    "columns": {
+      "button": "Columns",
+      "popoverTitle": "Show columns",
+      "count": "{{n}} / {{total}}",
+      "reset": "Reset"
     }
   },
   "pos": {
@@ -551,6 +589,7 @@
     "searchPlaceholder": "Search sale no, customer, or medicine…",
     "saleNo": "Sale no",
     "date": "Date",
+    "createdBy": "Created by",
     "customer": "Customer",
     "items": "Items",
     "itemsMore": "+{{count}} more",
@@ -576,6 +615,29 @@
       "sales": "Sales",
       "itemsSold": "Items sold",
       "revenue": "Revenue"
+    },
+    "detail": {
+      "info": "Information",
+      "totals": "Totals",
+      "tax": "Tax invoice",
+      "items": "Items",
+      "subtotal": "Subtotal",
+      "cartDiscount": "Discount",
+      "total": "Total",
+      "paid": "Paid",
+      "change": "Change",
+      "prescription": "Prescription",
+      "completedAt": "Completed at",
+      "taxInvoiceNo": "Invoice no",
+      "taxInvoiceCode": "Invoice code",
+      "dpp": "DPP",
+      "ppn": "PPN",
+      "issuedAt": "Issued at",
+      "medicine": "Medicine",
+      "qty": "Qty",
+      "unitPrice": "Unit price",
+      "lineDiscount": "Discount",
+      "lineTotal": "Line total"
     }
   }
 }

@@ -523,6 +523,63 @@ func (m *Medicines) ListMedicineUnitPrices(
 	return connect.NewResponse(&inventoryifacev1.ListMedicineUnitPricesResponse{Prices: out}), nil
 }
 
+// ListLowStock returns active medicines whose ready_stock in the caller's
+// active warehouse is at or below the configured low-stock threshold. Single
+// query: GROUP BY medicine, HAVING SUM(qty in this warehouse) <= threshold,
+// ordered by ready ASC then name ASC. Capped at 100 (low-stock items should be
+// few; the bell dropdown scrolls).
+func (m *Medicines) ListLowStock(
+	ctx context.Context,
+	_ *connect.Request[inventoryifacev1.ListLowStockRequest],
+) (*connect.Response[inventoryifacev1.ListLowStockResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, m.db, caller)
+	if err != nil {
+		return nil, err
+	}
+	threshold, err := getLowStockThreshold(ctx, m.db)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	type lowRow struct {
+		model.Medicine
+		Ready int64 `gorm:"column:ready"`
+	}
+	var rows []lowRow
+	if err := m.db.WithContext(ctx).
+		Table("medicines AS m").
+		Select("m.*, COALESCE(SUM(sm.qty), 0) AS ready").
+		Joins("LEFT JOIN batches AS b ON b.medicine_id = m.id").
+		Joins("LEFT JOIN stock_movements AS sm ON sm.batch_id = b.id AND sm.warehouse_id = ?", warehouseID).
+		Where("m.active = ?", true).
+		Group("m.id").
+		Having("COALESCE(SUM(sm.qty), 0) <= ?", threshold).
+		Order("ready ASC, m.name ASC").
+		Limit(100).
+		Scan(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	out := make([]*inventoryifacev1.Medicine, 0, len(rows))
+	for i := range rows {
+		p := medicineToProto(&rows[i].Medicine)
+		p.ReadyStock = rows[i].Ready
+		out = append(out, p)
+	}
+	if err := m.attachUnits(ctx, out); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&inventoryifacev1.ListLowStockResponse{
+		Medicines: out,
+		Threshold: threshold,
+		Total:     int32(len(out)),
+	}), nil
+}
+
 func (m *Medicines) load(ctx context.Context, id string) (*model.Medicine, error) {
 	if id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id required"))

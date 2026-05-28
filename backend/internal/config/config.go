@@ -55,12 +55,29 @@ type Printer struct {
 	OpenDrawer bool       `yaml:"open_drawer"`    // send drawer-kick command after print
 }
 
+// Backup controls where BackupService writes per-timestamp backup directories.
+// Empty Directory defaults to ./backups (CWD-relative, matches the legacy
+// `make backup` behavior). Docker uses /var/lib/apotech/backups; Windows uses
+// C:\ProgramData\Apotech\backups.
+//
+// PgToolsDir is where the in-app Create-backup feature caches the pg_dump
+// binary it auto-downloads when none is found on PATH / bundled next to the
+// apotech binary. Empty defaults to <UserCacheDir>/apotech/pgtools
+// (Windows → %LOCALAPPDATA%\apotech\pgtools; Linux → ~/.cache/apotech/pgtools).
+// Docker never triggers the auto-download (pg_dump is on PATH there), so this
+// dir stays empty in containers.
+type Backup struct {
+	Directory  string `yaml:"directory"`
+	PgToolsDir string `yaml:"pg_tools_dir"`
+}
+
 type Config struct {
 	Server    Server    `yaml:"server"`
 	Database  Database  `yaml:"database"`
 	Auth      Auth      `yaml:"auth"`
 	Bootstrap Bootstrap `yaml:"bootstrap"`
 	Printer   Printer   `yaml:"printer"`
+	Backup    Backup    `yaml:"backup"`
 }
 
 func (d Database) DSN() string {
@@ -112,6 +129,12 @@ func applyEnvOverrides(c *Config) {
 	if v := os.Getenv("APOTECH_OWNER_PASSWORD"); v != "" {
 		c.Bootstrap.OwnerPassword = v
 	}
+	if v := os.Getenv("APOTECH_BACKUP_DIR"); v != "" {
+		c.Backup.Directory = v
+	}
+	if v := os.Getenv("APOTECH_PG_TOOLS_DIR"); v != "" {
+		c.Backup.PgToolsDir = v
+	}
 }
 
 // applyDefaults fills in safe fallbacks for fields that the packaged flavors
@@ -120,6 +143,20 @@ func applyEnvOverrides(c *Config) {
 func applyDefaults(c *Config) {
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
+	}
+	if c.Backup.Directory == "" {
+		c.Backup.Directory = "./backups"
+	}
+	if c.Backup.PgToolsDir == "" {
+		// os.UserCacheDir picks the right per-user cache root on each OS
+		// (Windows: %LOCALAPPDATA%; Linux: $XDG_CACHE_HOME or ~/.cache;
+		// macOS: ~/Library/Caches). Falls back to the backup directory if
+		// the OS doesn't expose a cache root.
+		if base, err := os.UserCacheDir(); err == nil {
+			c.Backup.PgToolsDir = base + string(os.PathSeparator) + "apotech" + string(os.PathSeparator) + "pgtools"
+		} else {
+			c.Backup.PgToolsDir = c.Backup.Directory + string(os.PathSeparator) + "_pgtools"
+		}
 	}
 }
 

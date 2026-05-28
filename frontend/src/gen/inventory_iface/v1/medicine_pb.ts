@@ -1323,3 +1323,89 @@ export class ResolveMedicinesResponse extends Message<ResolveMedicinesResponse> 
   }
 }
 
+/**
+ * @generated from message inventory_iface.v1.ListLowStockRequest
+ */
+export class ListLowStockRequest extends Message<ListLowStockRequest> {
+  constructor(data?: PartialMessage<ListLowStockRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ListLowStockRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListLowStockRequest {
+    return new ListLowStockRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListLowStockRequest {
+    return new ListLowStockRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListLowStockRequest {
+    return new ListLowStockRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListLowStockRequest | PlainMessage<ListLowStockRequest> | undefined, b: ListLowStockRequest | PlainMessage<ListLowStockRequest> | undefined): boolean {
+    return proto3.util.equals(ListLowStockRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.ListLowStockResponse
+ */
+export class ListLowStockResponse extends Message<ListLowStockResponse> {
+  /**
+   * ready_stock set (active warehouse)
+   *
+   * @generated from field: repeated inventory_iface.v1.Medicine medicines = 1;
+   */
+  medicines: Medicine[] = [];
+
+  /**
+   * the current low_stock_threshold setting
+   *
+   * @generated from field: int32 threshold = 2;
+   */
+  threshold = 0;
+
+  /**
+   * count of matching medicines (bell badge)
+   *
+   * @generated from field: int32 total = 3;
+   */
+  total = 0;
+
+  constructor(data?: PartialMessage<ListLowStockResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.ListLowStockResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "medicines", kind: "message", T: Medicine, repeated: true },
+    { no: 2, name: "threshold", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListLowStockResponse {
+    return new ListLowStockResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListLowStockResponse {
+    return new ListLowStockResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListLowStockResponse {
+    return new ListLowStockResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListLowStockResponse | PlainMessage<ListLowStockResponse> | undefined, b: ListLowStockResponse | PlainMessage<ListLowStockResponse> | undefined): boolean {
+    return proto3.util.equals(ListLowStockResponse, a, b);
+  }
+}
+

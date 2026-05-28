@@ -84,14 +84,44 @@ local production smoke test.
 |---|---|---|
 | Logs | `docker logs -f apotech-app` (JSON via `slog`) | `C:\ProgramData\Apotech\logs\` (WinSW) + Event Viewer |
 | Migrations | automatic on boot | automatic on boot |
-| Backup (one-off) | `make backup` (dev compose) or `docker exec apotech-postgres-prod pg_dump ...` | `scripts\apotech-backup.bat` → `backups\` |
-| Backup (nightly) | cron the command | Task Scheduler → `apotech-backup.bat` |
+| Backup (one-off) | OWNER → **Settings → Backups → Create**, OR `make backup` (dev compose), OR `docker compose -f docker-compose.prod.yml exec apotech-postgres-prod pg_dump ...` | OWNER → **Settings → Backups → Create**, OR `scripts\apotech-backup.bat` → `C:\ProgramData\Apotech\backups\` |
+| Backup (nightly) | cron `make backup` (writes the same per-timestamp dir as the in-app button) | Task Scheduler → `apotech-backup.bat` |
 | Rotate JWT secret | edit `.env`, `up -d` | edit `config.yaml`, `Restart-Service apotech-server` (invalidates sessions) |
 | Reset a password | OWNER → Users → "Issue reset token" → hand token OOB → user redeems at `/reset?token=...` | same |
 
 ## Backups
-- Keep at least 7 nightlies; ship the latest off-host weekly (rsync / S3 / external drive).
-- Test restore against a fresh DB before you rely on a backup.
+- **Layout (one folder per backup)** — every backup is its own per-timestamp directory under `backup.directory` (Docker: `/var/lib/apotech/backups` mounted as the `apotech-backups` named volume; Windows: `C:\ProgramData\Apotech\backups\`; dev: `./backups`):
+  ```
+  backup_2026-05-26_152400/
+    database.sql.gz   (Docker / `make backup` — gzip; Windows: plain database.sql)
+    manifest.txt      (created_at, schema_version, size_bytes, app/db version)
+  ```
+  Override the root with the `APOTECH_BACKUP_DIR` env var or the `backup.directory` config key.
+- **Three entry points produce identical layouts** so the OWNER's in-app list and the cron job's output are the same files:
+  - **In-app** (OWNER → Settings → Backups → Create) — `BackupService.CreateBackup`; same screen lists past backups + a Delete with confirm. Refreshes every 60s.
+  - **Docker / dev CLI** — `make backup` (uses the compose Postgres' bundled `pg_dump`).
+  - **Windows CLI** — `C:\Program Files\Apotech\scripts\apotech-backup.bat` (uses the bundled `pg_dump.exe`).
+- **Restore is manual.** A maintenance-mode UX is deferred, so there's no in-app restore button. Choose by flavor:
+  - **Docker (compressed)**: stop the app, restore, restart.
+    ```sh
+    docker compose -f docker-compose.prod.yml stop app
+    gunzip < /var/lib/docker/volumes/apotech_apotech-backups/_data/backup_<TS>/database.sql.gz \
+      | docker compose -f docker-compose.prod.yml exec -T postgres psql -U apotech -d apotech
+    docker compose -f docker-compose.prod.yml start app
+    ```
+  - **Windows (uncompressed)**: stop the service, restore, restart.
+    ```powershell
+    Stop-Service apotech-server
+    & "$env:ProgramFiles\Apotech\pgsql\bin\psql.exe" -h 127.0.0.1 -p <port> -U apotech -d apotech `
+      -f "$env:ProgramData\Apotech\backups\backup_<TS>\database.sql"
+    Start-Service apotech-server
+    ```
+  The dump is `pg_dump --clean --if-exists`, so it drops existing tables before reloading — the live DB is safe to restore over, but make sure no other clients are writing while it runs.
+- **Operational discipline**: keep at least 7 nightlies; ship the latest off-host weekly (rsync / S3 / external drive). Test restore against a fresh DB before you rely on a backup.
+- **Why the Docker image is no longer distroless**: `BackupService` subprocesses `pg_dump`, which doesn't ship in `distroless/static`. The runtime base switched to `debian:bookworm-slim` + `postgresql-client` (~80 MB heavier). The container still runs as a non-root UID (65532).
+- **pg_dump auto-resolution**: every in-app `Create backup` looks for pg_dump in this order — system PATH → bundled next to the apotech binary (`<install>/pgsql/bin/pg_dump.exe`, the Windows installer layout — works even though the installer doesn't put that dir on PATH) → cache at `backup.pg_tools_dir` (default `%LOCALAPPDATA%\apotech\pgtools` on Windows / `~/.cache/apotech/pgtools` on Linux) → on **Windows only**, auto-download the EDB binaries zip (~75 MB) into the cache and reuse it. Linux without `postgresql-client` (and outside Docker) gets a clear "install postgresql-client" error instead of a download — apt is the right answer there. Override the cache root with `APOTECH_PG_TOOLS_DIR`.
+- **First-time Create cost on Windows dev**: the EDB zip download is **~75 MB** and has been observed taking **30+ min on slow foreign network links** before the remote occasionally drops the connection. The resolver supports **HTTP Range resume** (partial `.tmp` files survive failures) and retries up to 3 times in one Create call, so a click eventually succeeds even on flaky links. Subsequent backups use the cached binary and complete in under a second.
+- **Manual escape hatch** (recommended when the auto-download is too slow): drop a `pg_dump.exe` (any recent version from a PostgreSQL Windows install) at `%LOCALAPPDATA%\apotech\pgtools\pgsql\bin\pg_dump.exe`. The resolver's step 3 (cache lookup) finds it and skips the download entirely.
 
 ## Observability
 - Structured JSON logs via `log/slog`.

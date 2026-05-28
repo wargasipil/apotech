@@ -62,8 +62,15 @@ service WarehouseService {
   }
 }
 
-message ListWarehousesRequest { bool include_inactive = 1; }
-message ListWarehousesResponse { repeated Warehouse warehouses = 1; }
+message ListWarehousesRequest {
+  bool  include_inactive = 1;
+  int32 limit            = 2;
+  int32 offset           = 3;
+}
+message ListWarehousesResponse {
+  repeated Warehouse warehouses = 1;
+  int32              total      = 2;
+}
 
 message CreateWarehouseRequest {
   string code = 1;

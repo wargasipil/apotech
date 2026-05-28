@@ -6,7 +6,10 @@ import { expect, test } from "./_helpers";
 test.describe("warehouses", () => {
   test("admin: add a warehouse", async ({ page }) => {
     await page.goto("/warehouses");
-    const code = `WT${Date.now() % 1000000}`;
+    // List is now paginated server-side (page size 25, sorted by code ASC) and
+    // the dev DB carries hundreds of accumulated test warehouses. Use a "0"-
+    // prefix code so the new row sorts to page 1 where the assertion lives.
+    const code = `0WT${Date.now() % 1000000}`;
     await page.getByRole("button", { name: "Add" }).click();
     const drawer = page.getByRole("dialog");
     await drawer.locator("input").nth(0).fill(code);

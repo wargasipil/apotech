@@ -29,6 +29,25 @@ export const medicineKeys = {
   search: (query: string) => [...medicineKeys.all, "search", query] as const,
 };
 
+// Low-stock list for the TopBar bell — medicines whose ready_stock in the
+// caller's active warehouse is <= the configured threshold. Polls every 60s;
+// also auto-refetches on warehouse switch (existing invalidateQueries) and on
+// threshold update (the settings mutation invalidates ["lowStock"]).
+export function useLowStockQuery(opts: { enabled?: boolean } = {}) {
+  const q = useQuery({
+    queryKey: ["lowStock"],
+    queryFn: async () => {
+      const res = await medicineClient.listLowStock({});
+      return { medicines: res.medicines, threshold: res.threshold, total: res.total };
+    },
+    enabled: opts.enabled ?? true,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    meta: { silentError: true },
+  });
+  return q;
+}
+
 // Single medicine (detail page). GetMedicine is stock-enriched server-side
 // (ready_stock for the active warehouse + on_order_stock).
 export function useMedicineQuery(id: string, enabled = true) {

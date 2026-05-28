@@ -781,32 +781,59 @@ func (s *Sales) DiscardSale(
 
 func (s *Sales) GetTodaySnapshot(
 	ctx context.Context,
-	_ *connect.Request[posifacev1.GetTodaySnapshotRequest],
+	req *connect.Request[posifacev1.GetTodaySnapshotRequest],
 ) (*connect.Response[posifacev1.GetTodaySnapshotResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, werr := resolveWarehouse(ctx, s.db, caller)
+	if werr != nil {
+		return nil, connect.NewError(connect.CodeInternal, werr)
+	}
+
+	// Optional cashier filter — non-OWNER callers may only request their own.
+	cashierID := req.Msg.CashierUserId
+	if cashierID != "" && caller.Role != "OWNER" && cashierID != caller.UserID {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("can only request own snapshot"))
+	}
+
 	now := time.Now()
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
+	// applySaleFilters mirrors the unified-filter pattern in ListSales — adds
+	// status + warehouse + day + optional cashier predicates to a query whose
+	// FROM has `sales` aliased (caller passes the alias prefix, e.g. "" for
+	// Model(&Sale{}) or "s." for a JOIN).
+	applySaleFilters := func(q *gorm.DB, alias string) *gorm.DB {
+		q = q.Where(alias+"status = ?", saleStatusCompleted).
+			Where(alias+"warehouse_id = ?", warehouseID).
+			Where(alias+"completed_at >= ?", dayStart)
+		if cashierID != "" {
+			q = q.Where(alias+"cashier_user_id = ?", cashierID)
+		}
+		return q
+	}
+
 	var revenue int64
-	if err := s.db.WithContext(ctx).Model(&model.Sale{}).
-		Where("status = ? AND completed_at >= ?", saleStatusCompleted, dayStart).
+	if err := applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}), "").
 		Select("COALESCE(SUM(total), 0)").
 		Scan(&revenue).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	var saleCount int64
-	if err := s.db.WithContext(ctx).Model(&model.Sale{}).
-		Where("status = ? AND completed_at >= ?", saleStatusCompleted, dayStart).
+	if err := applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}), "").
 		Count(&saleCount).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	var itemsSold int64
-	if err := s.db.WithContext(ctx).
-		Table("sale_items si").
-		Joins("JOIN sales s ON s.id = si.sale_id").
-		Where("s.status = ? AND s.completed_at >= ?", saleStatusCompleted, dayStart).
-		Select("COALESCE(SUM(si.base_qty), 0)").
+	if err := applySaleFilters(
+		s.db.WithContext(ctx).Table("sale_items si").Joins("JOIN sales s ON s.id = si.sale_id"),
+		"s.",
+	).Select("COALESCE(SUM(si.base_qty), 0)").
 		Scan(&itemsSold).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -816,15 +843,21 @@ func (s *Sales) GetTodaySnapshot(
 		Qty        int64
 	}
 	var top topRow
-	_ = s.db.WithContext(ctx).
-		Table("sale_items si").
-		Joins("JOIN sales s ON s.id = si.sale_id").
-		Where("s.status = ? AND s.completed_at >= ?", saleStatusCompleted, dayStart).
-		Select("si.medicine_id AS medicine_id, SUM(si.base_qty) AS qty").
+	_ = applySaleFilters(
+		s.db.WithContext(ctx).Table("sale_items si").Joins("JOIN sales s ON s.id = si.sale_id"),
+		"s.",
+	).Select("si.medicine_id AS medicine_id, SUM(si.base_qty) AS qty").
 		Group("si.medicine_id").
 		Order("qty DESC").
 		Limit(1).
 		Scan(&top).Error
+
+	var lastSaleUnix int64
+	if err := applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}), "").
+		Select("COALESCE(EXTRACT(EPOCH FROM MAX(completed_at))::bigint, 0)").
+		Scan(&lastSaleUnix).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 
 	return connect.NewResponse(&posifacev1.GetTodaySnapshotResponse{
 		Revenue:        revenue,
@@ -832,6 +865,7 @@ func (s *Sales) GetTodaySnapshot(
 		ItemsSold:      itemsSold,
 		TopMedicineId:  top.MedicineID,
 		TopMedicineQty: top.Qty,
+		LastSaleUnix:   lastSaleUnix,
 	}), nil
 }
 

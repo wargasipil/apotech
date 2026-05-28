@@ -20,6 +20,7 @@ import Dashboard from "./routes/Dashboard";
 import Users from "./routes/Users";
 import Customers from "./routes/Customers";
 import Orders from "./routes/Orders";
+import OrderDetail from "./routes/OrderDetail";
 import Inventory from "./routes/Inventory";
 import Pos from "./routes/Pos";
 import Medicines from "./routes/inventory/Medicines";
@@ -30,14 +31,15 @@ import Movements from "./routes/inventory/Movements";
 import Stocktake from "./routes/inventory/Stocktake";
 import StocktakeDetail from "./routes/inventory/StocktakeDetail";
 import Analytics from "./routes/Analytics";
-import SalesAnalytics from "./routes/analytics/Sales";
-import InventoryAnalytics from "./routes/analytics/Inventory";
-import MarginsAnalytics from "./routes/analytics/Margins";
+import DailyAnalytics from "./routes/analytics/Daily";
+import ProductAnalytics from "./routes/analytics/Product";
+import UserAnalytics from "./routes/analytics/User";
 import Prescriptions from "./routes/Prescriptions";
 import Purchasing from "./routes/purchasing/Purchasing";
 import Tax from "./routes/Tax";
 import Bpjs from "./routes/Bpjs";
 import Warehouses from "./routes/Warehouses";
+import Settings from "./routes/Settings";
 import Transfers from "./routes/inventory/Transfers";
 import PurchaseOrdersList from "./routes/purchasing/PurchaseOrdersList";
 import SuppliersLedger from "./routes/purchasing/SuppliersLedger";
@@ -61,13 +63,17 @@ const router = createBrowserRouter([
       },
       {
         element: <ProtectedRoute requiredRole={Role.OWNER} />,
-        children: [{ path: "users", element: <Users /> }],
+        children: [
+          { path: "users", element: <Users /> },
+          { path: "settings", element: <Settings /> },
+        ],
       },
       {
         element: <ProtectedRoute requiredRoles={[Role.OWNER, Role.PHARMACIST, Role.CASHIER]} />,
         children: [
           { path: "customers", element: <Customers /> },
           { path: "orders", element: <Orders /> },
+          { path: "orders/:id", element: <OrderDetail /> },
         ],
       },
       {
@@ -94,10 +100,16 @@ const router = createBrowserRouter([
             path: "analytics",
             element: <Analytics />,
             children: [
-              { index: true, element: <Navigate to="sales" replace /> },
-              { path: "sales", element: <SalesAnalytics /> },
-              { path: "inventory", element: <InventoryAnalytics /> },
-              { path: "margins", element: <MarginsAnalytics /> },
+              { index: true, element: <Navigate to="daily" replace /> },
+              { path: "daily", element: <DailyAnalytics /> },
+              { path: "product", element: <ProductAnalytics /> },
+              { path: "user", element: <UserAnalytics /> },
+              // Back-compat: every URL the old analytics shipped at points here now.
+              { path: "operations", element: <Navigate to="/analytics/daily" replace /> },
+              { path: "profitability", element: <Navigate to="/analytics/daily" replace /> },
+              { path: "inventory", element: <Navigate to="/analytics/daily" replace /> },
+              { path: "sales", element: <Navigate to="/analytics/daily" replace /> },
+              { path: "margins", element: <Navigate to="/analytics/daily" replace /> },
             ],
           },
           {

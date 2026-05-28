@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Flex,
   HStack,
@@ -10,12 +11,15 @@ import {
 
 import WarehouseSelect from "./WarehouseSelect";
 import { useQueryClient } from "@tanstack/react-query";
-import { Languages, LogOut, Menu as MenuIcon, Moon, Sun } from "lucide-react";
+import { Bell, Languages, LogOut, Menu as MenuIcon, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
+import { Role } from "../gen/auth_iface/v1/policy_pb";
 import { useAuth } from "../lib/auth";
 import { WAREHOUSE_KEY } from "../lib/transport";
+import { useLowStockQuery } from "../queries/medicines";
 import { useMyWarehousesQuery } from "../queries/warehouses";
 import { usePreferencesStore, type Locale } from "../stores/preferences";
 
@@ -68,6 +72,7 @@ export default function TopBar() {
 
         <HStack gap={1}>
           {user && <WarehouseSelector />}
+          {user && user.role !== Role.CASHIER && <LowStockBell isOwner={user.role === Role.OWNER} />}
           <IconButton aria-label="language" variant="ghost" size="sm" onClick={flipLocale}>
             <HStack gap={1}>
               <Languages size={16} />
@@ -163,5 +168,97 @@ function WarehouseSelector() {
       }}
       warehouses={myWarehousesQ.data.warehouses}
     />
+  );
+}
+
+// LowStockBell polls MedicineService.ListLowStock (active-warehouse-scoped) and
+// renders a bell with a count badge + dropdown of low-stock medicines. Click an
+// item → opens its detail page. OWNER also sees a footer link to /settings.
+function LowStockBell({ isOwner }: { isOwner: boolean }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const q = useLowStockQuery();
+  const meds = q.data?.medicines ?? [];
+  const total = q.data?.total ?? 0;
+  const threshold = q.data?.threshold ?? 0;
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger asChild>
+        <IconButton
+          aria-label={t("notifications.bellAria")}
+          variant="ghost"
+          size="sm"
+          position="relative"
+        >
+          <Bell size={18} />
+          {total > 0 && (
+            <Badge
+              position="absolute"
+              top="2px"
+              right="2px"
+              colorPalette="red"
+              minW="16px"
+              h="16px"
+              borderRadius="full"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              fontSize="9px"
+              px={1}
+            >
+              {total > 99 ? "99+" : total}
+            </Badge>
+          )}
+        </IconButton>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content minW="280px" maxH="360px" overflowY="auto">
+            <Menu.Item value="header" disabled>
+              <Text fontSize="sm" fontWeight="medium">
+                {t("notifications.lowStockTitle", { count: total })}
+              </Text>
+            </Menu.Item>
+            <Menu.Separator />
+            {meds.length === 0 ? (
+              <Menu.Item value="empty" disabled>
+                <Text fontSize="sm" color="fg.muted">
+                  {t("notifications.empty")}
+                </Text>
+              </Menu.Item>
+            ) : (
+              meds.map((m) => (
+                <Menu.Item
+                  key={m.id}
+                  value={m.id}
+                  onClick={() => navigate(`/medicines/${m.id}`)}
+                >
+                  <HStack justify="space-between" w="100%" gap={2}>
+                    <Text fontSize="sm" truncate>
+                      {m.name}
+                    </Text>
+                    <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap">
+                      {m.readyStock.toString()} / {threshold}
+                    </Text>
+                  </HStack>
+                </Menu.Item>
+              ))
+            )}
+            {isOwner && (
+              <>
+                <Menu.Separator />
+                <Menu.Item value="settings" onClick={() => navigate("/settings")}>
+                  <HStack gap={2}>
+                    <SettingsIcon size={14} />
+                    <Text fontSize="sm">{t("notifications.viewSettings")}</Text>
+                  </HStack>
+                </Menu.Item>
+              </>
+            )}
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 }

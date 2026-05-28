@@ -35,6 +35,9 @@ const (
 const (
 	// UserServiceListUsersProcedure is the fully-qualified name of the UserService's ListUsers RPC.
 	UserServiceListUsersProcedure = "/user_iface.v1.UserService/ListUsers"
+	// UserServiceResolveUsersProcedure is the fully-qualified name of the UserService's ResolveUsers
+	// RPC.
+	UserServiceResolveUsersProcedure = "/user_iface.v1.UserService/ResolveUsers"
 	// UserServiceCreateUserProcedure is the fully-qualified name of the UserService's CreateUser RPC.
 	UserServiceCreateUserProcedure = "/user_iface.v1.UserService/CreateUser"
 	// UserServiceUpdateUserRoleProcedure is the fully-qualified name of the UserService's
@@ -57,6 +60,9 @@ const (
 // UserServiceClient is a client for the user_iface.v1.UserService service.
 type UserServiceClient interface {
 	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	// ResolveUsers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; used by analytics).
+	ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
@@ -83,6 +89,12 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceListUsersProcedure,
 			connect.WithSchema(userServiceMethods.ByName("ListUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveUsers: connect.NewClient[v1.ResolveUsersRequest, v1.ResolveUsersResponse](
+			httpClient,
+			baseURL+UserServiceResolveUsersProcedure,
+			connect.WithSchema(userServiceMethods.ByName("ResolveUsers")),
 			connect.WithClientOptions(opts...),
 		),
 		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
@@ -127,6 +139,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
 	listUsers                *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	resolveUsers             *connect.Client[v1.ResolveUsersRequest, v1.ResolveUsersResponse]
 	createUser               *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	updateUserRole           *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	setUserActive            *connect.Client[v1.SetUserActiveRequest, v1.SetUserActiveResponse]
@@ -138,6 +151,11 @@ type userServiceClient struct {
 // ListUsers calls user_iface.v1.UserService.ListUsers.
 func (c *userServiceClient) ListUsers(ctx context.Context, req *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
 	return c.listUsers.CallUnary(ctx, req)
+}
+
+// ResolveUsers calls user_iface.v1.UserService.ResolveUsers.
+func (c *userServiceClient) ResolveUsers(ctx context.Context, req *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error) {
+	return c.resolveUsers.CallUnary(ctx, req)
 }
 
 // CreateUser calls user_iface.v1.UserService.CreateUser.
@@ -173,6 +191,9 @@ func (c *userServiceClient) RedeemPasswordResetToken(ctx context.Context, req *c
 // UserServiceHandler is an implementation of the user_iface.v1.UserService service.
 type UserServiceHandler interface {
 	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
+	// ResolveUsers returns minimal display refs for a set of ids (batch
+	// lookup-by-IDs for name resolution; used by analytics).
+	ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
@@ -195,6 +216,12 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceListUsersProcedure,
 		svc.ListUsers,
 		connect.WithSchema(userServiceMethods.ByName("ListUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceResolveUsersHandler := connect.NewUnaryHandler(
+		UserServiceResolveUsersProcedure,
+		svc.ResolveUsers,
+		connect.WithSchema(userServiceMethods.ByName("ResolveUsers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceCreateUserHandler := connect.NewUnaryHandler(
@@ -237,6 +264,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case UserServiceListUsersProcedure:
 			userServiceListUsersHandler.ServeHTTP(w, r)
+		case UserServiceResolveUsersProcedure:
+			userServiceResolveUsersHandler.ServeHTTP(w, r)
 		case UserServiceCreateUserProcedure:
 			userServiceCreateUserHandler.ServeHTTP(w, r)
 		case UserServiceUpdateUserRoleProcedure:
@@ -260,6 +289,10 @@ type UnimplementedUserServiceHandler struct{}
 
 func (UnimplementedUserServiceHandler) ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.ListUsers is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.ResolveUsers is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {

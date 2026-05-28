@@ -1,114 +1,113 @@
 import { useQuery } from "@tanstack/react-query";
 import type { PartialMessage } from "@bufbuild/protobuf";
 
-import {
-  inventoryAnalyticsClient,
-  marginAnalyticsClient,
-  salesAnalyticsClient,
-} from "../lib/clients";
+import { analyticsClient } from "../lib/clients";
+import { DEFAULT_PAGE_SIZE } from "../lib/pagination";
 import type {
-  GetRevenueTrendRequest,
-  GetTopSellersRequest,
-  GetPaymentMixRequest,
-  GetSalesByCashierRequest,
-  GetHourOfDayHeatmapRequest,
-} from "../gen/analytics_iface/v1/sales_pb";
-import type {
-  GetTurnoverRequest,
-  GetDeadStockRequest,
-  GetDaysOfStockRemainingRequest,
-} from "../gen/analytics_iface/v1/inventory_pb";
-import type {
-  GetMarginPerMedicineRequest,
-  GetTopMarginRequest,
-  GetSupplierCostTrendRequest,
-} from "../gen/analytics_iface/v1/margin_pb";
+  DailyMetricRequest,
+  Granularity,
+  MetricType,
+  ProductMetricRequest,
+  Sort,
+  UserMetricRequest,
+} from "../gen/analytics_iface/v1/analytics_pb";
 
-export const analyticsKeys = {
-  all: ["analytics"] as const,
-  sales: (k: string, p: object) => [...analyticsKeys.all, "sales", k, p] as const,
-  inventory: (k: string, p: object) => [...analyticsKeys.all, "inventory", k, p] as const,
-  margin: (k: string, p: object) => [...analyticsKeys.all, "margin", k, p] as const,
+// Three thin hooks, one per dimension. Each returns the typed response shape
+// directly so the page can pass `ids` / `order` / `stock` to <MetricTable> +
+// <MetricGraphs> unchanged. Names are NOT in the metric payload — resolve via
+// the existing Resolve<Domain>(ids) hooks (HARD RULE).
+
+type Filter = { fromUnix: bigint; toUnix: bigint };
+
+type DailyOpts = {
+  metricTypes: MetricType[];
+  filter: Filter;
+  sort?: PartialMessage<Sort>;
+  granularity?: Granularity;
 };
 
-// ---------- Sales ----------
-export function useRevenueTrendQuery(req: PartialMessage<GetRevenueTrendRequest>) {
+export function useDailyMetricQuery(opts: DailyOpts) {
+  const req: PartialMessage<DailyMetricRequest> = {
+    metricTypes: opts.metricTypes,
+    filter: opts.filter,
+    sort: opts.sort,
+    granularity: opts.granularity,
+  };
   return useQuery({
-    queryKey: analyticsKeys.sales("revenueTrend", req),
-    queryFn: () => salesAnalyticsClient.getRevenueTrend(req),
-  });
-}
-export function useTopSellersQuery(req: PartialMessage<GetTopSellersRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.sales("topSellers", req),
-    queryFn: () => salesAnalyticsClient.getTopSellers(req),
-  });
-}
-export function usePaymentMixQuery(req: PartialMessage<GetPaymentMixRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.sales("paymentMix", req),
-    queryFn: () => salesAnalyticsClient.getPaymentMix(req),
-  });
-}
-export function useSalesByCashierQuery(req: PartialMessage<GetSalesByCashierRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.sales("byCashier", req),
-    queryFn: () => salesAnalyticsClient.getSalesByCashier(req),
-  });
-}
-export function useHourOfDayQuery(req: PartialMessage<GetHourOfDayHeatmapRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.sales("hourHeatmap", req),
-    queryFn: () => salesAnalyticsClient.getHourOfDayHeatmap(req),
+    queryKey: ["analytics", "daily", req],
+    queryFn: async () => {
+      const res = await analyticsClient.dailyMetric(req);
+      return {
+        days: res.days,
+        order: res.order,
+        stock: res.stock,
+      };
+    },
+    staleTime: 30_000,
   });
 }
 
-// ---------- Inventory ----------
-export function useTurnoverQuery(req: PartialMessage<GetTurnoverRequest>) {
+type ProductOpts = {
+  metricTypes: MetricType[];
+  filter: Filter;
+  sort?: PartialMessage<Sort>;
+  page?: number;
+  pageSize?: number;
+};
+
+export function useProductMetricQuery(opts: ProductOpts) {
+  const page = opts.page ?? 0;
+  const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
+  const req: PartialMessage<ProductMetricRequest> = {
+    metricTypes: opts.metricTypes,
+    filter: opts.filter,
+    sort: opts.sort,
+    limit: pageSize,
+    offset: page * pageSize,
+  };
   return useQuery({
-    queryKey: analyticsKeys.inventory("turnover", req),
-    queryFn: () => inventoryAnalyticsClient.getTurnover(req),
-  });
-}
-export function useDeadStockQuery(req: PartialMessage<GetDeadStockRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.inventory("deadStock", req),
-    queryFn: () => inventoryAnalyticsClient.getDeadStock(req),
-  });
-}
-export function useDaysOfStockQuery(req: PartialMessage<GetDaysOfStockRemainingRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.inventory("daysRemaining", req),
-    queryFn: () => inventoryAnalyticsClient.getDaysOfStockRemaining(req),
-  });
-}
-export function useExpiryRiskQuery() {
-  return useQuery({
-    queryKey: analyticsKeys.inventory("expiryRisk", {}),
-    queryFn: () => inventoryAnalyticsClient.getExpiryRiskForecast({}),
+    queryKey: ["analytics", "product", req],
+    queryFn: async () => {
+      const res = await analyticsClient.productMetric(req);
+      return {
+        ids: res.medicineIds,
+        order: res.order,
+        stock: res.stock,
+        total: res.total,
+      };
+    },
+    staleTime: 30_000,
   });
 }
 
-// ---------- Margin ----------
-export function useMarginPerMedicineQuery(req: PartialMessage<GetMarginPerMedicineRequest>) {
+type UserOpts = {
+  metricTypes: MetricType[];
+  filter: Filter;
+  sort?: PartialMessage<Sort>;
+  page?: number;
+  pageSize?: number;
+};
+
+export function useUserMetricQuery(opts: UserOpts) {
+  const page = opts.page ?? 0;
+  const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
+  const req: PartialMessage<UserMetricRequest> = {
+    metricTypes: opts.metricTypes,
+    filter: opts.filter,
+    sort: opts.sort,
+    limit: pageSize,
+    offset: page * pageSize,
+  };
   return useQuery({
-    queryKey: analyticsKeys.margin("perMedicine", req),
-    queryFn: () => marginAnalyticsClient.getMarginPerMedicine(req),
-  });
-}
-export function useTopMarginQuery(req: PartialMessage<GetTopMarginRequest>) {
-  return useQuery({
-    queryKey: analyticsKeys.margin("topMargin", req),
-    queryFn: () => marginAnalyticsClient.getTopMargin(req),
-  });
-}
-export function useSupplierCostTrendQuery(
-  req: PartialMessage<GetSupplierCostTrendRequest>,
-  enabled = true,
-) {
-  return useQuery({
-    queryKey: analyticsKeys.margin("supplierCost", req),
-    queryFn: () => marginAnalyticsClient.getSupplierCostTrend(req),
-    enabled: enabled && !!req.supplierId,
+    queryKey: ["analytics", "user", req],
+    queryFn: async () => {
+      const res = await analyticsClient.userMetric(req);
+      return {
+        ids: res.userIds,
+        order: res.order,
+        total: res.total,
+      };
+    },
+    staleTime: 30_000,
   });
 }

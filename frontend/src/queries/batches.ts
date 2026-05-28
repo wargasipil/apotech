@@ -62,6 +62,22 @@ export function useAllBatchesQuery(opts: Omit<BatchesQueryOpts, "page" | "pageSi
   return useBatchesQuery({ ...opts, pageSize: ALL_LIMIT });
 }
 
+// useExpiringSoonCountQuery returns the count of in-stock batches expiring
+// within the next `days` (default 30). Drives the Dashboard "expiring soon"
+// tile. Uses pageSize=1 so the server replies fast; we read `total` only.
+export function useExpiringSoonCountQuery(days = 30) {
+  const now = Math.floor(Date.now() / 1000);
+  const horizon = now + days * 86400;
+  const q = useBatchesQuery({
+    onlyInStock: true,
+    dateField: "expiry",
+    fromUnix: now,
+    toUnix: horizon,
+    pageSize: 1,
+  });
+  return { ...q, count: q.total };
+}
+
 // Imperative search — call directly from <SearchableSelect loadOptions={...}>.
 // Optional medicineId scopes the search to a single medicine's batches.
 export async function searchBatches(query: string, medicineId?: string) {

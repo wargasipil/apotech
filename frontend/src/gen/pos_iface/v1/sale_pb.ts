@@ -1314,6 +1314,15 @@ export class DiscardSaleResponse extends Message<DiscardSaleResponse> {
  * @generated from message pos_iface.v1.GetTodaySnapshotRequest
  */
 export class GetTodaySnapshotRequest extends Message<GetTodaySnapshotRequest> {
+  /**
+   * Optional cashier-scope filter. Empty = include every cashier (OWNER /
+   * PHARMACIST view). Set = only sales by that cashier (CASHIER view passes
+   * their own user id). Non-OWNER callers may only pass their own id.
+   *
+   * @generated from field: string cashier_user_id = 1;
+   */
+  cashierUserId = "";
+
   constructor(data?: PartialMessage<GetTodaySnapshotRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1322,6 +1331,7 @@ export class GetTodaySnapshotRequest extends Message<GetTodaySnapshotRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "pos_iface.v1.GetTodaySnapshotRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "cashier_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodaySnapshotRequest {
@@ -1370,6 +1380,14 @@ export class GetTodaySnapshotResponse extends Message<GetTodaySnapshotResponse> 
    */
   topMedicineQty = protoInt64.zero;
 
+  /**
+   * Unix seconds of the latest completed_at matching the filters, or 0 if
+   * no qualifying sale today.
+   *
+   * @generated from field: int64 last_sale_unix = 6;
+   */
+  lastSaleUnix = protoInt64.zero;
+
   constructor(data?: PartialMessage<GetTodaySnapshotResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1383,6 +1401,7 @@ export class GetTodaySnapshotResponse extends Message<GetTodaySnapshotResponse> 
     { no: 3, name: "items_sold", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 4, name: "top_medicine_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "top_medicine_qty", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "last_sale_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodaySnapshotResponse {

@@ -16,7 +16,7 @@
 [CmdletBinding()]
 param(
   [string] $AppVersion = "0.1.0",
-  [string] $PgVersion  = "16.4-1",        # EDB Windows binary zip version
+  [string] $PgVersion  = "16.4-1",        # EDB Windows binary zip version. Keep in sync with backend/internal/service/pgdump.go const PgToolsVersion.
   [string] $WinswVersion = "2.12.0",
   [switch] $SkipExeBuild
 )

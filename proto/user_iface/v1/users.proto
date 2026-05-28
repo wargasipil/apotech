@@ -20,6 +20,12 @@ service UserService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  // ResolveUsers returns minimal display refs for a set of ids (batch
+  // lookup-by-IDs for name resolution; used by analytics).
+  rpc ResolveUsers(ResolveUsersRequest) returns (ResolveUsersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
   }
@@ -48,6 +54,15 @@ message ListUsersRequest {}
 message ListUsersResponse {
   repeated User users = 1;
 }
+
+// Minimal display ref for resolve-by-IDs name lookups.
+message UserRef {
+  string id    = 1;
+  string name  = 2;
+  string email = 3;
+}
+message ResolveUsersRequest  { repeated string ids = 1; }
+message ResolveUsersResponse { repeated UserRef users = 1; }
 
 message CreateUserRequest {
   string email = 1;

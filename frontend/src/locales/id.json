@@ -59,7 +59,33 @@
     "branches": "Cabang",
     "warehouses": "Gudang",
     "orders": "Riwayat order",
+    "settings": "Pengaturan",
     "signOut": "Keluar"
+  },
+  "settings": {
+    "title": "Pengaturan",
+    "lowStockThreshold": "Ambang stok menipis",
+    "lowStockHelp": "Tampilkan notifikasi saat stok siap obat di gudang aktif ≤ angka ini.",
+    "invalidThreshold": "Ambang harus bilangan bulat tak negatif",
+    "backups": {
+      "title": "Backup basis data",
+      "help": "Backup disimpan di direktori backup server, satu folder per timestamp. Pemulihan dilakukan manual — lihat panduan deployment.",
+      "create": "Buat backup",
+      "empty": "Belum ada backup.",
+      "name": "Nama",
+      "created": "Dibuat",
+      "size": "Ukuran",
+      "createdToast": "Backup berhasil dibuat",
+      "deletedToast": "Backup berhasil dihapus",
+      "confirmTitle": "Hapus backup?",
+      "confirmBody": "Ini akan menghapus {{name}} dari server secara permanen. Tindakan ini tidak dapat dibatalkan."
+    }
+  },
+  "notifications": {
+    "bellAria": "Notifikasi",
+    "lowStockTitle": "Stok menipis · {{count}}",
+    "empty": "Tidak ada stok menipis",
+    "viewSettings": "Buka pengaturan"
   },
   "purchasing": {
     "title": "Restok",
@@ -150,6 +176,29 @@
       "pharmacist": "Apoteker",
       "cashier": "Kasir",
       "unknown": "Tidak diketahui"
+    },
+    "section": {
+      "ownerHealth": "Kesehatan bisnis · hari ini",
+      "inventoryHealth": "Kesehatan stok",
+      "myShift": "Shift saya · hari ini"
+    },
+    "tile": {
+      "revenueToday": "Pendapatan hari ini",
+      "profitToday": "Profit hari ini",
+      "salesToday": "Transaksi hari ini",
+      "itemsToday": "Item terjual hari ini",
+      "avgBasket": "Rata-rata transaksi",
+      "lowStock": "Stok menipis",
+      "expiring30d": "Kedaluwarsa 30 hari",
+      "activeRx": "Resep aktif",
+      "myRevenue": "Pendapatan saya",
+      "mySales": "Transaksi saya",
+      "myItems": "Item saya",
+      "myLastSale": "Transaksi terakhir saya",
+      "lastSaleNone": "—"
+    },
+    "trend": {
+      "last7d": "7 hari terakhir · pendapatan"
     }
   },
   "users": {
@@ -163,10 +212,10 @@
   },
   "analytics": {
     "title": "Analitik",
-    "tabs": {
-      "sales": "Penjualan",
-      "inventory": "Inventaris",
-      "margins": "Margin"
+    "menu": {
+      "daily": "Harian",
+      "product": "Produk",
+      "user": "Pengguna"
     },
     "range": {
       "today": "Hari ini",
@@ -177,49 +226,38 @@
       "custom": "Kustom"
     },
     "exportCsv": "Ekspor CSV",
-    "sales": {
-      "revenueTrend": "Tren pendapatan",
-      "topSellers": "Terlaris",
-      "paymentMix": "Komposisi pembayaran",
-      "byCashier": "Penjualan per kasir",
-      "hourHeatmap": "Penjualan per jam",
-      "metric": "Metrik",
-      "qty": "Qty terjual",
-      "revenue": "Pendapatan",
-      "count": "Transaksi",
-      "medicine": "Obat",
-      "paymentSource": "Pembayaran",
-      "cashier": "Kasir"
+    "metric": {
+      "group": {
+        "order": "Order",
+        "stock": "Stok"
+      },
+      "order": {
+        "terjual": "Terjual",
+        "hpp": "HPP",
+        "profit": "Profit"
+      },
+      "stock": {
+        "ready": "Tersedia",
+        "ongoing": "Dipesan"
+      }
     },
-    "inventory": {
-      "turnover": "Perputaran (periode)",
-      "deadStock": "Stok mati",
-      "daysRemaining": "Sisa hari stok",
-      "expiryRisk": "Risiko kedaluwarsa",
-      "ratio": "Rasio perputaran",
-      "sold": "Terjual",
-      "avgInventory": "Rata-rata stok",
-      "currentQty": "Tersedia",
-      "avgDaily": "Rata-rata harian",
-      "daysLeft": "Sisa hari",
-      "noMovementDays": "Tanpa mutasi (hari)",
-      "expiringIn": "Kedaluwarsa dalam",
-      "next30d": "30 hari ke depan",
-      "next90d": "90 hari ke depan",
-      "next180d": "180 hari ke depan",
-      "qtyAtRisk": "Qty berisiko"
+    "granularity": {
+      "day": "Hari",
+      "week": "Minggu",
+      "month": "Bulan"
     },
-    "margin": {
-      "perMedicine": "Margin per obat",
-      "topMargin": "Margin tertinggi",
-      "supplierCostTrend": "Tren harga modal pemasok",
-      "revenue": "Pendapatan",
-      "cogs": "HPP",
-      "gross": "Kotor",
-      "marginPct": "Margin %",
-      "supplier": "Pemasok",
-      "selectMedicine": "(semua obat)",
-      "selectSupplier": "Pilih pemasok"
+    "tab": {
+      "table": "Tabel",
+      "graph": "Grafik"
+    },
+    "errors": {
+      "userStockUnsupported": "Metrik stok tidak tersedia pada menu Pengguna."
+    },
+    "columns": {
+      "button": "Kolom",
+      "popoverTitle": "Tampilkan kolom",
+      "count": "{{n}} / {{total}}",
+      "reset": "Setel ulang"
     }
   },
   "pos": {
@@ -551,6 +589,7 @@
     "searchPlaceholder": "Cari no penjualan, pelanggan, atau obat…",
     "saleNo": "No penjualan",
     "date": "Tanggal",
+    "createdBy": "Dibuat oleh",
     "customer": "Pelanggan",
     "items": "Item",
     "itemsMore": "+{{count}} lagi",
@@ -576,6 +615,29 @@
       "sales": "Penjualan",
       "itemsSold": "Item terjual",
       "revenue": "Pendapatan"
+    },
+    "detail": {
+      "info": "Informasi",
+      "totals": "Total",
+      "tax": "Faktur pajak",
+      "items": "Item",
+      "subtotal": "Subtotal",
+      "cartDiscount": "Diskon",
+      "total": "Total",
+      "paid": "Dibayar",
+      "change": "Kembalian",
+      "prescription": "Resep",
+      "completedAt": "Selesai pada",
+      "taxInvoiceNo": "No faktur",
+      "taxInvoiceCode": "Kode faktur",
+      "dpp": "DPP",
+      "ppn": "PPN",
+      "issuedAt": "Diterbitkan pada",
+      "medicine": "Obat",
+      "qty": "Qty",
+      "unitPrice": "Harga satuan",
+      "lineDiscount": "Diskon",
+      "lineTotal": "Total baris"
     }
   }
 }

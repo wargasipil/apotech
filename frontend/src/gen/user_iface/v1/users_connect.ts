@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, IssuePasswordResetTokenRequest, IssuePasswordResetTokenResponse, ListUsersRequest, ListUsersResponse, RedeemPasswordResetTokenRequest, RedeemPasswordResetTokenResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
+import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, IssuePasswordResetTokenRequest, IssuePasswordResetTokenResponse, ListUsersRequest, ListUsersResponse, RedeemPasswordResetTokenRequest, RedeemPasswordResetTokenResponse, ResolveUsersRequest, ResolveUsersResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -19,6 +19,18 @@ export const UserService = {
       name: "ListUsers",
       I: ListUsersRequest,
       O: ListUsersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ResolveUsers returns minimal display refs for a set of ids (batch
+     * lookup-by-IDs for name resolution; used by analytics).
+     *
+     * @generated from rpc user_iface.v1.UserService.ResolveUsers
+     */
+    resolveUsers: {
+      name: "ResolveUsers",
+      I: ResolveUsersRequest,
+      O: ResolveUsersResponse,
       kind: MethodKind.Unary,
     },
     /**

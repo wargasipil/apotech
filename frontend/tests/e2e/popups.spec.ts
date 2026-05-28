@@ -123,18 +123,19 @@ test.describe("Dialog (centered modal)", () => {
 
 test.describe("RouteTabs (Chakra Tabs + NavLink)", () => {
   test("Analytics tab strip is Chakra Tabs and clicking changes the URL", async ({ page }) => {
-    await page.goto("/analytics/sales");
+    await page.goto("/analytics/daily");
 
     // Hard rule: the tab strip is a Chakra Tabs.List, not a hand-rolled
     // NavLink row. The accessibility tree exposes [role=tablist] +
-    // [role=tab] only when the Chakra primitive is in use.
-    const tablist = page.getByRole("tablist");
+    // [role=tab] only when the Chakra primitive is in use. Daily now has an
+    // INNER tab strip (Table | Graph) on top of the outer Analytics strip;
+    // scope to the outer one via `.first()` (DOM order).
+    const tablist = page.getByRole("tablist").first();
     await expect(tablist).toBeVisible();
-    const tabs = page.getByRole("tab");
-    await expect(tabs).toHaveCount(3);
+    await expect(tablist.getByRole("tab")).toHaveCount(3);
 
     // The active tab matches the URL.
-    await expect(page.getByRole("tab", { name: "Sales" })).toHaveAttribute(
+    await expect(page.getByRole("tab", { name: "Daily" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -147,9 +148,9 @@ test.describe("RouteTabs (Chakra Tabs + NavLink)", () => {
     });
 
     // Clicking a tab updates the URL (no full reload) and shifts active state.
-    await page.getByRole("tab", { name: "Inventory" }).click();
-    await expect(page).toHaveURL(/\/analytics\/inventory$/);
-    await expect(page.getByRole("tab", { name: "Inventory" })).toHaveAttribute(
+    await page.getByRole("tab", { name: "Product" }).click();
+    await expect(page).toHaveURL(/\/analytics\/product$/);
+    await expect(page.getByRole("tab", { name: "Product" })).toHaveAttribute(
       "aria-selected",
       "true",
     );

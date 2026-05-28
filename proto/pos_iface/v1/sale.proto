@@ -211,13 +211,21 @@ message DiscardSaleRequest {
 }
 message DiscardSaleResponse {}
 
-message GetTodaySnapshotRequest {}
+message GetTodaySnapshotRequest {
+  // Optional cashier-scope filter. Empty = include every cashier (OWNER /
+  // PHARMACIST view). Set = only sales by that cashier (CASHIER view passes
+  // their own user id). Non-OWNER callers may only pass their own id.
+  string cashier_user_id = 1;
+}
 message GetTodaySnapshotResponse {
-  int64 revenue = 1;
-  int64 sale_count = 2;
-  int64 items_sold = 3;
-  string top_medicine_id = 4;
-  int64 top_medicine_qty = 5;
+  int64  revenue          = 1;
+  int64  sale_count       = 2;
+  int64  items_sold       = 3;
+  string top_medicine_id  = 4;
+  int64  top_medicine_qty = 5;
+  // Unix seconds of the latest completed_at matching the filters, or 0 if
+  // no qualifying sale today.
+  int64  last_sale_unix   = 6;
 }
 
 // Aggregate over the SAME filters as ListSales (status + date range + search),

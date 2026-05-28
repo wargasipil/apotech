@@ -17,6 +17,7 @@ import {
   Pill,
   Receipt,
   Repeat,
+  Settings as SettingsIcon,
   ShoppingCart,
   Truck,
   UserRound,
@@ -55,6 +56,12 @@ function isGroup(e: NavEntry): e is NavGroup {
 function buildItems(t: (k: string) => string): NavEntry[] {
   return [
     { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    {
+      to: "/analytics",
+      label: t("nav.analytics"),
+      icon: BarChart3,
+      roles: [Role.OWNER, Role.PHARMACIST],
+    },
     { to: "/pos", label: t("nav.pos"), icon: ShoppingCart },
     {
       to: "/medicines",
@@ -93,12 +100,6 @@ function buildItems(t: (k: string) => string): NavEntry[] {
       icon: FileText,
       roles: [Role.OWNER, Role.PHARMACIST],
     },
-    {
-      to: "/analytics",
-      label: t("nav.analytics"),
-      icon: BarChart3,
-      roles: [Role.OWNER, Role.PHARMACIST],
-    },
     { to: "/tax", label: t("nav.tax"), icon: Percent, roles: [Role.OWNER] },
     {
       to: "/bpjs",
@@ -108,6 +109,7 @@ function buildItems(t: (k: string) => string): NavEntry[] {
     },
     { to: "/warehouses", label: t("nav.warehouses"), icon: WarehouseIcon, roles: [Role.OWNER] },
     { to: "/users", label: t("nav.users"), icon: UsersIcon, roles: [Role.OWNER] },
+    { to: "/settings", label: t("nav.settings"), icon: SettingsIcon, roles: [Role.OWNER] },
   ];
 }
 

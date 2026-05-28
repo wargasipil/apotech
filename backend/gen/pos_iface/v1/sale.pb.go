@@ -1615,7 +1615,11 @@ func (*DiscardSaleResponse) Descriptor() ([]byte, []int) {
 }
 
 type GetTodaySnapshotRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional cashier-scope filter. Empty = include every cashier (OWNER /
+	// PHARMACIST view). Set = only sales by that cashier (CASHIER view passes
+	// their own user id). Non-OWNER callers may only pass their own id.
+	CashierUserId string `protobuf:"bytes,1,opt,name=cashier_user_id,json=cashierUserId,proto3" json:"cashier_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1650,6 +1654,13 @@ func (*GetTodaySnapshotRequest) Descriptor() ([]byte, []int) {
 	return file_pos_iface_v1_sale_proto_rawDescGZIP(), []int{26}
 }
 
+func (x *GetTodaySnapshotRequest) GetCashierUserId() string {
+	if x != nil {
+		return x.CashierUserId
+	}
+	return ""
+}
+
 type GetTodaySnapshotResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Revenue        int64                  `protobuf:"varint,1,opt,name=revenue,proto3" json:"revenue,omitempty"`
@@ -1657,8 +1668,11 @@ type GetTodaySnapshotResponse struct {
 	ItemsSold      int64                  `protobuf:"varint,3,opt,name=items_sold,json=itemsSold,proto3" json:"items_sold,omitempty"`
 	TopMedicineId  string                 `protobuf:"bytes,4,opt,name=top_medicine_id,json=topMedicineId,proto3" json:"top_medicine_id,omitempty"`
 	TopMedicineQty int64                  `protobuf:"varint,5,opt,name=top_medicine_qty,json=topMedicineQty,proto3" json:"top_medicine_qty,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Unix seconds of the latest completed_at matching the filters, or 0 if
+	// no qualifying sale today.
+	LastSaleUnix  int64 `protobuf:"varint,6,opt,name=last_sale_unix,json=lastSaleUnix,proto3" json:"last_sale_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTodaySnapshotResponse) Reset() {
@@ -1722,6 +1736,13 @@ func (x *GetTodaySnapshotResponse) GetTopMedicineId() string {
 func (x *GetTodaySnapshotResponse) GetTopMedicineQty() int64 {
 	if x != nil {
 		return x.TopMedicineQty
+	}
+	return 0
+}
+
+func (x *GetTodaySnapshotResponse) GetLastSaleUnix() int64 {
+	if x != nil {
+		return x.LastSaleUnix
 	}
 	return 0
 }
@@ -2057,8 +2078,9 @@ const file_pos_iface_v1_sale_proto_rawDesc = "" +
 	"\x04sale\x18\x01 \x01(\v2\x12.pos_iface.v1.SaleR\x04sale\"-\n" +
 	"\x12DiscardSaleRequest\x12\x17\n" +
 	"\asale_id\x18\x01 \x01(\tR\x06saleId\"\x15\n" +
-	"\x13DiscardSaleResponse\"\x19\n" +
-	"\x17GetTodaySnapshotRequest\"\xc4\x01\n" +
+	"\x13DiscardSaleResponse\"A\n" +
+	"\x17GetTodaySnapshotRequest\x12&\n" +
+	"\x0fcashier_user_id\x18\x01 \x01(\tR\rcashierUserId\"\xea\x01\n" +
 	"\x18GetTodaySnapshotResponse\x12\x18\n" +
 	"\arevenue\x18\x01 \x01(\x03R\arevenue\x12\x1d\n" +
 	"\n" +
@@ -2066,7 +2088,8 @@ const file_pos_iface_v1_sale_proto_rawDesc = "" +
 	"\n" +
 	"items_sold\x18\x03 \x01(\x03R\titemsSold\x12&\n" +
 	"\x0ftop_medicine_id\x18\x04 \x01(\tR\rtopMedicineId\x12(\n" +
-	"\x10top_medicine_qty\x18\x05 \x01(\x03R\x0etopMedicineQty\"\x96\x01\n" +
+	"\x10top_medicine_qty\x18\x05 \x01(\x03R\x0etopMedicineQty\x12$\n" +
+	"\x0elast_sale_unix\x18\x06 \x01(\x03R\flastSaleUnix\"\x96\x01\n" +
 	"\x16GetSalesSummaryRequest\x12\x1b\n" +
 	"\tfrom_unix\x18\x01 \x01(\x03R\bfromUnix\x12\x17\n" +
 	"\ato_unix\x18\x02 \x01(\x03R\x06toUnix\x120\n" +

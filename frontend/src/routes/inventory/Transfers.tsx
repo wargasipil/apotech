@@ -25,7 +25,7 @@ import { downloadCsv } from "../../lib/csv";
 import { formatUnix } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
-import { useWarehousesQuery } from "../../queries/warehouses";
+import { useAllWarehousesQuery } from "../../queries/warehouses";
 import { fetchTransfersForExport, useCreateTransferMutation, useTransfersQuery } from "../../queries/transfers";
 
 type LineDraft = { batchId: string; label: string; qty: string };
@@ -178,7 +178,8 @@ export default function Transfers() {
 
 function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const warehousesQ = useWarehousesQuery();
+  // Selector mode: needs every warehouse for the From/To pickers, not a page.
+  const warehousesQ = useAllWarehousesQuery();
   const create = useCreateTransferMutation();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -211,7 +212,7 @@ function CreateDrawer({ open, onClose }: { open: boolean; onClose: () => void })
     }
   };
 
-  const warehouseItems = warehousesQ.data ?? [];
+  const warehouseItems = warehousesQ.rows;
 
   return (
     <EntityDrawer

@@ -105,10 +105,25 @@ test-browser:
 test-all: test-e2e test-browser
 
 # --- Backups -----------------------------------------------------------------
-# Snapshot the running Postgres into backups/YYYY-mm-dd_HHMMSS.sql.gz.
-# Uses pg_dump from the docker-compose db container so the user doesn't need
-# pg_dump installed locally. Wire to cron for nightly backups in production.
+# Snapshot the running Postgres into backups/backup_<timestamp>/.
+# Produces the same layout as BackupService (database.sql.gz + manifest.txt)
+# so CLI and in-app backups are interchangeable. Uses pg_dump from the
+# docker-compose db container so no host pg_dump is required.
+# Wire to cron for nightly backups in production.
 backup:
-	@mkdir -p backups
-	docker compose exec -T db pg_dump -U apotech apotech | gzip > backups/$$(date +%Y-%m-%d_%H%M%S).sql.gz
-	@echo "Wrote backups/$$(ls -1t backups | head -n 1)"
+	@stamp=$$(date +%Y-%m-%d_%H%M%S); \
+	dir=backups/backup_$$stamp; \
+	mkdir -p $$dir; \
+	docker compose exec -T db pg_dump -U apotech apotech | gzip > $$dir/database.sql.gz; \
+	size=$$(wc -c < $$dir/database.sql.gz | tr -d ' '); \
+	ver=$$(docker compose exec -T db psql -U apotech -d apotech -tA -c "SELECT COALESCE(MAX(version_id),0) FROM goose_db_version WHERE is_applied" | tr -d '\r '); \
+	dbver=$$(docker compose exec -T db psql -U apotech -d apotech -tA -c "SELECT version()" | tr -d '\r'); \
+	{ \
+	  echo "created_at=$$(date +%s)"; \
+	  echo "created_at_iso=$$(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
+	  echo "app_version=dev"; \
+	  echo "db_version=$$dbver"; \
+	  echo "schema_version=$$ver"; \
+	  echo "size_bytes=$$size"; \
+	} > $$dir/manifest.txt; \
+	echo "Wrote $$dir/"

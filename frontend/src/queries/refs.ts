@@ -6,11 +6,13 @@ import {
   customerClient,
   medicineClient,
   supplierClient,
+  userClient,
 } from "../lib/clients";
 import type { MedicineRef } from "../gen/inventory_iface/v1/medicine_pb";
 import type { SupplierRef } from "../gen/inventory_iface/v1/supplier_pb";
 import type { BatchRef } from "../gen/inventory_iface/v1/batch_pb";
 import type { CustomerRef } from "../gen/customer_iface/v1/customer_pb";
+import type { UserRef } from "../gen/user_iface/v1/users_pb";
 
 // Resolve-by-IDs name lookups (HARD RULE). A page collects the referenced IDs on
 // its current page and calls Resolve<Domain>(ids) to build an id → ref map for
@@ -71,6 +73,13 @@ export function useBatchRefs(ids: string[]): Map<string, BatchRef> {
   });
 }
 
+export function useUserRefs(ids: string[]): Map<string, UserRef> {
+  return useRefs("userRefs", ids, async (i) => {
+    const res = await userClient.resolveUsers({ ids: i });
+    return res.users;
+  });
+}
+
 // Imperative resolve-by-IDs for one-shot needs (e.g. CSV export): dedupe, chunk
 // to the backend's 500-id cap, and merge into an id → ref Map. Not hooks.
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -93,6 +102,15 @@ export async function resolveBatchMap(ids: string[]): Promise<Map<string, BatchR
   for (const group of chunk(cleanIds(ids), 500)) {
     const res = await batchClient.resolveBatches({ ids: group });
     for (const r of res.batches) map.set(r.id, r);
+  }
+  return map;
+}
+
+export async function resolveUserMap(ids: string[]): Promise<Map<string, UserRef>> {
+  const map = new Map<string, UserRef>();
+  for (const group of chunk(cleanIds(ids), 500)) {
+    const res = await userClient.resolveUsers({ ids: group });
+    for (const r of res.users) map.set(r.id, r);
   }
   return map;
 }

@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package analytics_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/analytics_iface/v1;analyticsifacev1";
+
+// AnalyticsService exposes three dimension-scoped RPCs (DailyMetric,
+// ProductMetric, UserMetric). Each accepts a `repeated MetricType` so the
+// request composes which metric blocks to compute. Responses carry a
+// `repeated <id>` list (the sorted order) + per-metric `map<id, MetricItem>`
+// blocks; the frontend looks up names via the existing Resolve<Domain>(ids)
+// hooks (no name denormalization in the metric handler).
+//
+// Backend flow: sort + paginate IDs → fetch metric data for those IDs (2-phase).
+
+// MetricType selects which metric blocks the response should populate.
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_ORDER       = 1;
+  METRIC_TYPE_STOCK       = 2;
+}
+
+// Granularity buckets Daily rows (DAY default).
+enum Granularity {
+  GRANULARITY_UNSPECIFIED = 0;
+  GRANULARITY_DAY         = 1;
+  GRANULARITY_WEEK        = 2;
+  GRANULARITY_MONTH       = 3;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC         = 1;
+  SORT_DIRECTION_DESC        = 2;
+}
+
+enum OrderMetricField {
+  ORDER_METRIC_FIELD_UNSPECIFIED = 0;
+  ORDER_METRIC_FIELD_TERJUAL     = 1;
+  ORDER_METRIC_FIELD_HPP         = 2;
+  ORDER_METRIC_FIELD_PROFIT      = 3;
+}
+
+enum StockMetricField {
+  STOCK_METRIC_FIELD_UNSPECIFIED = 0;
+  STOCK_METRIC_FIELD_READY       = 1;
+  STOCK_METRIC_FIELD_ONGOING     = 2;
+}
+
+message Filter {
+  int64 from_unix = 1;
+  int64 to_unix   = 2;
+  // future: warehouse_id, supplier_id, payment_source — extend in place
+}
+
+// Sort.field unset => sort by dimension key (chronological for Daily,
+// alphabetical for Product/User). Sort.field set => sort by that metric.
+message Sort {
+  SortDirection direction = 1;
+  oneof field {
+    OrderMetricField order = 2;
+    StockMetricField stock = 3;
+  }
+}
+
+// Per-id metric values. MetricOrder/MetricStock map<key, item> where key is
+// the dimension id (day string / medicine_id / user_id).
+message OrderItem {
+  int64 terjual = 1;   // gross revenue (rupiah)
+  int64 hpp     = 2;   // COGS (rupiah)
+  int64 profit  = 3;   // terjual - hpp
+}
+
+message StockItem {
+  int64 ready   = 1;   // current on-hand (Daily: as-of-end-of-day reconstructed)
+  int64 ongoing = 2;   // open-PO outstanding (always current snapshot)
+}
+
+message MetricOrder { map<string, OrderItem> data = 1; }
+message MetricStock { map<string, StockItem> data = 1; }
+
+// === DailyMetric ===
+message DailyMetricRequest {
+  repeated MetricType metric_types = 1;
+  Filter      filter      = 2;
+  Sort        sort        = 3;
+  Granularity granularity = 4;
+}
+message DailyMetricResponse {
+  // Days in the order the UI should render. Bucket key per granularity:
+  //   DAY   = "YYYY-MM-DD"
+  //   WEEK  = "YYYY-Www" (ISO week)
+  //   MONTH = "YYYY-MM"
+  repeated string days  = 1;
+  MetricOrder     order = 2;
+  MetricStock     stock = 3;
+}
+
+// === ProductMetric ===
+message ProductMetricRequest {
+  repeated MetricType metric_types = 1;
+  Filter filter = 2;
+  Sort   sort   = 3;
+  int32  limit  = 4;
+  int32  offset = 5;
+}
+message ProductMetricResponse {
+  repeated string medicine_ids = 1;
+  MetricOrder     order        = 2;
+  MetricStock     stock        = 3;
+  int32           total        = 4;
+}
+
+// === UserMetric ===
+// Only METRIC_TYPE_ORDER is honored; METRIC_TYPE_STOCK returns InvalidArgument
+// (stock has no meaning per user). Same for a StockMetricField sort.
+message UserMetricRequest {
+  repeated MetricType metric_types = 1;
+  Filter filter = 2;
+  Sort   sort   = 3;
+  int32  limit  = 4;
+  int32  offset = 5;
+}
+message UserMetricResponse {
+  repeated string user_ids = 1;
+  MetricOrder     order    = 2;
+  int32           total    = 3;
+}
+
+service AnalyticsService {
+  rpc DailyMetric(DailyMetricRequest) returns (DailyMetricResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc ProductMetric(ProductMetricRequest) returns (ProductMetricResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+  rpc UserMetric(UserMetricRequest) returns (UserMetricResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
+}

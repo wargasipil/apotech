@@ -1594,6 +1594,102 @@ func (x *ResolveMedicinesResponse) GetMedicines() []*MedicineRef {
 	return nil
 }
 
+type ListLowStockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLowStockRequest) Reset() {
+	*x = ListLowStockRequest{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLowStockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLowStockRequest) ProtoMessage() {}
+
+func (x *ListLowStockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLowStockRequest.ProtoReflect.Descriptor instead.
+func (*ListLowStockRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{24}
+}
+
+type ListLowStockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Medicines     []*Medicine            `protobuf:"bytes,1,rep,name=medicines,proto3" json:"medicines,omitempty"`  // ready_stock set (active warehouse)
+	Threshold     int32                  `protobuf:"varint,2,opt,name=threshold,proto3" json:"threshold,omitempty"` // the current low_stock_threshold setting
+	Total         int32                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`         // count of matching medicines (bell badge)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLowStockResponse) Reset() {
+	*x = ListLowStockResponse{}
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLowStockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLowStockResponse) ProtoMessage() {}
+
+func (x *ListLowStockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_iface_v1_medicine_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLowStockResponse.ProtoReflect.Descriptor instead.
+func (*ListLowStockResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_iface_v1_medicine_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ListLowStockResponse) GetMedicines() []*Medicine {
+	if x != nil {
+		return x.Medicines
+	}
+	return nil
+}
+
+func (x *ListLowStockResponse) GetThreshold() int32 {
+	if x != nil {
+		return x.Threshold
+	}
+	return 0
+}
+
+func (x *ListLowStockResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 var File_inventory_iface_v1_medicine_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
@@ -1729,7 +1825,12 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x17ResolveMedicinesRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"Y\n" +
 	"\x18ResolveMedicinesResponse\x12=\n" +
-	"\tmedicines\x18\x01 \x03(\v2\x1f.inventory_iface.v1.MedicineRefR\tmedicines2\xb3\b\n" +
+	"\tmedicines\x18\x01 \x03(\v2\x1f.inventory_iface.v1.MedicineRefR\tmedicines\"\x15\n" +
+	"\x13ListLowStockRequest\"\x86\x01\n" +
+	"\x14ListLowStockResponse\x12:\n" +
+	"\tmedicines\x18\x01 \x03(\v2\x1c.inventory_iface.v1.MedicineR\tmedicines\x12\x1c\n" +
+	"\tthreshold\x18\x02 \x01(\x05R\tthreshold\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total2\x9e\t\n" +
 	"\x0fMedicineService\x12m\n" +
 	"\rListMedicines\x12(.inventory_iface.v1.ListMedicinesRequest\x1a).inventory_iface.v1.ListMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12g\n" +
 	"\vGetMedicine\x12&.inventory_iface.v1.GetMedicineRequest\x1a'.inventory_iface.v1.GetMedicineResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12o\n" +
@@ -1739,7 +1840,8 @@ const file_inventory_iface_v1_medicine_proto_rawDesc = "" +
 	"\x12ListMedicinePrices\x12-.inventory_iface.v1.ListMedicinePricesRequest\x1a..inventory_iface.v1.ListMedicinePricesResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12\x87\x01\n" +
 	"\x16ListMedicineUnitPrices\x121.inventory_iface.v1.ListMedicineUnitPricesRequest\x1a2.inventory_iface.v1.ListMedicineUnitPricesResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12s\n" +
 	"\x0fSearchMedicines\x12*.inventory_iface.v1.SearchMedicinesRequest\x1a+.inventory_iface.v1.SearchMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12v\n" +
-	"\x10ResolveMedicines\x12+.inventory_iface.v1.ResolveMedicinesRequest\x1a,.inventory_iface.v1.ResolveMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
+	"\x10ResolveMedicines\x12+.inventory_iface.v1.ResolveMedicinesRequest\x1a,.inventory_iface.v1.ResolveMedicinesResponse\"\a\x8a\xb5\x18\x03\x01\x02\x03\x12i\n" +
+	"\fListLowStock\x12'.inventory_iface.v1.ListLowStockRequest\x1a(.inventory_iface.v1.ListLowStockResponse\"\x06\x8a\xb5\x18\x02\x01\x02BDZBgithub.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1b\x06proto3"
 
 var (
 	file_inventory_iface_v1_medicine_proto_rawDescOnce sync.Once
@@ -1753,7 +1855,7 @@ func file_inventory_iface_v1_medicine_proto_rawDescGZIP() []byte {
 	return file_inventory_iface_v1_medicine_proto_rawDescData
 }
 
-var file_inventory_iface_v1_medicine_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_inventory_iface_v1_medicine_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_inventory_iface_v1_medicine_proto_goTypes = []any{
 	(*Medicine)(nil),                       // 0: inventory_iface.v1.Medicine
 	(*MedicineUnit)(nil),                   // 1: inventory_iface.v1.MedicineUnit
@@ -1779,6 +1881,8 @@ var file_inventory_iface_v1_medicine_proto_goTypes = []any{
 	(*MedicineRef)(nil),                    // 21: inventory_iface.v1.MedicineRef
 	(*ResolveMedicinesRequest)(nil),        // 22: inventory_iface.v1.ResolveMedicinesRequest
 	(*ResolveMedicinesResponse)(nil),       // 23: inventory_iface.v1.ResolveMedicinesResponse
+	(*ListLowStockRequest)(nil),            // 24: inventory_iface.v1.ListLowStockRequest
+	(*ListLowStockResponse)(nil),           // 25: inventory_iface.v1.ListLowStockResponse
 }
 var file_inventory_iface_v1_medicine_proto_depIdxs = []int32{
 	1,  // 0: inventory_iface.v1.Medicine.units:type_name -> inventory_iface.v1.MedicineUnit
@@ -1793,29 +1897,32 @@ var file_inventory_iface_v1_medicine_proto_depIdxs = []int32{
 	4,  // 9: inventory_iface.v1.ListMedicineUnitPricesResponse.prices:type_name -> inventory_iface.v1.MedicineUnitPrice
 	0,  // 10: inventory_iface.v1.SearchMedicinesResponse.medicines:type_name -> inventory_iface.v1.Medicine
 	21, // 11: inventory_iface.v1.ResolveMedicinesResponse.medicines:type_name -> inventory_iface.v1.MedicineRef
-	5,  // 12: inventory_iface.v1.MedicineService.ListMedicines:input_type -> inventory_iface.v1.ListMedicinesRequest
-	7,  // 13: inventory_iface.v1.MedicineService.GetMedicine:input_type -> inventory_iface.v1.GetMedicineRequest
-	9,  // 14: inventory_iface.v1.MedicineService.CreateMedicine:input_type -> inventory_iface.v1.CreateMedicineRequest
-	11, // 15: inventory_iface.v1.MedicineService.UpdateMedicine:input_type -> inventory_iface.v1.UpdateMedicineRequest
-	13, // 16: inventory_iface.v1.MedicineService.ArchiveMedicine:input_type -> inventory_iface.v1.ArchiveMedicineRequest
-	15, // 17: inventory_iface.v1.MedicineService.ListMedicinePrices:input_type -> inventory_iface.v1.ListMedicinePricesRequest
-	17, // 18: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:input_type -> inventory_iface.v1.ListMedicineUnitPricesRequest
-	19, // 19: inventory_iface.v1.MedicineService.SearchMedicines:input_type -> inventory_iface.v1.SearchMedicinesRequest
-	22, // 20: inventory_iface.v1.MedicineService.ResolveMedicines:input_type -> inventory_iface.v1.ResolveMedicinesRequest
-	6,  // 21: inventory_iface.v1.MedicineService.ListMedicines:output_type -> inventory_iface.v1.ListMedicinesResponse
-	8,  // 22: inventory_iface.v1.MedicineService.GetMedicine:output_type -> inventory_iface.v1.GetMedicineResponse
-	10, // 23: inventory_iface.v1.MedicineService.CreateMedicine:output_type -> inventory_iface.v1.CreateMedicineResponse
-	12, // 24: inventory_iface.v1.MedicineService.UpdateMedicine:output_type -> inventory_iface.v1.UpdateMedicineResponse
-	14, // 25: inventory_iface.v1.MedicineService.ArchiveMedicine:output_type -> inventory_iface.v1.ArchiveMedicineResponse
-	16, // 26: inventory_iface.v1.MedicineService.ListMedicinePrices:output_type -> inventory_iface.v1.ListMedicinePricesResponse
-	18, // 27: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:output_type -> inventory_iface.v1.ListMedicineUnitPricesResponse
-	20, // 28: inventory_iface.v1.MedicineService.SearchMedicines:output_type -> inventory_iface.v1.SearchMedicinesResponse
-	23, // 29: inventory_iface.v1.MedicineService.ResolveMedicines:output_type -> inventory_iface.v1.ResolveMedicinesResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	0,  // 12: inventory_iface.v1.ListLowStockResponse.medicines:type_name -> inventory_iface.v1.Medicine
+	5,  // 13: inventory_iface.v1.MedicineService.ListMedicines:input_type -> inventory_iface.v1.ListMedicinesRequest
+	7,  // 14: inventory_iface.v1.MedicineService.GetMedicine:input_type -> inventory_iface.v1.GetMedicineRequest
+	9,  // 15: inventory_iface.v1.MedicineService.CreateMedicine:input_type -> inventory_iface.v1.CreateMedicineRequest
+	11, // 16: inventory_iface.v1.MedicineService.UpdateMedicine:input_type -> inventory_iface.v1.UpdateMedicineRequest
+	13, // 17: inventory_iface.v1.MedicineService.ArchiveMedicine:input_type -> inventory_iface.v1.ArchiveMedicineRequest
+	15, // 18: inventory_iface.v1.MedicineService.ListMedicinePrices:input_type -> inventory_iface.v1.ListMedicinePricesRequest
+	17, // 19: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:input_type -> inventory_iface.v1.ListMedicineUnitPricesRequest
+	19, // 20: inventory_iface.v1.MedicineService.SearchMedicines:input_type -> inventory_iface.v1.SearchMedicinesRequest
+	22, // 21: inventory_iface.v1.MedicineService.ResolveMedicines:input_type -> inventory_iface.v1.ResolveMedicinesRequest
+	24, // 22: inventory_iface.v1.MedicineService.ListLowStock:input_type -> inventory_iface.v1.ListLowStockRequest
+	6,  // 23: inventory_iface.v1.MedicineService.ListMedicines:output_type -> inventory_iface.v1.ListMedicinesResponse
+	8,  // 24: inventory_iface.v1.MedicineService.GetMedicine:output_type -> inventory_iface.v1.GetMedicineResponse
+	10, // 25: inventory_iface.v1.MedicineService.CreateMedicine:output_type -> inventory_iface.v1.CreateMedicineResponse
+	12, // 26: inventory_iface.v1.MedicineService.UpdateMedicine:output_type -> inventory_iface.v1.UpdateMedicineResponse
+	14, // 27: inventory_iface.v1.MedicineService.ArchiveMedicine:output_type -> inventory_iface.v1.ArchiveMedicineResponse
+	16, // 28: inventory_iface.v1.MedicineService.ListMedicinePrices:output_type -> inventory_iface.v1.ListMedicinePricesResponse
+	18, // 29: inventory_iface.v1.MedicineService.ListMedicineUnitPrices:output_type -> inventory_iface.v1.ListMedicineUnitPricesResponse
+	20, // 30: inventory_iface.v1.MedicineService.SearchMedicines:output_type -> inventory_iface.v1.SearchMedicinesResponse
+	23, // 31: inventory_iface.v1.MedicineService.ResolveMedicines:output_type -> inventory_iface.v1.ResolveMedicinesResponse
+	25, // 32: inventory_iface.v1.MedicineService.ListLowStock:output_type -> inventory_iface.v1.ListLowStockResponse
+	23, // [23:33] is the sub-list for method output_type
+	13, // [13:23] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_inventory_iface_v1_medicine_proto_init() }
@@ -1829,7 +1936,7 @@ func file_inventory_iface_v1_medicine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_iface_v1_medicine_proto_rawDesc), len(file_inventory_iface_v1_medicine_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

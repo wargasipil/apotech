@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, ListMedicineUnitPricesRequest, ListMedicineUnitPricesResponse, ResolveMedicinesRequest, ResolveMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
+import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListLowStockRequest, ListLowStockResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, ListMedicineUnitPricesRequest, ListMedicineUnitPricesResponse, ResolveMedicinesRequest, ResolveMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -94,6 +94,19 @@ export const MedicineService = {
       name: "ResolveMedicines",
       I: ResolveMedicinesRequest,
       O: ResolveMedicinesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListLowStock returns active medicines whose ready_stock in the caller's
+     * active warehouse is <= the low-stock threshold (Settings.low_stock_threshold).
+     * Drives the TopBar bell.
+     *
+     * @generated from rpc inventory_iface.v1.MedicineService.ListLowStock
+     */
+    listLowStock: {
+      name: "ListLowStock",
+      I: ListLowStockRequest,
+      O: ListLowStockResponse,
       kind: MethodKind.Unary,
     },
   }

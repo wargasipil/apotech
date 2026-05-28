@@ -40,3 +40,13 @@ printer:
     - "Bandung"
   footer:
     - "Thank you!"
+
+# Where BackupService writes per-timestamp backup directories
+# (backup_YYYY-mm-dd_HHMMSS/{database.sql.gz,manifest.txt}).
+# Empty => "./backups" (CWD-relative). Override with APOTECH_BACKUP_DIR.
+backup:
+  directory: ./backups
+  # Cache for the auto-downloaded pg_dump binary when none is on PATH or
+  # bundled next to the apotech executable (used on bare-metal Windows dev).
+  # Empty => <UserCacheDir>/apotech/pgtools. Override with APOTECH_PG_TOOLS_DIR.
+  # pg_tools_dir: ""

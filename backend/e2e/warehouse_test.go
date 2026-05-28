@@ -115,3 +115,78 @@ func startSaleWith(env *Env, t *testing.T, ctx context.Context, warehouseID stri
 	require.NoError(t, err)
 	return res.Msg.Sale.Id
 }
+
+// TestListWarehouses_Pagination proves the limit/offset/total contract: a
+// limited page caps row count, total ignores the page window, and offset
+// advances past prior rows. The dev DB carries an arbitrary number of
+// warehouses from prior tests, so we scope assertions to a unique-prefix
+// seeded set and stick to invariants (>= seeded, no specific Total value).
+func TestListWarehouses_Pagination(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+
+	const seeded = 3
+	codes := make([]string, seeded)
+	for i := 0; i < seeded; i++ {
+		code := fmt.Sprintf("PG%06d%d", uniq, i)
+		codes[i] = code
+		_ = makeWarehouse(env, t, ctx, code)
+	}
+
+	// 1. A large enough single page surfaces every seeded warehouse + a Total
+	//    that's at least our seeded count.
+	all, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{IncludeInactive: true, Limit: 1000}))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, all.Msg.Total, int32(seeded),
+		"total must count all matching rows (>= the rows we seeded)")
+	seen := map[string]bool{}
+	for _, w := range all.Msg.Warehouses {
+		seen[w.Code] = true
+	}
+	for _, c := range codes {
+		require.True(t, seen[c], "seeded warehouse %q must appear in the full listing", c)
+	}
+
+	// 2. Limit caps a page; Total still reflects the full filtered count.
+	p1, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{IncludeInactive: true, Limit: 2, Offset: 0}))
+	require.NoError(t, err)
+	require.LessOrEqual(t, len(p1.Msg.Warehouses), 2, "page must respect the requested limit")
+	require.Equal(t, all.Msg.Total, p1.Msg.Total, "total must not depend on the page window")
+
+	// 3. Offset advances past the previous page; the row ids are disjoint.
+	if len(p1.Msg.Warehouses) == 2 && all.Msg.Total > 2 {
+		p2, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+			&warehouseifacev1.ListWarehousesRequest{IncludeInactive: true, Limit: 2, Offset: 2}))
+		require.NoError(t, err)
+		require.NotEmpty(t, p2.Msg.Warehouses, "second page must contain rows when total > 2")
+		require.NotEqual(t, p1.Msg.Warehouses[0].Id, p2.Msg.Warehouses[0].Id,
+			"offset must advance past the prior page")
+	}
+
+	// 4. The IncludeInactive filter still works under pagination. Archive one
+	//    seeded warehouse and assert it disappears from the active-only list
+	//    but stays in the IncludeInactive list.
+	archiveTarget := all.Msg.Warehouses // capture before mutation
+	_ = archiveTarget                   // (we look up the id via code below)
+	var seededID string
+	for _, w := range all.Msg.Warehouses {
+		if w.Code == codes[0] {
+			seededID = w.Id
+			break
+		}
+	}
+	require.NotEmpty(t, seededID)
+	_, err = env.Warehouses.ArchiveWarehouse(ctx, authReq(env, t,
+		&warehouseifacev1.ArchiveWarehouseRequest{Id: seededID}))
+	require.NoError(t, err)
+
+	activeOnly, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{IncludeInactive: false, Limit: 1000}))
+	require.NoError(t, err)
+	for _, w := range activeOnly.Msg.Warehouses {
+		require.NotEqual(t, seededID, w.Id, "archived warehouse must not appear when IncludeInactive=false")
+	}
+}

@@ -16,7 +16,9 @@ import { useTranslation } from "react-i18next";
 
 import EntityDrawer from "../components/EntityDrawer";
 import PageHeader from "../components/PageHeader";
+import Pagination from "../components/Pagination";
 import type { Warehouse } from "../gen/warehouse_iface/v1/warehouse_pb";
+import { usePageState } from "../lib/pagination";
 import { toast } from "../lib/toaster";
 import {
   useArchiveWarehouseMutation,
@@ -30,7 +32,11 @@ export default function Warehouses() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const archive = useArchiveWarehouseMutation();
-  const warehousesQ = useWarehousesQuery({ includeInactive: true });
+  // Admin sees everything (incl. inactive); single filter, so the resetKey
+  // is a constant — usePageState still threads page/pageSize state.
+  const includeInactive = true;
+  const { page, setPage, pageSize, setPageSize } = usePageState(String(includeInactive));
+  const warehousesQ = useWarehousesQuery({ includeInactive, page, pageSize });
 
   return (
     <Box>
@@ -62,7 +68,7 @@ export default function Warehouses() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {(warehousesQ.data ?? []).map((w) => (
+            {warehousesQ.rows.map((w) => (
               <Table.Row key={w.id}>
                 <Table.Cell fontFamily="mono">
                   <HStack gap={2}>
@@ -99,7 +105,7 @@ export default function Warehouses() {
                 </Table.Cell>
               </Table.Row>
             ))}
-            {(warehousesQ.data?.length ?? 0) === 0 && (
+            {warehousesQ.rows.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={6}>
                   <Text color="fg.muted" textAlign="center" py={4}>
@@ -111,6 +117,16 @@ export default function Warehouses() {
           </Table.Body>
         </Table.Root>
       )}
+
+      <Box mt={3}>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={warehousesQ.total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      </Box>
 
       <WarehouseDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
       <WarehouseDrawer

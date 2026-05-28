@@ -23,19 +23,34 @@ func (w *Warehouses) ListWarehouses(
 	ctx context.Context,
 	req *connect.Request[warehouseifacev1.ListWarehousesRequest],
 ) (*connect.Response[warehouseifacev1.ListWarehousesResponse], error) {
-	q := w.db.WithContext(ctx).Order("code ASC")
-	if !req.Msg.IncludeInactive {
-		q = q.Where("active = ?", true)
+	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if !req.Msg.IncludeInactive {
+			q = q.Where("active = ?", true)
+		}
+		return q
 	}
-	var rows []model.Warehouse
-	if err := q.Find(&rows).Error; err != nil {
+
+	var total int64
+	if err := applyFilters(w.db.WithContext(ctx).Model(&model.Warehouse{})).
+		Count(&total).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	var rows []model.Warehouse
+	if err := applyFilters(w.db.WithContext(ctx).Model(&model.Warehouse{})).
+		Order("code ASC").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	out := make([]*warehouseifacev1.Warehouse, 0, len(rows))
 	for i := range rows {
 		out = append(out, warehouseToProto(&rows[i]))
 	}
-	return connect.NewResponse(&warehouseifacev1.ListWarehousesResponse{Warehouses: out}), nil
+	return connect.NewResponse(&warehouseifacev1.ListWarehousesResponse{
+		Warehouses: out,
+		Total:      int32(total),
+	}), nil
 }
 
 func (w *Warehouses) CreateWarehouse(

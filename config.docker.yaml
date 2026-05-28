@@ -34,3 +34,10 @@ printer:
     - "APOTECH PHARMACY"
   footer:
     - "Thank you!"
+
+# Mounted as a named volume in docker-compose.prod.yml so backups persist
+# across container restarts. Override with APOTECH_BACKUP_DIR.
+# pg_tools_dir is unused in Docker — pg_dump is on PATH via postgresql-client
+# (Dockerfile installs it), so the auto-download branch never triggers.
+backup:
+  directory: /var/lib/apotech/backups

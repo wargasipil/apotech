@@ -96,6 +96,37 @@ func (u *Users) ListUsers(
 	return connect.NewResponse(&userifacev1.ListUsersResponse{Users: out}), nil
 }
 
+// ResolveUsers returns minimal display refs for a set of ids — the
+// batch-resolve-by-IDs pattern (mirrors ResolveCustomers). Used by analytics
+// pages so the metric handler can return user_ids only.
+func (u *Users) ResolveUsers(
+	ctx context.Context,
+	req *connect.Request[userifacev1.ResolveUsersRequest],
+) (*connect.Response[userifacev1.ResolveUsersResponse], error) {
+	ids := dedupeIDs(req.Msg.Ids)
+	if len(ids) == 0 {
+		return connect.NewResponse(&userifacev1.ResolveUsersResponse{}), nil
+	}
+	type row struct {
+		ID    string `gorm:"column:id"`
+		Name  string `gorm:"column:name"`
+		Email string `gorm:"column:email"`
+	}
+	var rows []row
+	if err := u.db.WithContext(ctx).
+		Model(&model.User{}).
+		Select("id, name, email").
+		Where("id IN ?", ids).
+		Scan(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*userifacev1.UserRef, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &userifacev1.UserRef{Id: r.ID, Name: r.Name, Email: r.Email})
+	}
+	return connect.NewResponse(&userifacev1.ResolveUsersResponse{Users: out}), nil
+}
+
 func (u *Users) CreateUser(
 	ctx context.Context,
 	req *connect.Request[userifacev1.CreateUserRequest],
