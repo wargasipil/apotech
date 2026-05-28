@@ -99,6 +99,7 @@
     "poNo": "No. PO",
     "status": "Status",
     "supplier": "Pemasok",
+    "warehouse": "Gudang",
     "expectedAt": "Diharapkan",
     "note": "Catatan",
     "items": "Item",
@@ -113,6 +114,7 @@
     "addLine": "Tambah baris",
     "selectMedicine": "Pilih obat",
     "selectSupplier": "Pilih pemasok",
+    "addSupplierLink": "Tambah pemasok",
     "actions": {
       "send": "Kirim",
       "void": "Batalkan",
@@ -208,7 +210,14 @@
     "name": "Nama",
     "password": "Kata sandi",
     "passwordHelp": "Minimal 8 karakter",
-    "role": "Peran"
+    "role": "Peran",
+    "changePassword": "Ubah kata sandi",
+    "changeMyPassword": "Ubah kata sandi saya",
+    "currentPassword": "Kata sandi saat ini",
+    "newPassword": "Kata sandi baru",
+    "confirmPassword": "Konfirmasi kata sandi",
+    "passwordMinLength": "Kata sandi minimal 8 karakter",
+    "passwordMismatch": "Kata sandi tidak cocok"
   },
   "analytics": {
     "title": "Analitik",
@@ -557,7 +566,22 @@
     "address": "Alamat",
     "phone": "Telepon",
     "default": "Utama",
-    "editTitle": "Ubah gudang"
+    "editTitle": "Ubah gudang",
+    "searchPlaceholder": "Cari kode atau nama…",
+    "setAsDefault": "Jadikan utama",
+    "confirmSetDefault": "Jadikan \"{{name}}\" sebagai gudang utama?"
+  },
+  "expiryBadge": {
+    "expired": "kedaluwarsa",
+    "today": "hari ini",
+    "tomorrow": "besok",
+    "inDays_one": "{{count}} hari lagi",
+    "inDays_other": "{{count}} hari lagi",
+    "inWeeks_one": "{{count}} minggu lagi",
+    "inWeeks_other": "{{count}} minggu lagi",
+    "inMonths_one": "{{count}} bulan lagi",
+    "inMonths_other": "{{count}} bulan lagi",
+    "inOverYear": "lebih dari setahun"
   },
   "transfers": {
     "intro": "Pindahkan stok antar gudang. Setiap transfer dicatat dengan nomor dan riwayat.",

@@ -229,7 +229,7 @@ export default function MedicineDetail() {
                   <Table.Cell>
                     <HStack gap={2}>
                       <Text>{b.expiryDate}</Text>
-                      <ExpiryBadge expiry={b.expiryDate} expiredLabel={t("inventory.batches.expired")} />
+                      <ExpiryBadge expiry={b.expiryDate} />
                     </HStack>
                   </Table.Cell>
                   <Table.Cell>{formatMoney(b.costPrice)}</Table.Cell>

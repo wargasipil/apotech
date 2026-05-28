@@ -14,12 +14,14 @@ import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import ChangePasswordDialog from "../components/ChangePasswordDialog";
 import EntityDrawer from "../components/EntityDrawer";
 import EnumSelect from "../components/EnumSelect";
 import FormField from "../components/FormField";
 import PageHeader from "../components/PageHeader";
 import { Role } from "../gen/auth_iface/v1/policy_pb";
 import { User } from "../gen/user_iface/v1/users_pb";
+import { useAuth } from "../lib/auth";
 import { toast } from "../lib/toaster";
 import {
   useCreateUserMutation,
@@ -82,6 +84,7 @@ function UsersTable({ users }: { users: User[] }) {
           <Table.ColumnHeader>Name</Table.ColumnHeader>
           <Table.ColumnHeader>Role</Table.ColumnHeader>
           <Table.ColumnHeader>Active</Table.ColumnHeader>
+          <Table.ColumnHeader />
         </Table.Row>
       </Table.Header>
       <Table.Body>
@@ -95,8 +98,11 @@ function UsersTable({ users }: { users: User[] }) {
 
 function UserRow({ user }: { user: User }) {
   const { t } = useTranslation();
+  const { user: me } = useAuth();
   const setRole = useUpdateUserRoleMutation();
   const setActive = useSetUserActiveMutation();
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const canChangePw = me?.role === Role.OWNER && me?.id !== user.id;
 
   return (
     <Table.Row>
@@ -129,6 +135,22 @@ function UserRow({ user }: { user: User }) {
           <Switch.HiddenInput />
           <Switch.Control />
         </Switch.Root>
+      </Table.Cell>
+      <Table.Cell>
+        {canChangePw && (
+          <>
+            <Button size="xs" variant="ghost" onClick={() => setPasswordOpen(true)}>
+              {t("users.changePassword")}
+            </Button>
+            <ChangePasswordDialog
+              open={passwordOpen}
+              onClose={() => setPasswordOpen(false)}
+              userId={user.id}
+              isSelf={false}
+              userLabel={user.email}
+            />
+          </>
+        )}
       </Table.Cell>
     </Table.Row>
   );

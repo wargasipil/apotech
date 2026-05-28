@@ -60,12 +60,16 @@ service WarehouseService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  rpc SetGlobalDefaultWarehouse(SetGlobalDefaultWarehouseRequest) returns (SetGlobalDefaultWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
 }
 
 message ListWarehousesRequest {
-  bool  include_inactive = 1;
-  int32 limit            = 2;
-  int32 offset           = 3;
+  bool   include_inactive = 1;
+  int32  limit            = 2;
+  int32  offset           = 3;
+  string query            = 4;   // ILIKE code / name
 }
 message ListWarehousesResponse {
   repeated Warehouse warehouses = 1;
@@ -107,6 +111,7 @@ message RevokeWarehouseAccessResponse {}
 message ListUserWarehousesRequest {
   // Empty user_id = self.
   string user_id = 1;
+  string query   = 2;   // ILIKE code / name
 }
 message ListUserWarehousesResponse {
   repeated UserWarehouseMembership memberships = 1;
@@ -119,3 +124,7 @@ message SetDefaultWarehouseRequest {
   string warehouse_id = 2;
 }
 message SetDefaultWarehouseResponse { UserWarehouseMembership membership = 1; }
+
+// Sets the company-wide ("main") warehouse. OWNER only.
+message SetGlobalDefaultWarehouseRequest { string warehouse_id = 1; }
+message SetGlobalDefaultWarehouseResponse { Warehouse warehouse = 1; }

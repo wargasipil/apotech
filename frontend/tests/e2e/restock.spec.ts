@@ -137,4 +137,64 @@ test.describe("restock (purchase order) end-to-end", () => {
       await cleanup(page, { ...ids, poId });
     }
   });
+
+  // Receive flow: drive the same dialog the user reported errored on.
+  // Send → Receive → assert status flips to RECEIVED.
+  test("Send + Receive a PO walks the dialog and lands on RECEIVED", async ({ page }) => {
+    const m = String(Date.now());
+    const ids = await seed(page, m);
+    let poId: string | undefined;
+    try {
+      // Same PO setup as the first test: 5 box of the seeded medicine.
+      await page.goto("/purchasing/new");
+      await page.getByPlaceholder("Select supplier").fill(`Restock Supplier ${m}`);
+      await page.waitForTimeout(700);
+      await page.getByRole("option", { name: new RegExp(`Restock Supplier ${m}`) }).click();
+      await page.getByPlaceholder("Select medicine").fill(`Restock Med ${m}`);
+      await page.waitForTimeout(700);
+      await page.getByRole("option", { name: new RegExp(`Restock Med ${m}`) }).click();
+      const unitTrigger = page.getByRole("table").locator('button[role="combobox"]');
+      await unitTrigger.click();
+      await page.getByRole("option", { name: "box" }).click();
+      await page.getByRole("table").getByRole("spinbutton").first().fill("5");
+      await page.getByRole("table").getByRole("textbox").fill("300000");
+      await page.getByRole("button", { name: "Create" }).click();
+      await page.waitForURL(/\/purchasing\/[0-9a-f-]{36}$/);
+      poId = page.url().split("/").pop();
+
+      // Send → status flips to Sent.
+      await page.getByRole("button", { name: "Send", exact: true }).click();
+      await expect(page.getByText("Sent", { exact: true })).toBeVisible();
+
+      // Receive → dialog opens.
+      await page.getByRole("button", { name: "Receive", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+
+      // Fill batch number + expiry inside the row. The receive table has 1
+      // spinbutton (qty, already defaulted to 5) + 3 textboxes per row:
+      // nth(0) = unit cost (defaulted), nth(1) = batch number, nth(2) = expiry.
+      const rowTextboxes = dialog.getByRole("table").getByRole("textbox");
+      await rowTextboxes.nth(1).fill(`RS-B1-${m}`);
+      // DatePicker.Input under en locale takes MM/DD/YYYY.
+      await rowTextboxes.nth(2).fill("12/31/2099");
+      await rowTextboxes.nth(2).blur();
+
+      // Submit (dialog footer's Receive button).
+      await dialog.getByRole("button", { name: "Receive", exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+
+      // Status badge flips to Received (5 box ordered, 5 box received = full).
+      // The detail page also has a "Received" table column header — match the
+      // first occurrence (the badge, which renders above the table).
+      await expect(page.getByText("Received", { exact: true }).first()).toBeVisible();
+    } finally {
+      // A RECEIVED PO can't be voided; sending the request would log a 400 and
+      // trip the console-error fixture. Skip the void call by omitting poId.
+      // The PO row stays around (timestamp-unique, no test interference);
+      // supplier + medicine still get archived.
+      void poId; // referenced for the catch above
+      await cleanup(page, { medicineId: ids.medicineId, supplierId: ids.supplierId });
+    }
+  });
 });

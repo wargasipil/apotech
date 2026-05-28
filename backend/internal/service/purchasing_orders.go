@@ -35,8 +35,17 @@ func (p *PurchaseOrders) ListPurchaseOrders(
 	ctx context.Context,
 	req *connect.Request[purchasingifacev1.ListPurchaseOrdersRequest],
 ) (*connect.Response[purchasingifacev1.ListPurchaseOrdersResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, p.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
+		q = q.Where("warehouse_id = ?", warehouseID)
 		if statusStr := poStatusToString(req.Msg.Status); statusStr != "" {
 			q = q.Where("status = ?", statusStr)
 		}
@@ -183,6 +192,37 @@ func (p *PurchaseOrders) enrichList(ctx context.Context, orders []*purchasingifa
 			po.InvoiceNo = info.inv
 		}
 	}
+
+	// Warehouse names (one row per PO; all rows usually share one warehouse but
+	// GetPurchaseOrder also goes through this path with a single row).
+	whIDSet := map[string]struct{}{}
+	for _, po := range orders {
+		if po.WarehouseId != "" {
+			whIDSet[po.WarehouseId] = struct{}{}
+		}
+	}
+	if len(whIDSet) > 0 {
+		whIDs := make([]string, 0, len(whIDSet))
+		for id := range whIDSet {
+			whIDs = append(whIDs, id)
+		}
+		type whRow struct {
+			ID   string `gorm:"column:id"`
+			Name string `gorm:"column:name"`
+		}
+		var rows []whRow
+		if err := p.db.WithContext(ctx).Table("warehouses").
+			Select("id, name").Where("id IN ?", whIDs).Scan(&rows).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		byID := make(map[string]string, len(rows))
+		for _, r := range rows {
+			byID[r.ID] = r.Name
+		}
+		for _, po := range orders {
+			po.WarehouseName = byID[po.WarehouseId]
+		}
+	}
 	return nil
 }
 
@@ -212,13 +252,19 @@ func (p *PurchaseOrders) CreatePurchaseOrder(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one item required"))
 	}
 
+	warehouseID, err := resolveWarehouse(ctx, p.db, caller)
+	if err != nil {
+		return nil, err
+	}
+
 	var po model.PurchaseOrder
 	err = p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		po = model.PurchaseOrder{
-			SupplierID: req.Msg.SupplierId,
-			Status:     poStatusDraft,
-			Note:       strings.TrimSpace(req.Msg.Note),
-			CreatedBy:  caller.UserID,
+			SupplierID:  req.Msg.SupplierId,
+			Status:      poStatusDraft,
+			Note:        strings.TrimSpace(req.Msg.Note),
+			CreatedBy:   caller.UserID,
+			WarehouseID: warehouseID,
 		}
 		if e, err := parseDateMaybe(req.Msg.ExpectedAt); err != nil {
 			return connect.NewError(connect.CodeInvalidArgument, err)
@@ -587,6 +633,7 @@ func poToProto(po *model.PurchaseOrder) *purchasingifacev1.PurchaseOrder {
 		Outstanding:  po.OrderedTotal - po.PaidAmount,
 		CreatedBy:    po.CreatedBy,
 		CreatedAt:    po.CreatedAt.Unix(),
+		WarehouseId:  po.WarehouseID,
 	}
 	if po.PoNo != nil {
 		out.PoNo = *po.PoNo

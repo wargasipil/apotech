@@ -54,13 +54,15 @@ func TestPurchaseOrder_BuyInUnits(t *testing.T) {
 	require.NotNil(t, box)
 
 	// Order 5 box at Rp600/base (= Rp60.000/box, Rp300.000 line total).
-	po, err := env.POs.CreatePurchaseOrder(ctx, authReq(env, t,
+	// PO is created in `wh` so the receipt lands batches there (POs are now
+	// warehouse-scoped; the receipt uses the PO's warehouse, not the caller's).
+	po, err := env.POs.CreatePurchaseOrder(ctx, whReq(env, t,
 		&purchasingifacev1.CreatePurchaseOrderRequest{
 			SupplierId: sup.Msg.Supplier.Id,
 			Items: []*purchasingifacev1.PurchaseOrderItemInput{
 				{MedicineId: medID, MedicineUnitId: box.Id, OrderedQty: 5, UnitCostPrice: 600},
 			},
-		}))
+		}, wh))
 	require.NoError(t, err)
 	poID := po.Msg.Order.Id
 	require.Len(t, po.Msg.Order.Items, 1)

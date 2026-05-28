@@ -99,6 +99,7 @@
     "poNo": "PO #",
     "status": "Status",
     "supplier": "Supplier",
+    "warehouse": "Warehouse",
     "expectedAt": "Expected",
     "note": "Note",
     "items": "Items",
@@ -113,6 +114,7 @@
     "addLine": "Add line",
     "selectMedicine": "Select medicine",
     "selectSupplier": "Select supplier",
+    "addSupplierLink": "Add supplier",
     "actions": {
       "send": "Send",
       "void": "Void",
@@ -208,7 +210,14 @@
     "name": "Name",
     "password": "Password",
     "passwordHelp": "Min 8 characters",
-    "role": "Role"
+    "role": "Role",
+    "changePassword": "Change password",
+    "changeMyPassword": "Change my password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords do not match"
   },
   "analytics": {
     "title": "Analytics",
@@ -557,7 +566,22 @@
     "address": "Address",
     "phone": "Phone",
     "default": "Default",
-    "editTitle": "Edit warehouse"
+    "editTitle": "Edit warehouse",
+    "searchPlaceholder": "Search code or name…",
+    "setAsDefault": "Set as default",
+    "confirmSetDefault": "Set \"{{name}}\" as the default warehouse?"
+  },
+  "expiryBadge": {
+    "expired": "expired",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "inWeeks_one": "in {{count}} week",
+    "inWeeks_other": "in {{count}} weeks",
+    "inMonths_one": "in {{count}} month",
+    "inMonths_other": "in {{count}} months",
+    "inOverYear": "in over a year"
   },
   "transfers": {
     "intro": "Move stock between warehouses. Each transfer is recorded with a number and history.",

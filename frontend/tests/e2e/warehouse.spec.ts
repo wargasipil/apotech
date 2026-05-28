@@ -19,6 +19,24 @@ test.describe("warehouses", () => {
     await expect(page.getByRole("cell", { name: code })).toBeVisible();
   });
 
+  test("admin: search narrows the list to a single matching code", async ({ page }) => {
+    await page.goto("/warehouses");
+    // Seed a warehouse with a unique prefix so search has something specific
+    // to land on regardless of dev-DB state.
+    const code = `SRCH${Date.now() % 1000000}`;
+    await page.getByRole("button", { name: "Add" }).click();
+    const drawer = page.getByRole("dialog");
+    await drawer.locator("input").nth(0).fill(code);
+    await drawer.locator("input").nth(1).fill("Searchable gudang");
+    await drawer.getByRole("button", { name: "Save" }).click();
+    await expect(drawer).toBeHidden();
+
+    // Type the unique prefix; backend SearchWarehouses filters server-side.
+    await page.getByPlaceholder(/Search code or name|Cari kode/i).fill(code);
+    await page.waitForTimeout(400); // debounced
+    await expect(page.getByRole("cell", { name: code })).toBeVisible();
+  });
+
   test("transfers tab renders and opens the create drawer", async ({ page }) => {
     await page.goto("/inventory/transfers");
     const newBtn = page.getByRole("button", { name: /New transfer/i });
@@ -46,12 +64,13 @@ test.describe("warehouses", () => {
     await page.goto("/pos");
     await expect(page.getByText("Select a warehouse")).toBeVisible();
 
-    // The gate's picker is the standardized searchable popup: open it, filter,
-    // and pick MAIN. The cart (search box) then loads.
+    // The gate's picker is the standardized searchable popup. Open it and
+    // pick the warehouse we just seeded (deterministic — doesn't depend on
+    // MAIN being present in the dev DB's user_warehouses).
     await page.getByRole("button", { name: /Select warehouse/i }).click();
     const picker = page.getByRole("dialog");
-    await picker.getByRole("textbox").fill("MAIN");
-    await picker.getByText("MAIN · Gudang Utama").click();
+    await picker.getByRole("textbox").fill(code);
+    await picker.getByText(`${code} · Gate test gudang`).click();
     await expect(page.getByPlaceholder(/Search medicine/i)).toBeVisible();
   });
 });

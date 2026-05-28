@@ -153,6 +153,20 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
    */
   invoiceNo = "";
 
+  /**
+   * stamped at create time via resolveWarehouse
+   *
+   * @generated from field: string warehouse_id = 18;
+   */
+  warehouseId = "";
+
+  /**
+   * denormalized for display
+   *
+   * @generated from field: string warehouse_name = 19;
+   */
+  warehouseName = "";
+
   constructor(data?: PartialMessage<PurchaseOrder>) {
     super();
     proto3.util.initPartial(data, this);
@@ -178,6 +192,8 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
     { no: 15, name: "items", kind: "message", T: PurchaseOrderItem, repeated: true },
     { no: 16, name: "received_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 17, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 18, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 19, name: "warehouse_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrder {

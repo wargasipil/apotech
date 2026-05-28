@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveWarehouseRequest, ArchiveWarehouseResponse, CreateWarehouseRequest, CreateWarehouseResponse, GrantWarehouseAccessRequest, GrantWarehouseAccessResponse, ListUserWarehousesRequest, ListUserWarehousesResponse, ListWarehousesRequest, ListWarehousesResponse, RevokeWarehouseAccessRequest, RevokeWarehouseAccessResponse, SetDefaultWarehouseRequest, SetDefaultWarehouseResponse, UpdateWarehouseRequest, UpdateWarehouseResponse } from "./warehouse_pb.js";
+import { ArchiveWarehouseRequest, ArchiveWarehouseResponse, CreateWarehouseRequest, CreateWarehouseResponse, GrantWarehouseAccessRequest, GrantWarehouseAccessResponse, ListUserWarehousesRequest, ListUserWarehousesResponse, ListWarehousesRequest, ListWarehousesResponse, RevokeWarehouseAccessRequest, RevokeWarehouseAccessResponse, SetDefaultWarehouseRequest, SetDefaultWarehouseResponse, SetGlobalDefaultWarehouseRequest, SetGlobalDefaultWarehouseResponse, UpdateWarehouseRequest, UpdateWarehouseResponse } from "./warehouse_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -84,6 +84,15 @@ export const WarehouseService = {
       name: "SetDefaultWarehouse",
       I: SetDefaultWarehouseRequest,
       O: SetDefaultWarehouseResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc warehouse_iface.v1.WarehouseService.SetGlobalDefaultWarehouse
+     */
+    setGlobalDefaultWarehouse: {
+      name: "SetGlobalDefaultWarehouse",
+      I: SetGlobalDefaultWarehouseRequest,
+      O: SetGlobalDefaultWarehouseResponse,
       kind: MethodKind.Unary,
     },
   }

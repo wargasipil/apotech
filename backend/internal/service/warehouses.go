@@ -24,9 +24,14 @@ func (w *Warehouses) ListWarehouses(
 	req *connect.Request[warehouseifacev1.ListWarehousesRequest],
 ) (*connect.Response[warehouseifacev1.ListWarehousesResponse], error) {
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
+	query := strings.TrimSpace(req.Msg.Query)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
 		if !req.Msg.IncludeInactive {
 			q = q.Where("active = ?", true)
+		}
+		if query != "" {
+			like := "%" + query + "%"
+			q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
 		}
 		return q
 	}
@@ -215,8 +220,12 @@ func (w *Warehouses) ListUserWarehouses(
 		ids = append(ids, m.WarehouseID)
 	}
 	var whs []model.Warehouse
-	if err := w.db.WithContext(ctx).Where("id IN ? AND active = ?", ids, true).Order("code ASC").
-		Find(&whs).Error; err != nil {
+	q := w.db.WithContext(ctx).Where("id IN ? AND active = ?", ids, true)
+	if query := strings.TrimSpace(req.Msg.Query); query != "" {
+		like := "%" + query + "%"
+		q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
+	}
+	if err := q.Order("code ASC").Find(&whs).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	outMems := make([]*warehouseifacev1.UserWarehouseMembership, 0, len(mems))
@@ -283,6 +292,49 @@ func (w *Warehouses) SetDefaultWarehouse(
 			WarehouseId: req.Msg.WarehouseId,
 			IsDefault:   true,
 		},
+	}), nil
+}
+
+// SetGlobalDefaultWarehouse promotes the given warehouse to the company-wide
+// default. The partial unique index on `is_default` enforces "only one default
+// at a time"; we clear the old default + set the new one in one tx.
+func (w *Warehouses) SetGlobalDefaultWarehouse(
+	ctx context.Context,
+	req *connect.Request[warehouseifacev1.SetGlobalDefaultWarehouseRequest],
+) (*connect.Response[warehouseifacev1.SetGlobalDefaultWarehouseResponse], error) {
+	if req.Msg.WarehouseId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("warehouse_id required"))
+	}
+	row, err := w.load(ctx, req.Msg.WarehouseId)
+	if err != nil {
+		return nil, err
+	}
+	if !row.Active {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("cannot promote an archived warehouse"))
+	}
+	if row.IsDefault {
+		return connect.NewResponse(&warehouseifacev1.SetGlobalDefaultWarehouseResponse{
+			Warehouse: warehouseToProto(row),
+		}), nil
+	}
+	err = w.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.Warehouse{}).Where("is_default").
+			Update("is_default", false).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		if err := tx.Model(&model.Warehouse{}).Where("id = ?", row.ID).
+			Update("is_default", true).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	row.IsDefault = true
+	return connect.NewResponse(&warehouseifacev1.SetGlobalDefaultWarehouseResponse{
+		Warehouse: warehouseToProto(row),
 	}), nil
 }
 

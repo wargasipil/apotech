@@ -6,6 +6,7 @@ import {
   Heading,
   IconButton,
   Input,
+  Link as ChakraLink,
   Stack,
   Table,
   Text,
@@ -124,6 +125,20 @@ export default function NewPurchaseOrder() {
               itemToValue={(s) => s.id}
               placeholder={t("purchasing.selectSupplier")}
             />
+            <ChakraLink
+              as="button"
+              type="button"
+              fontSize="xs"
+              color="blue.500"
+              mt={1}
+              display="inline-flex"
+              alignItems="center"
+              gap={1}
+              onClick={() => navigate("/inventory/suppliers")}
+            >
+              <Plus size={12} />
+              {t("purchasing.addSupplierLink")}
+            </ChakraLink>
           </Box>
           <Box flex="1" minW="200px">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>

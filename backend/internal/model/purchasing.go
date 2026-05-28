@@ -13,6 +13,7 @@ type PurchaseOrder struct {
 	PaidAmount    int64      `gorm:"not null;default:0;column:paid_amount"`
 	CreatedBy     string     `gorm:"not null;type:uuid;column:created_by"`
 	BranchID      *string    `gorm:"type:uuid;column:branch_id"`
+	WarehouseID   string     `gorm:"not null;type:uuid;column:warehouse_id"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	SentAt        *time.Time `gorm:"column:sent_at"`

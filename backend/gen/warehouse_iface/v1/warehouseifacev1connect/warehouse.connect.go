@@ -57,6 +57,9 @@ const (
 	// WarehouseServiceSetDefaultWarehouseProcedure is the fully-qualified name of the
 	// WarehouseService's SetDefaultWarehouse RPC.
 	WarehouseServiceSetDefaultWarehouseProcedure = "/warehouse_iface.v1.WarehouseService/SetDefaultWarehouse"
+	// WarehouseServiceSetGlobalDefaultWarehouseProcedure is the fully-qualified name of the
+	// WarehouseService's SetGlobalDefaultWarehouse RPC.
+	WarehouseServiceSetGlobalDefaultWarehouseProcedure = "/warehouse_iface.v1.WarehouseService/SetGlobalDefaultWarehouse"
 )
 
 // WarehouseServiceClient is a client for the warehouse_iface.v1.WarehouseService service.
@@ -70,6 +73,7 @@ type WarehouseServiceClient interface {
 	RevokeWarehouseAccess(context.Context, *connect.Request[v1.RevokeWarehouseAccessRequest]) (*connect.Response[v1.RevokeWarehouseAccessResponse], error)
 	ListUserWarehouses(context.Context, *connect.Request[v1.ListUserWarehousesRequest]) (*connect.Response[v1.ListUserWarehousesResponse], error)
 	SetDefaultWarehouse(context.Context, *connect.Request[v1.SetDefaultWarehouseRequest]) (*connect.Response[v1.SetDefaultWarehouseResponse], error)
+	SetGlobalDefaultWarehouse(context.Context, *connect.Request[v1.SetGlobalDefaultWarehouseRequest]) (*connect.Response[v1.SetGlobalDefaultWarehouseResponse], error)
 }
 
 // NewWarehouseServiceClient constructs a client for the warehouse_iface.v1.WarehouseService
@@ -131,19 +135,26 @@ func NewWarehouseServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(warehouseServiceMethods.ByName("SetDefaultWarehouse")),
 			connect.WithClientOptions(opts...),
 		),
+		setGlobalDefaultWarehouse: connect.NewClient[v1.SetGlobalDefaultWarehouseRequest, v1.SetGlobalDefaultWarehouseResponse](
+			httpClient,
+			baseURL+WarehouseServiceSetGlobalDefaultWarehouseProcedure,
+			connect.WithSchema(warehouseServiceMethods.ByName("SetGlobalDefaultWarehouse")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // warehouseServiceClient implements WarehouseServiceClient.
 type warehouseServiceClient struct {
-	listWarehouses        *connect.Client[v1.ListWarehousesRequest, v1.ListWarehousesResponse]
-	createWarehouse       *connect.Client[v1.CreateWarehouseRequest, v1.CreateWarehouseResponse]
-	updateWarehouse       *connect.Client[v1.UpdateWarehouseRequest, v1.UpdateWarehouseResponse]
-	archiveWarehouse      *connect.Client[v1.ArchiveWarehouseRequest, v1.ArchiveWarehouseResponse]
-	grantWarehouseAccess  *connect.Client[v1.GrantWarehouseAccessRequest, v1.GrantWarehouseAccessResponse]
-	revokeWarehouseAccess *connect.Client[v1.RevokeWarehouseAccessRequest, v1.RevokeWarehouseAccessResponse]
-	listUserWarehouses    *connect.Client[v1.ListUserWarehousesRequest, v1.ListUserWarehousesResponse]
-	setDefaultWarehouse   *connect.Client[v1.SetDefaultWarehouseRequest, v1.SetDefaultWarehouseResponse]
+	listWarehouses            *connect.Client[v1.ListWarehousesRequest, v1.ListWarehousesResponse]
+	createWarehouse           *connect.Client[v1.CreateWarehouseRequest, v1.CreateWarehouseResponse]
+	updateWarehouse           *connect.Client[v1.UpdateWarehouseRequest, v1.UpdateWarehouseResponse]
+	archiveWarehouse          *connect.Client[v1.ArchiveWarehouseRequest, v1.ArchiveWarehouseResponse]
+	grantWarehouseAccess      *connect.Client[v1.GrantWarehouseAccessRequest, v1.GrantWarehouseAccessResponse]
+	revokeWarehouseAccess     *connect.Client[v1.RevokeWarehouseAccessRequest, v1.RevokeWarehouseAccessResponse]
+	listUserWarehouses        *connect.Client[v1.ListUserWarehousesRequest, v1.ListUserWarehousesResponse]
+	setDefaultWarehouse       *connect.Client[v1.SetDefaultWarehouseRequest, v1.SetDefaultWarehouseResponse]
+	setGlobalDefaultWarehouse *connect.Client[v1.SetGlobalDefaultWarehouseRequest, v1.SetGlobalDefaultWarehouseResponse]
 }
 
 // ListWarehouses calls warehouse_iface.v1.WarehouseService.ListWarehouses.
@@ -186,6 +197,11 @@ func (c *warehouseServiceClient) SetDefaultWarehouse(ctx context.Context, req *c
 	return c.setDefaultWarehouse.CallUnary(ctx, req)
 }
 
+// SetGlobalDefaultWarehouse calls warehouse_iface.v1.WarehouseService.SetGlobalDefaultWarehouse.
+func (c *warehouseServiceClient) SetGlobalDefaultWarehouse(ctx context.Context, req *connect.Request[v1.SetGlobalDefaultWarehouseRequest]) (*connect.Response[v1.SetGlobalDefaultWarehouseResponse], error) {
+	return c.setGlobalDefaultWarehouse.CallUnary(ctx, req)
+}
+
 // WarehouseServiceHandler is an implementation of the warehouse_iface.v1.WarehouseService service.
 type WarehouseServiceHandler interface {
 	ListWarehouses(context.Context, *connect.Request[v1.ListWarehousesRequest]) (*connect.Response[v1.ListWarehousesResponse], error)
@@ -197,6 +213,7 @@ type WarehouseServiceHandler interface {
 	RevokeWarehouseAccess(context.Context, *connect.Request[v1.RevokeWarehouseAccessRequest]) (*connect.Response[v1.RevokeWarehouseAccessResponse], error)
 	ListUserWarehouses(context.Context, *connect.Request[v1.ListUserWarehousesRequest]) (*connect.Response[v1.ListUserWarehousesResponse], error)
 	SetDefaultWarehouse(context.Context, *connect.Request[v1.SetDefaultWarehouseRequest]) (*connect.Response[v1.SetDefaultWarehouseResponse], error)
+	SetGlobalDefaultWarehouse(context.Context, *connect.Request[v1.SetGlobalDefaultWarehouseRequest]) (*connect.Response[v1.SetGlobalDefaultWarehouseResponse], error)
 }
 
 // NewWarehouseServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -254,6 +271,12 @@ func NewWarehouseServiceHandler(svc WarehouseServiceHandler, opts ...connect.Han
 		connect.WithSchema(warehouseServiceMethods.ByName("SetDefaultWarehouse")),
 		connect.WithHandlerOptions(opts...),
 	)
+	warehouseServiceSetGlobalDefaultWarehouseHandler := connect.NewUnaryHandler(
+		WarehouseServiceSetGlobalDefaultWarehouseProcedure,
+		svc.SetGlobalDefaultWarehouse,
+		connect.WithSchema(warehouseServiceMethods.ByName("SetGlobalDefaultWarehouse")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse_iface.v1.WarehouseService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WarehouseServiceListWarehousesProcedure:
@@ -272,6 +295,8 @@ func NewWarehouseServiceHandler(svc WarehouseServiceHandler, opts ...connect.Han
 			warehouseServiceListUserWarehousesHandler.ServeHTTP(w, r)
 		case WarehouseServiceSetDefaultWarehouseProcedure:
 			warehouseServiceSetDefaultWarehouseHandler.ServeHTTP(w, r)
+		case WarehouseServiceSetGlobalDefaultWarehouseProcedure:
+			warehouseServiceSetGlobalDefaultWarehouseHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -311,4 +336,8 @@ func (UnimplementedWarehouseServiceHandler) ListUserWarehouses(context.Context, 
 
 func (UnimplementedWarehouseServiceHandler) SetDefaultWarehouse(context.Context, *connect.Request[v1.SetDefaultWarehouseRequest]) (*connect.Response[v1.SetDefaultWarehouseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse_iface.v1.WarehouseService.SetDefaultWarehouse is not implemented"))
+}
+
+func (UnimplementedWarehouseServiceHandler) SetGlobalDefaultWarehouse(context.Context, *connect.Request[v1.SetGlobalDefaultWarehouseRequest]) (*connect.Response[v1.SetGlobalDefaultWarehouseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse_iface.v1.WarehouseService.SetGlobalDefaultWarehouse is not implemented"))
 }

@@ -10,8 +10,8 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Archive, Pencil, Plus } from "lucide-react";
-import { useState } from "react";
+import { Archive, Pencil, Plus, Search, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import EntityDrawer from "../components/EntityDrawer";
@@ -23,6 +23,7 @@ import { toast } from "../lib/toaster";
 import {
   useArchiveWarehouseMutation,
   useCreateWarehouseMutation,
+  useSetGlobalDefaultWarehouseMutation,
   useUpdateWarehouseMutation,
   useWarehousesQuery,
 } from "../queries/warehouses";
@@ -32,11 +33,28 @@ export default function Warehouses() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const archive = useArchiveWarehouseMutation();
+  const setGlobalDefault = useSetGlobalDefaultWarehouseMutation();
   // Admin sees everything (incl. inactive); single filter, so the resetKey
   // is a constant — usePageState still threads page/pageSize state.
   const includeInactive = true;
-  const { page, setPage, pageSize, setPageSize } = usePageState(String(includeInactive));
-  const warehousesQ = useWarehousesQuery({ includeInactive, page, pageSize });
+  const [queryInput, setQueryInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const h = setTimeout(() => setQuery(queryInput.trim()), 250);
+    return () => clearTimeout(h);
+  }, [queryInput]);
+  const { page, setPage, pageSize, setPageSize } = usePageState(`${includeInactive}|${query}`);
+  const warehousesQ = useWarehousesQuery({ includeInactive, page, pageSize, query });
+
+  const onSetDefault = async (w: Warehouse) => {
+    if (!confirm(t("warehouses.confirmSetDefault", { name: w.name }))) return;
+    try {
+      await setGlobalDefault.mutateAsync(w.id);
+      toast.success(t("warehouses.setAsDefault") + " ✓");
+    } catch {
+      /* toast handled globally */
+    }
+  };
 
   return (
     <Box>
@@ -50,6 +68,18 @@ export default function Warehouses() {
           </Button>
         }
       />
+
+      <Box mb={3} maxW="320px">
+        <HStack gap={2}>
+          <Search size={16} />
+          <Input
+            size="sm"
+            placeholder={t("warehouses.searchPlaceholder")}
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+          />
+        </HStack>
+      </Box>
 
       {warehousesQ.isLoading ? (
         <Box p={8} textAlign="center">
@@ -90,6 +120,18 @@ export default function Warehouses() {
                       <Pencil size={14} />
                       {t("common.edit")}
                     </Button>
+                    {w.active && !w.isDefault && (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        colorPalette="blue"
+                        onClick={() => onSetDefault(w)}
+                        loading={setGlobalDefault.isPending}
+                      >
+                        <Star size={14} />
+                        {t("warehouses.setAsDefault")}
+                      </Button>
+                    )}
                     {w.active && !w.isDefault && (
                       <Button
                         size="xs"

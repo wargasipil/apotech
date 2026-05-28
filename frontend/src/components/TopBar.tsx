@@ -9,9 +9,10 @@ import {
   Text,
 } from "@chakra-ui/react";
 
+import ChangePasswordDialog from "./ChangePasswordDialog";
 import WarehouseSelect from "./WarehouseSelect";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, Languages, LogOut, Menu as MenuIcon, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
+import { Bell, KeyRound, Languages, LogOut, Menu as MenuIcon, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -20,7 +21,7 @@ import { Role } from "../gen/auth_iface/v1/policy_pb";
 import { useAuth } from "../lib/auth";
 import { WAREHOUSE_KEY } from "../lib/transport";
 import { useLowStockQuery } from "../queries/medicines";
-import { useMyWarehousesQuery } from "../queries/warehouses";
+import { searchMyWarehouses, useMyWarehousesQuery } from "../queries/warehouses";
 import { usePreferencesStore, type Locale } from "../stores/preferences";
 
 export default function TopBar() {
@@ -31,6 +32,8 @@ export default function TopBar() {
   const locale = usePreferencesStore((s) => s.locale);
   const setLocale = usePreferencesStore((s) => s.setLocale);
   const toggleSidebar = usePreferencesStore((s) => s.toggleSidebar);
+
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const flipTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
@@ -114,6 +117,12 @@ export default function TopBar() {
                       </Text>
                     </Menu.Item>
                     <Menu.Separator />
+                    <Menu.Item value="changepw" onClick={() => setPasswordOpen(true)}>
+                      <HStack gap={2}>
+                        <KeyRound size={14} />
+                        <Text fontSize="sm">{t("users.changeMyPassword")}</Text>
+                      </HStack>
+                    </Menu.Item>
                     <Menu.Item value="signout" onClick={logout}>
                       <HStack gap={2}>
                         <LogOut size={14} />
@@ -127,6 +136,11 @@ export default function TopBar() {
           )}
         </HStack>
       </Flex>
+      <ChangePasswordDialog
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        isSelf
+      />
     </Box>
   );
 }
@@ -154,6 +168,13 @@ function WarehouseSelector() {
 
   if (!myWarehousesQ.data || myWarehousesQ.data.warehouses.length <= 1) return null;
 
+  // Chip label uses the cached full list — survives a typed query that filters
+  // the selected warehouse out of the popover (async search source).
+  const selectedFromFull = myWarehousesQ.data.warehouses.find((w) => w.id === current);
+  const selectedLabel = selectedFromFull
+    ? `${selectedFromFull.code} · ${selectedFromFull.name}`
+    : undefined;
+
   return (
     <WarehouseSelect
       size="sm"
@@ -166,7 +187,8 @@ function WarehouseSelector() {
         // (the transport reads localStorage per request) — no full page reload.
         void queryClient.invalidateQueries();
       }}
-      warehouses={myWarehousesQ.data.warehouses}
+      loadOptions={searchMyWarehouses}
+      selectedLabel={selectedLabel}
     />
   );
 }

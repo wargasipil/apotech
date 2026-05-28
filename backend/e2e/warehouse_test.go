@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -189,4 +190,137 @@ func TestListWarehouses_Pagination(t *testing.T) {
 	for _, w := range activeOnly.Msg.Warehouses {
 		require.NotEqual(t, seededID, w.Id, "archived warehouse must not appear when IncludeInactive=false")
 	}
+}
+
+// TestListWarehouses_Search exercises the new `query` filter — case-insensitive
+// substring match against code OR name.
+func TestListWarehouses_Search(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+	codeA := fmt.Sprintf("ZQ%dA", uniq)
+	codeB := fmt.Sprintf("ZQ%dB", uniq)
+	whA := makeWarehouse(env, t, ctx, codeA)
+	whB := makeWarehouse(env, t, ctx, codeB)
+	_ = whA
+	_ = whB
+
+	// Both share the ZQ<uniq> prefix.
+	prefix := fmt.Sprintf("ZQ%d", uniq)
+	res, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{Query: prefix, Limit: 1000}))
+	require.NoError(t, err)
+	got := 0
+	for _, w := range res.Msg.Warehouses {
+		if strings.HasPrefix(w.Code, prefix) {
+			got++
+		}
+	}
+	require.Equal(t, 2, got, "search by prefix returns both seeded warehouses")
+
+	// codeA alone returns only whA.
+	res, err = env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{Query: codeA, Limit: 1000}))
+	require.NoError(t, err)
+	hits := map[string]bool{}
+	for _, w := range res.Msg.Warehouses {
+		hits[w.Code] = true
+	}
+	require.True(t, hits[codeA])
+	require.False(t, hits[codeB])
+
+	// Non-matching query returns nothing of ours.
+	res, err = env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{Query: "X-NO-MATCH-X", Limit: 1000}))
+	require.NoError(t, err)
+	for _, w := range res.Msg.Warehouses {
+		require.False(t, strings.HasPrefix(w.Code, prefix))
+	}
+}
+
+// TestListUserWarehouses_Search verifies the TopBar warehouse picker's new
+// server-side search: ListUserWarehouses filters the user's accessible
+// warehouses by ILIKE on code/name when `query` is set.
+func TestListUserWarehouses_Search(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+	codeA := fmt.Sprintf("UQ%dA", uniq)
+	codeB := fmt.Sprintf("UQ%dB", uniq)
+	_ = makeWarehouse(env, t, ctx, codeA)
+	_ = makeWarehouse(env, t, ctx, codeB)
+
+	// Both seeded warehouses share the UQ<uniq> prefix; OWNER was auto-granted
+	// access at creation time, so they appear in ListUserWarehouses results.
+	prefix := fmt.Sprintf("UQ%d", uniq)
+	res, err := env.Warehouses.ListUserWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListUserWarehousesRequest{Query: prefix}))
+	require.NoError(t, err)
+	hits := 0
+	for _, w := range res.Msg.Warehouses {
+		if strings.HasPrefix(w.Code, prefix) {
+			hits++
+		}
+	}
+	require.Equal(t, 2, hits, "prefix query returns both seeded warehouses")
+
+	// codeA alone returns only whA.
+	res, err = env.Warehouses.ListUserWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListUserWarehousesRequest{Query: codeA}))
+	require.NoError(t, err)
+	codes := map[string]bool{}
+	for _, w := range res.Msg.Warehouses {
+		codes[w.Code] = true
+	}
+	require.True(t, codes[codeA])
+	require.False(t, codes[codeB])
+
+	// Empty query falls back to "no filter" — full accessible list.
+	res, err = env.Warehouses.ListUserWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListUserWarehousesRequest{}))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(res.Msg.Warehouses), 2, "no query returns full accessible list")
+}
+
+// TestWarehouse_SetGlobalDefault verifies promoting a warehouse to the
+// company-wide default clears the previous default.
+func TestWarehouse_SetGlobalDefault(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+	target := makeWarehouse(env, t, ctx, fmt.Sprintf("DEFNEW%d", uniq))
+
+	// Snapshot the current global default so we can restore it after.
+	listAll, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{IncludeInactive: true, Limit: 1000}))
+	require.NoError(t, err)
+	var origDefaultID string
+	for _, w := range listAll.Msg.Warehouses {
+		if w.IsDefault {
+			origDefaultID = w.Id
+			break
+		}
+	}
+	require.NotEmpty(t, origDefaultID, "fresh DB must have a default warehouse")
+	require.NotEqual(t, target, origDefaultID, "test seed must differ from current default")
+	t.Cleanup(func() {
+		_, _ = env.Warehouses.SetGlobalDefaultWarehouse(ctx, authReq(env, t,
+			&warehouseifacev1.SetGlobalDefaultWarehouseRequest{WarehouseId: origDefaultID}))
+	})
+
+	_, err = env.Warehouses.SetGlobalDefaultWarehouse(ctx, authReq(env, t,
+		&warehouseifacev1.SetGlobalDefaultWarehouseRequest{WarehouseId: target}))
+	require.NoError(t, err)
+
+	after, err := env.Warehouses.ListWarehouses(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehousesRequest{IncludeInactive: true, Limit: 1000}))
+	require.NoError(t, err)
+	defaults := 0
+	for _, w := range after.Msg.Warehouses {
+		if w.IsDefault {
+			defaults++
+			require.Equal(t, target, w.Id)
+		}
+	}
+	require.Equal(t, 1, defaults, "exactly one default warehouse")
 }

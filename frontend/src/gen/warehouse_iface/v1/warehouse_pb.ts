@@ -159,6 +159,13 @@ export class ListWarehousesRequest extends Message<ListWarehousesRequest> {
    */
   offset = 0;
 
+  /**
+   * ILIKE code / name
+   *
+   * @generated from field: string query = 4;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListWarehousesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -170,6 +177,7 @@ export class ListWarehousesRequest extends Message<ListWarehousesRequest> {
     { no: 1, name: "include_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListWarehousesRequest {
@@ -661,6 +669,13 @@ export class ListUserWarehousesRequest extends Message<ListUserWarehousesRequest
    */
   userId = "";
 
+  /**
+   * ILIKE code / name
+   *
+   * @generated from field: string query = 2;
+   */
+  query = "";
+
   constructor(data?: PartialMessage<ListUserWarehousesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -670,6 +685,7 @@ export class ListUserWarehousesRequest extends Message<ListUserWarehousesRequest
   static readonly typeName = "warehouse_iface.v1.ListUserWarehousesRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListUserWarehousesRequest {
@@ -813,6 +829,82 @@ export class SetDefaultWarehouseResponse extends Message<SetDefaultWarehouseResp
 
   static equals(a: SetDefaultWarehouseResponse | PlainMessage<SetDefaultWarehouseResponse> | undefined, b: SetDefaultWarehouseResponse | PlainMessage<SetDefaultWarehouseResponse> | undefined): boolean {
     return proto3.util.equals(SetDefaultWarehouseResponse, a, b);
+  }
+}
+
+/**
+ * Sets the company-wide ("main") warehouse. OWNER only.
+ *
+ * @generated from message warehouse_iface.v1.SetGlobalDefaultWarehouseRequest
+ */
+export class SetGlobalDefaultWarehouseRequest extends Message<SetGlobalDefaultWarehouseRequest> {
+  /**
+   * @generated from field: string warehouse_id = 1;
+   */
+  warehouseId = "";
+
+  constructor(data?: PartialMessage<SetGlobalDefaultWarehouseRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.SetGlobalDefaultWarehouseRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetGlobalDefaultWarehouseRequest {
+    return new SetGlobalDefaultWarehouseRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetGlobalDefaultWarehouseRequest {
+    return new SetGlobalDefaultWarehouseRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetGlobalDefaultWarehouseRequest {
+    return new SetGlobalDefaultWarehouseRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetGlobalDefaultWarehouseRequest | PlainMessage<SetGlobalDefaultWarehouseRequest> | undefined, b: SetGlobalDefaultWarehouseRequest | PlainMessage<SetGlobalDefaultWarehouseRequest> | undefined): boolean {
+    return proto3.util.equals(SetGlobalDefaultWarehouseRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message warehouse_iface.v1.SetGlobalDefaultWarehouseResponse
+ */
+export class SetGlobalDefaultWarehouseResponse extends Message<SetGlobalDefaultWarehouseResponse> {
+  /**
+   * @generated from field: warehouse_iface.v1.Warehouse warehouse = 1;
+   */
+  warehouse?: Warehouse;
+
+  constructor(data?: PartialMessage<SetGlobalDefaultWarehouseResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.SetGlobalDefaultWarehouseResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "warehouse", kind: "message", T: Warehouse },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetGlobalDefaultWarehouseResponse {
+    return new SetGlobalDefaultWarehouseResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetGlobalDefaultWarehouseResponse {
+    return new SetGlobalDefaultWarehouseResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetGlobalDefaultWarehouseResponse {
+    return new SetGlobalDefaultWarehouseResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetGlobalDefaultWarehouseResponse | PlainMessage<SetGlobalDefaultWarehouseResponse> | undefined, b: SetGlobalDefaultWarehouseResponse | PlainMessage<SetGlobalDefaultWarehouseResponse> | undefined): boolean {
+    return proto3.util.equals(SetGlobalDefaultWarehouseResponse, a, b);
   }
 }
 

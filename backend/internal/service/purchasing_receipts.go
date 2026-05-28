@@ -36,11 +36,9 @@ func (p *PurchaseReceipts) CreateReceipt(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one line required"))
 	}
 
-	// Stock lands in the caller's active warehouse.
-	warehouseID, err := resolveWarehouse(ctx, p.db, caller)
-	if err != nil {
-		return nil, err
-	}
+	// Stock lands in the PO's warehouse (stamped at CreatePurchaseOrder time),
+	// not the caller's active warehouse. Loaded inside the tx below.
+	var warehouseID string
 
 	// Default receipt date to today.
 	receivedAt := time.Now()
@@ -71,6 +69,8 @@ func (p *PurchaseReceipts) CreateReceipt(
 			return connect.NewError(connect.CodeFailedPrecondition,
 				fmt.Errorf("cannot receive a PO in status %s; send it first", po.Status))
 		}
+		// Pin stock destination to the PO's warehouse.
+		warehouseID = po.WarehouseID
 
 		// Create the receipt header with an assigned receipt_no.
 		receiptNo, err := assignReceiptNo(tx, time.Now())

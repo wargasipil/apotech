@@ -100,8 +100,10 @@ type PurchaseOrder struct {
 	SentAt        int64                  `protobuf:"varint,13,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
 	ClosedAt      int64                  `protobuf:"varint,14,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"`
 	Items         []*PurchaseOrderItem   `protobuf:"bytes,15,rep,name=items,proto3" json:"items,omitempty"`
-	ReceivedAt    int64                  `protobuf:"varint,16,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"` // most recent receipt date (0 if none)
-	InvoiceNo     string                 `protobuf:"bytes,17,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`     // most recent receipt's supplier faktur
+	ReceivedAt    int64                  `protobuf:"varint,16,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`         // most recent receipt date (0 if none)
+	InvoiceNo     string                 `protobuf:"bytes,17,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`             // most recent receipt's supplier faktur
+	WarehouseId   string                 `protobuf:"bytes,18,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`       // stamped at create time via resolveWarehouse
+	WarehouseName string                 `protobuf:"bytes,19,opt,name=warehouse_name,json=warehouseName,proto3" json:"warehouse_name,omitempty"` // denormalized for display
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -251,6 +253,20 @@ func (x *PurchaseOrder) GetReceivedAt() int64 {
 func (x *PurchaseOrder) GetInvoiceNo() string {
 	if x != nil {
 		return x.InvoiceNo
+	}
+	return ""
+}
+
+func (x *PurchaseOrder) GetWarehouseId() string {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return ""
+}
+
+func (x *PurchaseOrder) GetWarehouseName() string {
+	if x != nil {
+		return x.WarehouseName
 	}
 	return ""
 }
@@ -1110,7 +1126,7 @@ var File_purchasing_iface_v1_order_proto protoreflect.FileDescriptor
 
 const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xb8\x04\n" +
+	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\x82\x05\n" +
 	"\rPurchaseOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x13\n" +
 	"\x05po_no\x18\x02 \x01(\tR\x04poNo\x12\x1f\n" +
@@ -1136,7 +1152,9 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\vreceived_at\x18\x10 \x01(\x03R\n" +
 	"receivedAt\x12\x1d\n" +
 	"\n" +
-	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\"\xa8\x03\n" +
+	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\x12!\n" +
+	"\fwarehouse_id\x18\x12 \x01(\tR\vwarehouseId\x12%\n" +
+	"\x0ewarehouse_name\x18\x13 \x01(\tR\rwarehouseName\"\xa8\x03\n" +
 	"\x11PurchaseOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11purchase_order_id\x18\x02 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +

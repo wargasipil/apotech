@@ -173,7 +173,20 @@
       "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e/... -run \"TestAnalytics\" -count=1 -v)",
       "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e/... -run \"TestAnalytics_DimensionFanout\" -count=1 -v)",
       "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e/... -run \"TestAnalytics_OrderIsWarehouseScoped\" -count=1 -v)",
-      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e/... -run \"TestGetTodaySnapshot_WarehouseAndCashierScope\" -count=1 -v)"
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e/... -run \"TestGetTodaySnapshot_WarehouseAndCashierScope\" -count=1 -v)",
+      "Bash(go -C backend test ./e2e -run TestPurchaseOrder_PartialReceive -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestPurchaseOrder_PartialReceive -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend vet ./e2e)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestPurchaseOrder_WarehouseScoping|TestListWarehouses_Search|TestWarehouse_SetGlobalDefault\" -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestPurchaseOrder_BuyInUnits -v)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /PID 19068)",
+      "Bash(taskkill //F //PID 19068)",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill //F //PID 17276)",
+      "Bash(taskkill //F //PID 19308)",
+      "Bash(xargs -I{} taskkill //F //PID {})",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestListUserWarehouses_Search -v)"
     ],
     "additionalDirectories": [
       "\\tmp"

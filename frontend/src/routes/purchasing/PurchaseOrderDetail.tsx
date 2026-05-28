@@ -90,7 +90,10 @@ export default function PurchaseOrderDetail() {
   const canVoid = po.status === POStatus.PO_STATUS_DRAFT || po.status === POStatus.PO_STATUS_SENT;
   const canReceive =
     po.status === POStatus.PO_STATUS_SENT || po.status === POStatus.PO_STATUS_PARTIALLY_RECEIVED;
-  const canPay = po.status !== POStatus.PO_STATUS_VOIDED && po.status !== POStatus.PO_STATUS_DRAFT;
+  const canPay =
+    po.status !== POStatus.PO_STATUS_VOIDED &&
+    po.status !== POStatus.PO_STATUS_DRAFT &&
+    po.outstanding > 0n;
 
   const onSend = async () => {
     try {
@@ -151,8 +154,9 @@ export default function PurchaseOrderDetail() {
 
       {/* Header info */}
       <Box bg="bg.subtle" borderWidth="1px" borderRadius="lg" p={4}>
-        <Grid templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }} gap={4}>
+        <Grid templateColumns={{ base: "1fr", md: "repeat(5, 1fr)" }} gap={4}>
           <Info label={t("purchasing.supplier")} value={supplierRefs.get(po.supplierId)?.name ?? "—"} />
+          <Info label={t("purchasing.warehouse")} value={po.warehouseName || "—"} />
           <Info label={t("purchasing.expectedAt")} value={po.expectedAt ? formatDate(po.expectedAt) : "—"} />
           <Info
             label={t("purchasing.totalOrdered")}

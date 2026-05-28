@@ -34,6 +34,8 @@ message PurchaseOrder {
   repeated PurchaseOrderItem items = 15;
   int64 received_at = 16;          // most recent receipt date (0 if none)
   string invoice_no = 17;         // most recent receipt's supplier faktur
+  string warehouse_id = 18;        // stamped at create time via resolveWarehouse
+  string warehouse_name = 19;      // denormalized for display
 }
 
 message PurchaseOrderItem {

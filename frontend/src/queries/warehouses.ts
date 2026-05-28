@@ -20,6 +20,7 @@ export type WarehousesQueryOpts = {
   includeInactive?: boolean;
   page?: number;
   pageSize?: number;
+  query?: string;
 };
 
 // useWarehousesQuery is server-paginated like the other List* hooks: pass page
@@ -31,14 +32,16 @@ export function useWarehousesQuery(opts: WarehousesQueryOpts = {}) {
     includeInactive = false,
     page = 0,
     pageSize = DEFAULT_PAGE_SIZE,
+    query = "",
   } = opts;
   const q = useQuery({
-    queryKey: warehouseKeys.list({ includeInactive, page, pageSize }),
+    queryKey: warehouseKeys.list({ includeInactive, page, pageSize, query }),
     queryFn: async () => {
       const res = await warehouseClient.listWarehouses({
         includeInactive,
         limit: pageSize,
         offset: page * pageSize,
+        query,
       });
       return { rows: res.warehouses, total: res.total };
     },
@@ -58,6 +61,14 @@ export function useMyWarehousesQuery() {
     queryKey: warehouseKeys.user("self"),
     queryFn: async () => warehouseClient.listUserWarehouses({ userId: "" }),
   });
+}
+
+// Imperative search over the caller's accessible warehouses — backend ILIKEs
+// code/name. Used by the TopBar warehouse popup so each keystroke (debounced)
+// hits the backend. Mirrors the searchSuppliers / searchMedicines pattern.
+export async function searchMyWarehouses(query: string) {
+  const res = await warehouseClient.listUserWarehouses({ userId: "", query });
+  return [...res.warehouses];
 }
 
 export function useCreateWarehouseMutation() {
@@ -98,6 +109,15 @@ export function useSetDefaultWarehouseMutation() {
   return useMutation({
     mutationFn: (req: PartialMessage<SetDefaultWarehouseRequest>) =>
       warehouseClient.setDefaultWarehouse(req),
+    onSuccess: () => qc.invalidateQueries({ queryKey: warehouseKeys.all }),
+  });
+}
+
+export function useSetGlobalDefaultWarehouseMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (warehouseId: string) =>
+      warehouseClient.setGlobalDefaultWarehouse({ warehouseId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: warehouseKeys.all }),
   });
 }
