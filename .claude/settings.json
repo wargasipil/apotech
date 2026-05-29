@@ -186,7 +186,9 @@
       "Bash(taskkill //F //PID 17276)",
       "Bash(taskkill //F //PID 19308)",
       "Bash(xargs -I{} taskkill //F //PID {})",
-      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestListUserWarehouses_Search -v)"
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestListUserWarehouses_Search -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestProductMetric_Extras|TestListSales_WarehouseScoped\" -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestProductMetric_Extras\" -v)"
     ],
     "additionalDirectories": [
       "\\tmp"

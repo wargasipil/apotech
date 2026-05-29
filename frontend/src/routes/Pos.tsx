@@ -770,6 +770,10 @@ export default function Pos() {
                       onChange={setPaidAmount}
                     />
                   </HStack>
+                  <QuickAmountRow
+                    total={total}
+                    onPick={(n) => setPaidAmount(String(n))}
+                  />
                   <Flex justify="space-between">
                     <Text fontSize="xs" color="fg.muted">{t("pos.change")}</Text>
                     <Text fontSize="sm" fontFamily="mono" color={change < 0 ? "fg.error" : "fg"}>
@@ -820,6 +824,58 @@ export default function Pos() {
       />
 
       <ReceiptDialog sale={completedSale} onClose={onCloseReceipt} />
+    </Flex>
+  );
+}
+
+// QuickAmountRow: one-tap fill of the paid input. Renders below the Dibayar
+// field for Cash payments. Includes an "Exact" chip (paid = total), an
+// optional round-up-to-next-10k chip, and standard IDR banknote denominations
+// (5k/10k/20k/50k/100k) filtered to amounts >= total.
+function QuickAmountRow({
+  total,
+  onPick,
+}: {
+  total: number;
+  onPick: (n: number) => void;
+}) {
+  const { t } = useTranslation();
+  if (total <= 0) return null;
+  const DENOMS = [5_000, 10_000, 20_000, 50_000, 100_000];
+  const above = DENOMS.filter((d) => d >= total);
+  const roundedUp = Math.ceil(total / 10_000) * 10_000;
+  const showRoundUp = roundedUp !== total && !above.includes(roundedUp);
+  return (
+    <Flex wrap="wrap" gap={1} mt={1}>
+      <Button
+        size="xs"
+        variant="outline"
+        colorPalette="blue"
+        onClick={() => onPick(total)}
+      >
+        {t("pos.exactAmount")}
+      </Button>
+      {showRoundUp && (
+        <Button
+          size="xs"
+          variant="outline"
+          colorPalette="blue"
+          onClick={() => onPick(roundedUp)}
+        >
+          {formatMoney(roundedUp)}
+        </Button>
+      )}
+      {above.map((d) => (
+        <Button
+          key={d}
+          size="xs"
+          variant="outline"
+          colorPalette="blue"
+          onClick={() => onPick(d)}
+        >
+          {formatMoney(d)}
+        </Button>
+      ))}
     </Flex>
   );
 }

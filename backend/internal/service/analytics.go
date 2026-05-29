@@ -193,16 +193,26 @@ func orderMetricColumn(f analyticsifacev1.OrderMetricField) string {
 		return "hpp"
 	case analyticsifacev1.OrderMetricField_ORDER_METRIC_FIELD_PROFIT:
 		return "profit"
+	case analyticsifacev1.OrderMetricField_ORDER_METRIC_FIELD_LAST_ORDER:
+		return "last_order_unix"
+	case analyticsifacev1.OrderMetricField_ORDER_METRIC_FIELD_AVG_SOLD:
+		return "avg_sold"
 	default:
 		return "terjual"
 	}
 }
 
 func stockMetricColumn(f analyticsifacev1.StockMetricField) string {
-	if f == analyticsifacev1.StockMetricField_STOCK_METRIC_FIELD_ONGOING {
+	switch f {
+	case analyticsifacev1.StockMetricField_STOCK_METRIC_FIELD_ONGOING:
 		return "ongoing"
+	case analyticsifacev1.StockMetricField_STOCK_METRIC_FIELD_LAST_RESTOCK:
+		return "last_restock_unix"
+	case analyticsifacev1.StockMetricField_STOCK_METRIC_FIELD_EXPIRING:
+		return "expiring"
+	default:
+		return "ready"
 	}
-	return "ready"
 }
 
 // ---------- DailyMetric ----------
@@ -377,7 +387,16 @@ func sortDailyKeys(
 	stock map[string]*analyticsifacev1.StockItem,
 ) []string {
 	if sort == nil || sort.Field == nil {
-		// keys are already chronological asc from generate_series
+		// No metric field set → sort by dimension key (the day string). Keys
+		// come out of generate_series chronological asc; honor a DESC direction
+		// by reversing in place.
+		if sort != nil && sort.Direction == analyticsifacev1.SortDirection_SORT_DIRECTION_DESC {
+			out := make([]string, len(keys))
+			for i, k := range keys {
+				out[len(keys)-1-i] = k
+			}
+			return out
+		}
 		return keys
 	}
 	out := make([]string, len(keys))
@@ -550,7 +569,9 @@ func (a *Analytics) productPageIDs(
 		WITH order_agg AS (
 		  SELECT si.medicine_id,
 		         SUM(si.line_total) AS terjual,
-		         COALESCE(SUM(c.cogs), 0) AS hpp
+		         COALESCE(SUM(c.cogs), 0) AS hpp,
+		         COALESCE(SUM(si.base_qty), 0) AS base_qty,
+		         COALESCE(EXTRACT(EPOCH FROM MAX(s.completed_at))::bigint, 0) AS last_order_unix
 		  FROM sale_items si
 		  JOIN sales s ON s.id = si.sale_id
 		  LEFT JOIN (
@@ -578,27 +599,60 @@ func (a *Analytics) productPageIDs(
 		  WHERE po.status NOT IN ('VOIDED', 'CLOSED', 'RECEIVED')
 		  GROUP BY poi.medicine_id
 		),
+		restock_agg AS (
+		  SELECT b.medicine_id,
+		         EXTRACT(EPOCH FROM MAX(b.received_at))::bigint AS last_restock_unix
+		  FROM batches b
+		  JOIN stock_movements sm ON sm.batch_id = b.id
+		  WHERE sm.warehouse_id = ? AND sm.qty > 0
+		  GROUP BY b.medicine_id
+		),
+		expiring_agg AS (
+		  SELECT b.medicine_id,
+		         COALESCE(SUM(sm.qty), 0) AS expiring
+		  FROM batches b
+		  JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
+		  WHERE b.expiry_date >= CURRENT_DATE
+		    AND b.expiry_date < (CURRENT_DATE + INTERVAL '30 days')
+		  GROUP BY b.medicine_id
+		),
 		combined AS (
 		  SELECT m.id, m.name,
 		         COALESCE(o.terjual, 0) AS terjual,
 		         COALESCE(o.hpp, 0) AS hpp,
 		         (COALESCE(o.terjual, 0) - COALESCE(o.hpp, 0)) AS profit,
+		         COALESCE(o.last_order_unix, 0) AS last_order_unix,
+		         CASE WHEN ? <= 0 THEN 0
+		              ELSE (COALESCE(o.base_qty, 0) + ?/2) / ? END AS avg_sold,
 		         COALESCE(s.ready, 0) AS ready,
-		         COALESCE(g.ongoing, 0) AS ongoing
+		         COALESCE(g.ongoing, 0) AS ongoing,
+		         COALESCE(r.last_restock_unix, 0) AS last_restock_unix,
+		         COALESCE(e.expiring, 0) AS expiring
 		  FROM medicines m
-		  LEFT JOIN order_agg o   ON o.medicine_id = m.id
-		  LEFT JOIN stock_agg s   ON s.medicine_id = m.id
-		  LEFT JOIN ongoing_agg g ON g.medicine_id = m.id
+		  LEFT JOIN order_agg o    ON o.medicine_id = m.id
+		  LEFT JOIN stock_agg s    ON s.medicine_id = m.id
+		  LEFT JOIN ongoing_agg g  ON g.medicine_id = m.id
+		  LEFT JOIN restock_agg r  ON r.medicine_id = m.id
+		  LEFT JOIN expiring_agg e ON e.medicine_id = m.id
 		  WHERE m.active = true
 		)
 	`
 
-	// Param order: order_agg uses (status, warehouseID, from, to);
-	// stock_agg uses (warehouseID). 5 total positional params.
+	// avg_sold = base_qty / days_in_range; min 1 day.
+	days := int64(to.Sub(from) / (24 * time.Hour))
+	if days < 1 {
+		days = 1
+	}
+
+	// Param order: order_agg uses (status, warehouseID, from, to); stock_agg
+	// uses (warehouseID); restock_agg uses (warehouseID); expiring_agg uses
+	// (warehouseID); avg_sold formula uses (days, days, days). 10 params total.
 	var total int64
 	if err := a.db.WithContext(ctx).Raw(
 		combined+`SELECT COUNT(*) FROM combined`,
-		saleStatusCompleted, warehouseID, from, to, warehouseID,
+		saleStatusCompleted, warehouseID, from, to,
+		warehouseID, warehouseID, warehouseID,
+		days, days, days,
 	).Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -607,7 +661,10 @@ func (a *Analytics) productPageIDs(
 	var rows []idRow
 	err := a.db.WithContext(ctx).Raw(
 		combined+`SELECT id FROM combined m `+orderClause+` LIMIT ? OFFSET ?`,
-		saleStatusCompleted, warehouseID, from, to, warehouseID, limit, offset,
+		saleStatusCompleted, warehouseID, from, to,
+		warehouseID, warehouseID, warehouseID,
+		days, days, days,
+		limit, offset,
 	).Scan(&rows).Error
 	if err != nil {
 		return nil, 0, err
@@ -621,15 +678,19 @@ func (a *Analytics) productPageIDs(
 
 func (a *Analytics) productOrderForIDs(ctx context.Context, from, to time.Time, warehouseID string, ids []string) (map[string]*analyticsifacev1.OrderItem, error) {
 	type row struct {
-		MedicineID string `gorm:"column:medicine_id"`
-		Terjual    int64
-		Hpp        int64
+		MedicineID    string `gorm:"column:medicine_id"`
+		Terjual       int64
+		Hpp           int64
+		BaseQty       int64 `gorm:"column:base_qty"`
+		LastOrderUnix int64 `gorm:"column:last_order_unix"`
 	}
 	var rows []row
 	err := a.db.WithContext(ctx).Raw(`
 		SELECT si.medicine_id,
 		       COALESCE(SUM(si.line_total), 0) AS terjual,
-		       COALESCE(SUM(c.cogs), 0) AS hpp
+		       COALESCE(SUM(c.cogs), 0) AS hpp,
+		       COALESCE(SUM(si.base_qty), 0) AS base_qty,
+		       COALESCE(EXTRACT(EPOCH FROM MAX(s.completed_at))::bigint, 0) AS last_order_unix
 		FROM sale_items si
 		JOIN sales s ON s.id = si.sale_id
 		LEFT JOIN (
@@ -647,12 +708,19 @@ func (a *Analytics) productOrderForIDs(ctx context.Context, from, to time.Time, 
 	if err != nil {
 		return nil, err
 	}
+	// avg_sold = base_qty / days_in_range; min 1 day to avoid div-by-zero.
+	days := int64(to.Sub(from) / (24 * time.Hour))
+	if days < 1 {
+		days = 1
+	}
 	out := map[string]*analyticsifacev1.OrderItem{}
 	for _, r := range rows {
 		out[r.MedicineID] = &analyticsifacev1.OrderItem{
-			Terjual: r.Terjual,
-			Hpp:     r.Hpp,
-			Profit:  r.Terjual - r.Hpp,
+			Terjual:       r.Terjual,
+			Hpp:           r.Hpp,
+			Profit:        r.Terjual - r.Hpp,
+			LastOrderUnix: r.LastOrderUnix,
+			AvgSold:       (r.BaseQty + days/2) / days, // rounded
 		}
 	}
 	return out, nil
@@ -660,15 +728,19 @@ func (a *Analytics) productOrderForIDs(ctx context.Context, from, to time.Time, 
 
 func (a *Analytics) productStockForIDs(ctx context.Context, warehouseID string, ids []string) (map[string]*analyticsifacev1.StockItem, error) {
 	type row struct {
-		MedicineID string `gorm:"column:medicine_id"`
-		Ready      int64
-		Ongoing    int64
+		MedicineID      string `gorm:"column:medicine_id"`
+		Ready           int64
+		Ongoing         int64
+		LastRestockUnix int64 `gorm:"column:last_restock_unix"`
+		Expiring        int64
 	}
 	var rows []row
 	err := a.db.WithContext(ctx).Raw(`
 		SELECT m.id AS medicine_id,
 		       COALESCE(s.ready, 0)   AS ready,
-		       COALESCE(g.ongoing, 0) AS ongoing
+		       COALESCE(g.ongoing, 0) AS ongoing,
+		       COALESCE(r.last_restock_unix, 0) AS last_restock_unix,
+		       COALESCE(e.expiring, 0) AS expiring
 		FROM medicines m
 		LEFT JOIN (
 		  SELECT b.medicine_id, COALESCE(SUM(sm.qty), 0) AS ready
@@ -683,16 +755,34 @@ func (a *Analytics) productStockForIDs(ctx context.Context, warehouseID string, 
 		  WHERE po.status NOT IN ('VOIDED', 'CLOSED', 'RECEIVED')
 		  GROUP BY poi.medicine_id
 		) g ON g.medicine_id = m.id
+		LEFT JOIN (
+		  SELECT b.medicine_id,
+		         EXTRACT(EPOCH FROM MAX(b.received_at))::bigint AS last_restock_unix
+		  FROM batches b
+		  JOIN stock_movements sm ON sm.batch_id = b.id
+		  WHERE sm.warehouse_id = ? AND sm.qty > 0
+		  GROUP BY b.medicine_id
+		) r ON r.medicine_id = m.id
+		LEFT JOIN (
+		  SELECT b.medicine_id, COALESCE(SUM(sm.qty), 0) AS expiring
+		  FROM batches b
+		  JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
+		  WHERE b.expiry_date >= CURRENT_DATE
+		    AND b.expiry_date < (CURRENT_DATE + INTERVAL '30 days')
+		  GROUP BY b.medicine_id
+		) e ON e.medicine_id = m.id
 		WHERE m.id IN ?
-	`, warehouseID, ids).Scan(&rows).Error
+	`, warehouseID, warehouseID, warehouseID, ids).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
 	out := map[string]*analyticsifacev1.StockItem{}
 	for _, r := range rows {
 		out[r.MedicineID] = &analyticsifacev1.StockItem{
-			Ready:   r.Ready,
-			Ongoing: r.Ongoing,
+			Ready:           r.Ready,
+			Ongoing:         r.Ongoing,
+			LastRestockUnix: r.LastRestockUnix,
+			Expiring:        r.Expiring,
 		}
 	}
 	return out, nil

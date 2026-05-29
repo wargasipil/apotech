@@ -169,8 +169,9 @@ func TestListSales_SearchAndDateRange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Search by the medicine name finds the sale and denormalizes the item name.
-	res, err := env.Sales.ListSales(ctx, authReq(env, t,
-		&posifacev1.ListSalesRequest{Query: medName}))
+	// ListSales is warehouse-scoped, so pass the seeded warehouse's header.
+	res, err := env.Sales.ListSales(ctx, whReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName}, wh))
 	require.NoError(t, err)
 	got := findSale(res.Msg.Sales, saleID)
 	require.NotNil(t, got, "search by medicine name should return the sale")
@@ -186,8 +187,8 @@ func TestListSales_SearchAndDateRange(t *testing.T) {
 	// Created-date range includes it.
 	from := time.Now().AddDate(0, 0, -1).Unix()
 	to := time.Now().AddDate(0, 0, 2).Unix()
-	res, err = env.Sales.ListSales(ctx, authReq(env, t,
-		&posifacev1.ListSalesRequest{Query: medName, FromUnix: from, ToUnix: to}))
+	res, err = env.Sales.ListSales(ctx, whReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName, FromUnix: from, ToUnix: to}, wh))
 	require.NoError(t, err)
 	require.NotNil(t, findSale(res.Msg.Sales, saleID), "date range should include the sale")
 }
@@ -240,17 +241,18 @@ func TestListSales_ExcludesDraft(t *testing.T) {
 
 	// "All" (UNSPECIFIED): completed in, draft out. Both reference medName, so the
 	// search would surface the draft too were it not for the status<>DRAFT filter.
-	res, err := env.Sales.ListSales(ctx, authReq(env, t,
-		&posifacev1.ListSalesRequest{Query: medName}))
+	// ListSales is warehouse-scoped, so pass the seeded warehouse's header.
+	res, err := env.Sales.ListSales(ctx, whReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName}, wh))
 	require.NoError(t, err)
 	require.NotNil(t, findSale(res.Msg.Sales, doneID), "completed sale appears in history")
 	require.Nil(t, findSale(res.Msg.Sales, draftID), "draft sale is excluded from history")
 
 	// Explicit COMPLETED filter still excludes the draft.
-	res, err = env.Sales.ListSales(ctx, authReq(env, t,
+	res, err = env.Sales.ListSales(ctx, whReq(env, t,
 		&posifacev1.ListSalesRequest{
 			Query: medName, Status: posifacev1.SaleStatus_SALE_STATUS_COMPLETED,
-		}))
+		}, wh))
 	require.NoError(t, err)
 	require.NotNil(t, findSale(res.Msg.Sales, doneID))
 	require.Nil(t, findSale(res.Msg.Sales, draftID))
@@ -306,11 +308,11 @@ func TestGetSalesSummary(t *testing.T) {
 
 	// Scope the summary to this medicine (query=medName) so the figures are exact:
 	// 1 sale, 3 units sold, Rp 3000 revenue.
-	sum, err := env.Sales.GetSalesSummary(ctx, authReq(env, t,
+	sum, err := env.Sales.GetSalesSummary(ctx, whReq(env, t,
 		&posifacev1.GetSalesSummaryRequest{
 			Query:  medName,
 			Status: posifacev1.SaleStatus_SALE_STATUS_COMPLETED,
-		}))
+		}, wh))
 	require.NoError(t, err)
 	require.Equal(t, int64(1), sum.Msg.SaleCount, "exactly one matching sale")
 	require.Equal(t, int64(3), sum.Msg.ItemsSold, "sum of qty")
@@ -319,17 +321,84 @@ func TestGetSalesSummary(t *testing.T) {
 	// A date window that ends before the sale was created → all zeros.
 	past := time.Now().AddDate(0, 0, -10).Unix()
 	pastEnd := time.Now().AddDate(0, 0, -5).Unix()
-	empty, err := env.Sales.GetSalesSummary(ctx, authReq(env, t,
+	empty, err := env.Sales.GetSalesSummary(ctx, whReq(env, t,
 		&posifacev1.GetSalesSummaryRequest{
 			Query:    medName,
 			Status:   posifacev1.SaleStatus_SALE_STATUS_COMPLETED,
 			FromUnix: past,
 			ToUnix:   pastEnd,
-		}))
+		}, wh))
 	require.NoError(t, err)
 	require.Equal(t, int64(0), empty.Msg.SaleCount)
 	require.Equal(t, int64(0), empty.Msg.ItemsSold)
 	require.Equal(t, int64(0), empty.Msg.Revenue)
+}
+
+// TestListSales_WarehouseScoped proves ListSales (+ GetSalesSummary) filter
+// the order-history by the caller's active warehouse: a sale completed in
+// WH-A is invisible from WH-B.
+func TestListSales_WarehouseScoped(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	whA := makeWarehouse(env, t, ctx, fmt.Sprintf("LSWA%d", uniq%100000))
+	whB := makeWarehouse(env, t, ctx, fmt.Sprintf("LSWB%d", uniq%100000))
+
+	medName := fmt.Sprintf("Scope-Med-%d", uniq)
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("scp-%d", uniq), Name: medName, Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	_, err = env.Batches.CreateBatch(ctx, whReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, BatchNumber: "SCP-B1", ExpiryDate: "2099-12-31",
+			CostPrice: 500, InitialQuantity: 5,
+		}, whA))
+	require.NoError(t, err)
+
+	// Complete a sale in WH-A.
+	saleID := startSaleWith(env, t, ctx, whA)
+	_, err = env.Sales.AddItem(ctx, whReq(env, t,
+		&posifacev1.AddItemRequest{SaleId: saleID, MedicineId: medID, Qty: 2}, whA))
+	require.NoError(t, err)
+	_, err = env.Sales.CompleteSale(ctx, whReq(env, t,
+		&posifacev1.CompleteSaleRequest{
+			SaleId: saleID, PaymentSource: posifacev1.PaymentSource_PAYMENT_SOURCE_CASH, PaidAmount: 2000,
+		}, whA))
+	require.NoError(t, err)
+
+	// WH-A sees the sale.
+	resA, err := env.Sales.ListSales(ctx, whReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName}, whA))
+	require.NoError(t, err)
+	require.NotNil(t, findSale(resA.Msg.Sales, saleID), "WH-A finds the sale")
+
+	// WH-B does not.
+	resB, err := env.Sales.ListSales(ctx, whReq(env, t,
+		&posifacev1.ListSalesRequest{Query: medName}, whB))
+	require.NoError(t, err)
+	require.Nil(t, findSale(resB.Msg.Sales, saleID), "WH-B does not find the sale")
+
+	// GetSalesSummary mirrors the scope.
+	sumA, err := env.Sales.GetSalesSummary(ctx, whReq(env, t,
+		&posifacev1.GetSalesSummaryRequest{Query: medName,
+			Status: posifacev1.SaleStatus_SALE_STATUS_COMPLETED}, whA))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, sumA.Msg.SaleCount, int64(1), "WH-A summary includes the sale")
+
+	sumB, err := env.Sales.GetSalesSummary(ctx, whReq(env, t,
+		&posifacev1.GetSalesSummaryRequest{Query: medName,
+			Status: posifacev1.SaleStatus_SALE_STATUS_COMPLETED}, whB))
+	require.NoError(t, err)
+	require.Equal(t, int64(0), sumB.Msg.SaleCount, "WH-B summary excludes the sale")
 }
 
 // TestGetMedicine_EnrichAndMovementsByMedicine proves the detail page's two new

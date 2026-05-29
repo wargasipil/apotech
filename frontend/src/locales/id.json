@@ -243,11 +243,15 @@
       "order": {
         "terjual": "Terjual",
         "hpp": "HPP",
-        "profit": "Profit"
+        "profit": "Profit",
+        "lastOrder": "Order terakhir",
+        "avgSold": "Rata-rata / hari"
       },
       "stock": {
         "ready": "Tersedia",
-        "ongoing": "Dipesan"
+        "ongoing": "Dipesan",
+        "lastRestock": "Restok terakhir",
+        "expiring": "Kedaluwarsa 30h"
       }
     },
     "granularity": {
@@ -287,6 +291,7 @@
     "paymentOther": "Asuransi / Lainnya",
     "paid": "Dibayar",
     "change": "Kembalian",
+    "exactAmount": "Uang pas",
     "complete": "Selesaikan (F8)",
     "cancel": "Batalkan transaksi",
     "exit": "Keluar",

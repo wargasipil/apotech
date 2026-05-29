@@ -117,6 +117,16 @@ export enum OrderMetricField {
    * @generated from enum value: ORDER_METRIC_FIELD_PROFIT = 3;
    */
   PROFIT = 3,
+
+  /**
+   * @generated from enum value: ORDER_METRIC_FIELD_LAST_ORDER = 4;
+   */
+  LAST_ORDER = 4,
+
+  /**
+   * @generated from enum value: ORDER_METRIC_FIELD_AVG_SOLD = 5;
+   */
+  AVG_SOLD = 5,
 }
 // Retrieve enum metadata with: proto3.getEnumType(OrderMetricField)
 proto3.util.setEnumType(OrderMetricField, "analytics_iface.v1.OrderMetricField", [
@@ -124,6 +134,8 @@ proto3.util.setEnumType(OrderMetricField, "analytics_iface.v1.OrderMetricField",
   { no: 1, name: "ORDER_METRIC_FIELD_TERJUAL" },
   { no: 2, name: "ORDER_METRIC_FIELD_HPP" },
   { no: 3, name: "ORDER_METRIC_FIELD_PROFIT" },
+  { no: 4, name: "ORDER_METRIC_FIELD_LAST_ORDER" },
+  { no: 5, name: "ORDER_METRIC_FIELD_AVG_SOLD" },
 ]);
 
 /**
@@ -144,12 +156,24 @@ export enum StockMetricField {
    * @generated from enum value: STOCK_METRIC_FIELD_ONGOING = 2;
    */
   ONGOING = 2,
+
+  /**
+   * @generated from enum value: STOCK_METRIC_FIELD_LAST_RESTOCK = 3;
+   */
+  LAST_RESTOCK = 3,
+
+  /**
+   * @generated from enum value: STOCK_METRIC_FIELD_EXPIRING = 4;
+   */
+  EXPIRING = 4,
 }
 // Retrieve enum metadata with: proto3.getEnumType(StockMetricField)
 proto3.util.setEnumType(StockMetricField, "analytics_iface.v1.StockMetricField", [
   { no: 0, name: "STOCK_METRIC_FIELD_UNSPECIFIED" },
   { no: 1, name: "STOCK_METRIC_FIELD_READY" },
   { no: 2, name: "STOCK_METRIC_FIELD_ONGOING" },
+  { no: 3, name: "STOCK_METRIC_FIELD_LAST_RESTOCK" },
+  { no: 4, name: "STOCK_METRIC_FIELD_EXPIRING" },
 ]);
 
 /**
@@ -284,6 +308,20 @@ export class OrderItem extends Message<OrderItem> {
    */
   profit = protoInt64.zero;
 
+  /**
+   * most recent COMPLETED sale of this dim (0 = none)
+   *
+   * @generated from field: int64 last_order_unix = 4;
+   */
+  lastOrderUnix = protoInt64.zero;
+
+  /**
+   * base-unit qty per day in the filter range (rounded)
+   *
+   * @generated from field: int64 avg_sold = 5;
+   */
+  avgSold = protoInt64.zero;
+
   constructor(data?: PartialMessage<OrderItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -295,6 +333,8 @@ export class OrderItem extends Message<OrderItem> {
     { no: 1, name: "terjual", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "hpp", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 3, name: "profit", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "last_order_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "avg_sold", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OrderItem {
@@ -332,6 +372,20 @@ export class StockItem extends Message<StockItem> {
    */
   ongoing = protoInt64.zero;
 
+  /**
+   * most recent batch receipt into active warehouse (0 = none)
+   *
+   * @generated from field: int64 last_restock_unix = 3;
+   */
+  lastRestockUnix = protoInt64.zero;
+
+  /**
+   * base-unit qty expiring within 30d (active warehouse)
+   *
+   * @generated from field: int64 expiring = 4;
+   */
+  expiring = protoInt64.zero;
+
   constructor(data?: PartialMessage<StockItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -342,6 +396,8 @@ export class StockItem extends Message<StockItem> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "ready", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 2, name: "ongoing", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "last_restock_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "expiring", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StockItem {

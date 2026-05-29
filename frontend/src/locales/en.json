@@ -243,11 +243,15 @@
       "order": {
         "terjual": "Terjual",
         "hpp": "HPP",
-        "profit": "Profit"
+        "profit": "Profit",
+        "lastOrder": "Last order",
+        "avgSold": "Avg sold / day"
       },
       "stock": {
         "ready": "Ready",
-        "ongoing": "Ongoing"
+        "ongoing": "Ongoing",
+        "lastRestock": "Last restock",
+        "expiring": "Expiring 30d"
       }
     },
     "granularity": {
@@ -287,6 +291,7 @@
     "paymentOther": "Insurance / Other",
     "paid": "Paid",
     "change": "Change",
+    "exactAmount": "Exact",
     "complete": "Complete (F8)",
     "cancel": "Cancel sale",
     "exit": "Exit",

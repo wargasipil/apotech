@@ -276,3 +276,91 @@ func TestAnalytics_OrderIsWarehouseScoped(t *testing.T) {
 	require.NotEqual(t, userTerjual(whA), userTerjual(whB),
 		"user terjual must differ between warehouses (proves the scoping filter)")
 }
+
+// TestProductMetric_Extras verifies the 4 new Product-only metrics:
+//   - order.last_order_unix: timestamp of most recent COMPLETED sale.
+//   - order.avg_sold: base_qty / days_in_range (rounded).
+//   - stock.last_restock_unix: most recent batch receipt (warehouse-scoped).
+//   - stock.expiring: total qty of stock expiring within 30 days.
+func TestProductMetric_Extras(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	wh := makeWarehouse(env, t, ctx, fmt.Sprintf("PEX%d", uniq%100000))
+
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("pex-%d", uniq), Name: fmt.Sprintf("Pex-Med-%d", uniq),
+			Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	// Two batches: one expiring in 15 days (counts) + one expiring far out (does not).
+	soon := time.Now().AddDate(0, 0, 15).Format("2006-01-02")
+	_, err = env.Batches.CreateBatch(ctx, whReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, BatchNumber: "PEX-SOON", ExpiryDate: soon,
+			CostPrice: 500, InitialQuantity: 7,
+		}, wh))
+	require.NoError(t, err)
+	_, err = env.Batches.CreateBatch(ctx, whReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, BatchNumber: "PEX-FAR", ExpiryDate: "2099-12-31",
+			CostPrice: 500, InitialQuantity: 50,
+		}, wh))
+	require.NoError(t, err)
+
+	// Complete one sale of qty 4 in the active warehouse.
+	saleID := startSaleWith(env, t, ctx, wh)
+	_, err = env.Sales.AddItem(ctx, whReq(env, t,
+		&posifacev1.AddItemRequest{SaleId: saleID, MedicineId: medID, Qty: 4}, wh))
+	require.NoError(t, err)
+	_, err = env.Sales.CompleteSale(ctx, whReq(env, t,
+		&posifacev1.CompleteSaleRequest{
+			SaleId: saleID, PaymentSource: posifacev1.PaymentSource_PAYMENT_SOURCE_CASH, PaidAmount: 4000,
+		}, wh))
+	require.NoError(t, err)
+
+	// Filter window: last 7 days → 7 days in range, avg_sold = round(4/7) = 1.
+	now := time.Now()
+	filter := &analyticsifacev1.Filter{
+		FromUnix: now.AddDate(0, 0, -7).Unix(),
+		ToUnix:   now.AddDate(0, 0, 1).Unix(),
+	}
+
+	res, err := env.Analytics.ProductMetric(ctx, whReq(env, t,
+		&analyticsifacev1.ProductMetricRequest{
+			MetricTypes: []analyticsifacev1.MetricType{
+				analyticsifacev1.MetricType_METRIC_TYPE_ORDER,
+				analyticsifacev1.MetricType_METRIC_TYPE_STOCK,
+			},
+			Filter: filter,
+			Limit:  1000,
+		}, wh))
+	require.NoError(t, err)
+	o := res.Msg.Order.Data[medID]
+	s := res.Msg.Stock.Data[medID]
+	require.NotNil(t, o, "order block has the medicine")
+	require.NotNil(t, s, "stock block has the medicine")
+
+	// last_order_unix > 0 and recent.
+	require.Greater(t, o.LastOrderUnix, int64(0))
+	require.Greater(t, o.LastOrderUnix, now.Add(-5*time.Minute).Unix())
+
+	// avg_sold = round(4 / 8 days) = 1 (window from -7d to +1d = 8 days).
+	require.InDelta(t, 1.0, float64(o.AvgSold), 1.0, "avg_sold ~= base_qty/days, rounded")
+
+	// last_restock_unix > 0 (we just created the batches).
+	require.Greater(t, s.LastRestockUnix, int64(0))
+
+	// expiring == on-hand qty in batches expiring within 30d. FEFO consumed the
+	// PEX-SOON batch first (initial 7 - sale 4 = 3 remaining), and PEX-FAR is
+	// out of the 30d window.
+	require.Equal(t, int64(3), s.Expiring, "expiring counts on-hand in batches within 30d, after FEFO")
+}

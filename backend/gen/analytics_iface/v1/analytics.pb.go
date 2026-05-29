@@ -181,6 +181,8 @@ const (
 	OrderMetricField_ORDER_METRIC_FIELD_TERJUAL     OrderMetricField = 1
 	OrderMetricField_ORDER_METRIC_FIELD_HPP         OrderMetricField = 2
 	OrderMetricField_ORDER_METRIC_FIELD_PROFIT      OrderMetricField = 3
+	OrderMetricField_ORDER_METRIC_FIELD_LAST_ORDER  OrderMetricField = 4
+	OrderMetricField_ORDER_METRIC_FIELD_AVG_SOLD    OrderMetricField = 5
 )
 
 // Enum value maps for OrderMetricField.
@@ -190,12 +192,16 @@ var (
 		1: "ORDER_METRIC_FIELD_TERJUAL",
 		2: "ORDER_METRIC_FIELD_HPP",
 		3: "ORDER_METRIC_FIELD_PROFIT",
+		4: "ORDER_METRIC_FIELD_LAST_ORDER",
+		5: "ORDER_METRIC_FIELD_AVG_SOLD",
 	}
 	OrderMetricField_value = map[string]int32{
 		"ORDER_METRIC_FIELD_UNSPECIFIED": 0,
 		"ORDER_METRIC_FIELD_TERJUAL":     1,
 		"ORDER_METRIC_FIELD_HPP":         2,
 		"ORDER_METRIC_FIELD_PROFIT":      3,
+		"ORDER_METRIC_FIELD_LAST_ORDER":  4,
+		"ORDER_METRIC_FIELD_AVG_SOLD":    5,
 	}
 )
 
@@ -229,9 +235,11 @@ func (OrderMetricField) EnumDescriptor() ([]byte, []int) {
 type StockMetricField int32
 
 const (
-	StockMetricField_STOCK_METRIC_FIELD_UNSPECIFIED StockMetricField = 0
-	StockMetricField_STOCK_METRIC_FIELD_READY       StockMetricField = 1
-	StockMetricField_STOCK_METRIC_FIELD_ONGOING     StockMetricField = 2
+	StockMetricField_STOCK_METRIC_FIELD_UNSPECIFIED  StockMetricField = 0
+	StockMetricField_STOCK_METRIC_FIELD_READY        StockMetricField = 1
+	StockMetricField_STOCK_METRIC_FIELD_ONGOING      StockMetricField = 2
+	StockMetricField_STOCK_METRIC_FIELD_LAST_RESTOCK StockMetricField = 3
+	StockMetricField_STOCK_METRIC_FIELD_EXPIRING     StockMetricField = 4
 )
 
 // Enum value maps for StockMetricField.
@@ -240,11 +248,15 @@ var (
 		0: "STOCK_METRIC_FIELD_UNSPECIFIED",
 		1: "STOCK_METRIC_FIELD_READY",
 		2: "STOCK_METRIC_FIELD_ONGOING",
+		3: "STOCK_METRIC_FIELD_LAST_RESTOCK",
+		4: "STOCK_METRIC_FIELD_EXPIRING",
 	}
 	StockMetricField_value = map[string]int32{
-		"STOCK_METRIC_FIELD_UNSPECIFIED": 0,
-		"STOCK_METRIC_FIELD_READY":       1,
-		"STOCK_METRIC_FIELD_ONGOING":     2,
+		"STOCK_METRIC_FIELD_UNSPECIFIED":  0,
+		"STOCK_METRIC_FIELD_READY":        1,
+		"STOCK_METRIC_FIELD_ONGOING":      2,
+		"STOCK_METRIC_FIELD_LAST_RESTOCK": 3,
+		"STOCK_METRIC_FIELD_EXPIRING":     4,
 	}
 )
 
@@ -423,9 +435,11 @@ func (*Sort_Stock) isSort_Field() {}
 // the dimension id (day string / medicine_id / user_id).
 type OrderItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Terjual       int64                  `protobuf:"varint,1,opt,name=terjual,proto3" json:"terjual,omitempty"` // gross revenue (rupiah)
-	Hpp           int64                  `protobuf:"varint,2,opt,name=hpp,proto3" json:"hpp,omitempty"`         // COGS (rupiah)
-	Profit        int64                  `protobuf:"varint,3,opt,name=profit,proto3" json:"profit,omitempty"`   // terjual - hpp
+	Terjual       int64                  `protobuf:"varint,1,opt,name=terjual,proto3" json:"terjual,omitempty"`                                    // gross revenue (rupiah)
+	Hpp           int64                  `protobuf:"varint,2,opt,name=hpp,proto3" json:"hpp,omitempty"`                                            // COGS (rupiah)
+	Profit        int64                  `protobuf:"varint,3,opt,name=profit,proto3" json:"profit,omitempty"`                                      // terjual - hpp
+	LastOrderUnix int64                  `protobuf:"varint,4,opt,name=last_order_unix,json=lastOrderUnix,proto3" json:"last_order_unix,omitempty"` // most recent COMPLETED sale of this dim (0 = none)
+	AvgSold       int64                  `protobuf:"varint,5,opt,name=avg_sold,json=avgSold,proto3" json:"avg_sold,omitempty"`                     // base-unit qty per day in the filter range (rounded)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,12 +495,28 @@ func (x *OrderItem) GetProfit() int64 {
 	return 0
 }
 
+func (x *OrderItem) GetLastOrderUnix() int64 {
+	if x != nil {
+		return x.LastOrderUnix
+	}
+	return 0
+}
+
+func (x *OrderItem) GetAvgSold() int64 {
+	if x != nil {
+		return x.AvgSold
+	}
+	return 0
+}
+
 type StockItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ready         int64                  `protobuf:"varint,1,opt,name=ready,proto3" json:"ready,omitempty"`     // current on-hand (Daily: as-of-end-of-day reconstructed)
-	Ongoing       int64                  `protobuf:"varint,2,opt,name=ongoing,proto3" json:"ongoing,omitempty"` // open-PO outstanding (always current snapshot)
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Ready           int64                  `protobuf:"varint,1,opt,name=ready,proto3" json:"ready,omitempty"`                                              // current on-hand (Daily: as-of-end-of-day reconstructed)
+	Ongoing         int64                  `protobuf:"varint,2,opt,name=ongoing,proto3" json:"ongoing,omitempty"`                                          // open-PO outstanding (always current snapshot)
+	LastRestockUnix int64                  `protobuf:"varint,3,opt,name=last_restock_unix,json=lastRestockUnix,proto3" json:"last_restock_unix,omitempty"` // most recent batch receipt into active warehouse (0 = none)
+	Expiring        int64                  `protobuf:"varint,4,opt,name=expiring,proto3" json:"expiring,omitempty"`                                        // base-unit qty expiring within 30d (active warehouse)
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *StockItem) Reset() {
@@ -529,6 +559,20 @@ func (x *StockItem) GetReady() int64 {
 func (x *StockItem) GetOngoing() int64 {
 	if x != nil {
 		return x.Ongoing
+	}
+	return 0
+}
+
+func (x *StockItem) GetLastRestockUnix() int64 {
+	if x != nil {
+		return x.LastRestockUnix
+	}
+	return 0
+}
+
+func (x *StockItem) GetExpiring() int64 {
+	if x != nil {
+		return x.Expiring
 	}
 	return 0
 }
@@ -1051,14 +1095,18 @@ const file_analytics_iface_v1_analytics_proto_rawDesc = "" +
 	"\tdirection\x18\x01 \x01(\x0e2!.analytics_iface.v1.SortDirectionR\tdirection\x12<\n" +
 	"\x05order\x18\x02 \x01(\x0e2$.analytics_iface.v1.OrderMetricFieldH\x00R\x05order\x12<\n" +
 	"\x05stock\x18\x03 \x01(\x0e2$.analytics_iface.v1.StockMetricFieldH\x00R\x05stockB\a\n" +
-	"\x05field\"O\n" +
+	"\x05field\"\x92\x01\n" +
 	"\tOrderItem\x12\x18\n" +
 	"\aterjual\x18\x01 \x01(\x03R\aterjual\x12\x10\n" +
 	"\x03hpp\x18\x02 \x01(\x03R\x03hpp\x12\x16\n" +
-	"\x06profit\x18\x03 \x01(\x03R\x06profit\";\n" +
+	"\x06profit\x18\x03 \x01(\x03R\x06profit\x12&\n" +
+	"\x0flast_order_unix\x18\x04 \x01(\x03R\rlastOrderUnix\x12\x19\n" +
+	"\bavg_sold\x18\x05 \x01(\x03R\aavgSold\"\x83\x01\n" +
 	"\tStockItem\x12\x14\n" +
 	"\x05ready\x18\x01 \x01(\x03R\x05ready\x12\x18\n" +
-	"\aongoing\x18\x02 \x01(\x03R\aongoing\"\xa4\x01\n" +
+	"\aongoing\x18\x02 \x01(\x03R\aongoing\x12*\n" +
+	"\x11last_restock_unix\x18\x03 \x01(\x03R\x0flastRestockUnix\x12\x1a\n" +
+	"\bexpiring\x18\x04 \x01(\x03R\bexpiring\"\xa4\x01\n" +
 	"\vMetricOrder\x12=\n" +
 	"\x04data\x18\x01 \x03(\v2).analytics_iface.v1.MetricOrder.DataEntryR\x04data\x1aV\n" +
 	"\tDataEntry\x12\x10\n" +
@@ -1112,16 +1160,20 @@ const file_analytics_iface_v1_analytics_proto_rawDesc = "" +
 	"\rSortDirection\x12\x1e\n" +
 	"\x1aSORT_DIRECTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SORT_DIRECTION_ASC\x10\x01\x12\x17\n" +
-	"\x13SORT_DIRECTION_DESC\x10\x02*\x91\x01\n" +
+	"\x13SORT_DIRECTION_DESC\x10\x02*\xd5\x01\n" +
 	"\x10OrderMetricField\x12\"\n" +
 	"\x1eORDER_METRIC_FIELD_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aORDER_METRIC_FIELD_TERJUAL\x10\x01\x12\x1a\n" +
 	"\x16ORDER_METRIC_FIELD_HPP\x10\x02\x12\x1d\n" +
-	"\x19ORDER_METRIC_FIELD_PROFIT\x10\x03*t\n" +
+	"\x19ORDER_METRIC_FIELD_PROFIT\x10\x03\x12!\n" +
+	"\x1dORDER_METRIC_FIELD_LAST_ORDER\x10\x04\x12\x1f\n" +
+	"\x1bORDER_METRIC_FIELD_AVG_SOLD\x10\x05*\xba\x01\n" +
 	"\x10StockMetricField\x12\"\n" +
 	"\x1eSTOCK_METRIC_FIELD_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18STOCK_METRIC_FIELD_READY\x10\x01\x12\x1e\n" +
-	"\x1aSTOCK_METRIC_FIELD_ONGOING\x10\x022\xcd\x02\n" +
+	"\x1aSTOCK_METRIC_FIELD_ONGOING\x10\x02\x12#\n" +
+	"\x1fSTOCK_METRIC_FIELD_LAST_RESTOCK\x10\x03\x12\x1f\n" +
+	"\x1bSTOCK_METRIC_FIELD_EXPIRING\x10\x042\xcd\x02\n" +
 	"\x10AnalyticsService\x12f\n" +
 	"\vDailyMetric\x12&.analytics_iface.v1.DailyMetricRequest\x1a'.analytics_iface.v1.DailyMetricResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12l\n" +
 	"\rProductMetric\x12(.analytics_iface.v1.ProductMetricRequest\x1a).analytics_iface.v1.ProductMetricResponse\"\x06\x8a\xb5\x18\x02\x01\x02\x12c\n" +

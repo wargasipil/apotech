@@ -68,7 +68,7 @@ export default function Product() {
               setVisibleFields(next);
               clearSortIfHidden(sort, next, setSort);
             }}
-            groups={defaultGroups(t)}
+            groups={defaultGroups(t, { productExtras: true })}
             defaults={DEFAULT_PRODUCT_FIELDS}
           />
           <DateRangeFilter value={range} onChange={setRange} />

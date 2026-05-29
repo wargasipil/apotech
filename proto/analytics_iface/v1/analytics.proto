@@ -41,12 +41,16 @@ enum OrderMetricField {
   ORDER_METRIC_FIELD_TERJUAL     = 1;
   ORDER_METRIC_FIELD_HPP         = 2;
   ORDER_METRIC_FIELD_PROFIT      = 3;
+  ORDER_METRIC_FIELD_LAST_ORDER  = 4;
+  ORDER_METRIC_FIELD_AVG_SOLD    = 5;
 }
 
 enum StockMetricField {
-  STOCK_METRIC_FIELD_UNSPECIFIED = 0;
-  STOCK_METRIC_FIELD_READY       = 1;
-  STOCK_METRIC_FIELD_ONGOING     = 2;
+  STOCK_METRIC_FIELD_UNSPECIFIED  = 0;
+  STOCK_METRIC_FIELD_READY        = 1;
+  STOCK_METRIC_FIELD_ONGOING      = 2;
+  STOCK_METRIC_FIELD_LAST_RESTOCK = 3;
+  STOCK_METRIC_FIELD_EXPIRING     = 4;
 }
 
 message Filter {
@@ -68,14 +72,18 @@ message Sort {
 // Per-id metric values. MetricOrder/MetricStock map<key, item> where key is
 // the dimension id (day string / medicine_id / user_id).
 message OrderItem {
-  int64 terjual = 1;   // gross revenue (rupiah)
-  int64 hpp     = 2;   // COGS (rupiah)
-  int64 profit  = 3;   // terjual - hpp
+  int64 terjual         = 1;  // gross revenue (rupiah)
+  int64 hpp             = 2;  // COGS (rupiah)
+  int64 profit          = 3;  // terjual - hpp
+  int64 last_order_unix = 4;  // most recent COMPLETED sale of this dim (0 = none)
+  int64 avg_sold        = 5;  // base-unit qty per day in the filter range (rounded)
 }
 
 message StockItem {
-  int64 ready   = 1;   // current on-hand (Daily: as-of-end-of-day reconstructed)
-  int64 ongoing = 2;   // open-PO outstanding (always current snapshot)
+  int64 ready             = 1; // current on-hand (Daily: as-of-end-of-day reconstructed)
+  int64 ongoing           = 2; // open-PO outstanding (always current snapshot)
+  int64 last_restock_unix = 3; // most recent batch receipt into active warehouse (0 = none)
+  int64 expiring          = 4; // base-unit qty expiring within 30d (active warehouse)
 }
 
 message MetricOrder { map<string, OrderItem> data = 1; }

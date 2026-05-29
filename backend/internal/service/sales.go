@@ -83,9 +83,17 @@ func (s *Sales) ListSales(
 	ctx context.Context,
 	req *connect.Request[posifacev1.ListSalesRequest],
 ) (*connect.Response[posifacev1.ListSalesResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	applyFilters := func(q *gorm.DB) *gorm.DB {
-		return s.applySaleFilters(q, req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
+		return s.applySaleFilters(q, warehouseID, req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
 	}
 
 	var total int64
@@ -116,10 +124,14 @@ func (s *Sales) ListSales(
 // (the unqualified columns + `id IN (...)` resolve against it).
 func (s *Sales) applySaleFilters(
 	q *gorm.DB,
+	warehouseID string,
 	fromUnix, toUnix int64,
 	status posifacev1.SaleStatus,
 	query string,
 ) *gorm.DB {
+	if warehouseID != "" {
+		q = q.Where("warehouse_id = ?", warehouseID)
+	}
 	if fromUnix > 0 {
 		q = q.Where("created_at >= ?", time.Unix(fromUnix, 0))
 	}
@@ -152,9 +164,17 @@ func (s *Sales) GetSalesSummary(
 	ctx context.Context,
 	req *connect.Request[posifacev1.GetSalesSummaryRequest],
 ) (*connect.Response[posifacev1.GetSalesSummaryResponse], error) {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	warehouseID, err := resolveWarehouse(ctx, s.db, caller)
+	if err != nil {
+		return nil, err
+	}
 	scope := func() *gorm.DB {
 		return s.applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}),
-			req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
+			warehouseID, req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
 	}
 
 	var saleCount int64
@@ -169,7 +189,7 @@ func (s *Sales) GetSalesSummary(
 
 	// items_sold = SUM(qty) over sale_items whose sale matches the same filters.
 	idSub := s.applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}).Select("id"),
-		req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
+		warehouseID, req.Msg.FromUnix, req.Msg.ToUnix, req.Msg.Status, req.Msg.Query)
 	var itemsSold int64
 	if err := s.db.WithContext(ctx).
 		Table("sale_items").

@@ -68,11 +68,10 @@ export default function User() {
               setVisibleFields(next);
               clearSortIfHidden(sort, next, setSort);
             }}
-            groups={defaultGroups(
-              t,
-              true,
-              t("analytics.errors.userStockUnsupported"),
-            )}
+            groups={defaultGroups(t, {
+              disableStock: true,
+              disableStockReason: t("analytics.errors.userStockUnsupported"),
+            })}
             defaults={DEFAULT_USER_FIELDS}
           />
           <DateRangeFilter value={range} onChange={setRange} />

@@ -129,13 +129,13 @@ func TestMedicineUnits_DefineAndSellInUnits(t *testing.T) {
 	// Quantity aggregation counts BASE units: 2 strips (20) + 1 box (100) = 120,
 	// NOT 3 (the selling-unit count). Scope to this medicine via the name query.
 	now := time.Now()
-	summ, err := env.Sales.GetSalesSummary(ctx, authReq(env, t,
+	summ, err := env.Sales.GetSalesSummary(ctx, whReq(env, t,
 		&posifacev1.GetSalesSummaryRequest{
 			Status:   posifacev1.SaleStatus_SALE_STATUS_COMPLETED,
 			Query:    fmt.Sprintf("UOM-Med-%d", uniq),
 			FromUnix: now.AddDate(0, 0, -1).Unix(),
 			ToUnix:   now.AddDate(0, 0, 1).Unix(),
-		}))
+		}, wh))
 	require.NoError(t, err)
 	require.Equal(t, int64(2), summ.Msg.SaleCount)
 	require.Equal(t, int64(120), summ.Msg.ItemsSold, "items_sold counts base units (20 + 100), not 3")

@@ -10,7 +10,7 @@ import DateRangeFilter, {
 import EnumSelect from "../../components/EnumSelect";
 import MetricGraphs from "../../components/MetricGraphs";
 import MetricTable from "../../components/MetricTable";
-import { Granularity, type Sort } from "../../gen/analytics_iface/v1/analytics_pb";
+import { Granularity, Sort, SortDirection } from "../../gen/analytics_iface/v1/analytics_pb";
 import {
   DEFAULT_DAILY_FIELDS,
   fieldsToMetricTypes,
@@ -25,7 +25,12 @@ export default function Daily() {
   const [visibleFields, setVisibleFields] = useState<Set<string>>(
     () => new Set(DEFAULT_DAILY_FIELDS),
   );
-  const [sort, setSort] = useState<Sort | undefined>(undefined);
+  // Default to newest-day-first; backend honors direction even when the sort
+  // field is unset (treated as "sort by dimension key"). Clicking a metric
+  // column header still overrides this with that metric's sort.
+  const [sort, setSort] = useState<Sort | undefined>(
+    () => new Sort({ direction: SortDirection.DESC }),
+  );
 
   const metricTypes = useMemo(
     () => fieldsToMetricTypes(visibleFields),
@@ -116,27 +121,45 @@ export default function Daily() {
 }
 
 // defaultGroups returns the metric-group spec used by all 3 analytics pages.
-// Pages override the `disabled` flag (User disables Stock).
-export function defaultGroups(t: (k: string) => string, disableStock = false, disableStockReason?: string): GroupSpec[] {
+// Pages override the `disabled` flag (User disables Stock). `productExtras`
+// appends the Product-only fields (last_order / avg_sold / last_restock /
+// expiring) — Daily and User omit them since the backend zeroes them outside
+// ProductMetric.
+export function defaultGroups(
+  t: (k: string) => string,
+  opts: { disableStock?: boolean; disableStockReason?: string; productExtras?: boolean } = {},
+): GroupSpec[] {
+  const orderFields = [
+    { id: "order.terjual", label: t("analytics.metric.order.terjual") },
+    { id: "order.hpp",     label: t("analytics.metric.order.hpp") },
+    { id: "order.profit",  label: t("analytics.metric.order.profit") },
+  ];
+  const stockFields = [
+    { id: "stock.ready",   label: t("analytics.metric.stock.ready") },
+    { id: "stock.ongoing", label: t("analytics.metric.stock.ongoing") },
+  ];
+  if (opts.productExtras) {
+    orderFields.push(
+      { id: "order.lastOrder", label: t("analytics.metric.order.lastOrder") },
+      { id: "order.avgSold",   label: t("analytics.metric.order.avgSold") },
+    );
+    stockFields.push(
+      { id: "stock.lastRestock", label: t("analytics.metric.stock.lastRestock") },
+      { id: "stock.expiring",    label: t("analytics.metric.stock.expiring") },
+    );
+  }
   return [
     {
       id: "order",
       label: t("analytics.metric.group.order"),
-      fields: [
-        { id: "order.terjual", label: t("analytics.metric.order.terjual") },
-        { id: "order.hpp",     label: t("analytics.metric.order.hpp") },
-        { id: "order.profit",  label: t("analytics.metric.order.profit") },
-      ],
+      fields: orderFields,
     },
     {
       id: "stock",
       label: t("analytics.metric.group.stock"),
-      fields: [
-        { id: "stock.ready",   label: t("analytics.metric.stock.ready") },
-        { id: "stock.ongoing", label: t("analytics.metric.stock.ongoing") },
-      ],
-      disabled: disableStock,
-      disabledReason: disableStockReason,
+      fields: stockFields,
+      disabled: opts.disableStock,
+      disabledReason: opts.disableStockReason,
     },
   ];
 }
@@ -152,9 +175,11 @@ export function clearSortIfHidden(
   switch (sort.field.case) {
     case "order": {
       const map: Record<number, string> = {
-        1: "order.terjual", // TERJUAL
-        2: "order.hpp",     // HPP
-        3: "order.profit",  // PROFIT
+        1: "order.terjual",   // TERJUAL
+        2: "order.hpp",       // HPP
+        3: "order.profit",    // PROFIT
+        4: "order.lastOrder", // LAST_ORDER
+        5: "order.avgSold",   // AVG_SOLD
       };
       const id = map[sort.field.value as number];
       if (id && !visible.has(id)) setSort(undefined);
@@ -162,8 +187,10 @@ export function clearSortIfHidden(
     }
     case "stock": {
       const map: Record<number, string> = {
-        1: "stock.ready",   // READY
-        2: "stock.ongoing", // ONGOING
+        1: "stock.ready",       // READY
+        2: "stock.ongoing",     // ONGOING
+        3: "stock.lastRestock", // LAST_RESTOCK
+        4: "stock.expiring",    // EXPIRING
       };
       const id = map[sort.field.value as number];
       if (id && !visible.has(id)) setSort(undefined);

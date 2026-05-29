@@ -11,7 +11,7 @@ import {
   SortDirection,
   StockMetricField,
 } from "../gen/analytics_iface/v1/analytics_pb";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatUnix } from "../lib/format";
 
 // MetricTable renders a paginated metric grid. The page passes:
 //   - `ids` in the order the server returned (already sorted)
@@ -56,13 +56,21 @@ export default function MetricTable({
     groupOk && (visibleFields ? visibleFields.has(fieldId) : true);
   const hasOrderGroup = metricTypes.includes(MetricType.ORDER);
   const hasStockGroup = metricTypes.includes(MetricType.STOCK);
-  const showTerjual = want(hasOrderGroup, "order.terjual");
-  const showHpp     = want(hasOrderGroup, "order.hpp");
-  const showProfit  = want(hasOrderGroup, "order.profit");
-  const showReady   = want(hasStockGroup, "stock.ready");
-  const showOngoing = want(hasStockGroup, "stock.ongoing");
-  const orderCols = (showTerjual ? 1 : 0) + (showHpp ? 1 : 0) + (showProfit ? 1 : 0);
-  const stockCols = (showReady ? 1 : 0) + (showOngoing ? 1 : 0);
+  const showTerjual     = want(hasOrderGroup, "order.terjual");
+  const showHpp         = want(hasOrderGroup, "order.hpp");
+  const showProfit      = want(hasOrderGroup, "order.profit");
+  const showLastOrder   = want(hasOrderGroup, "order.lastOrder");
+  const showAvgSold     = want(hasOrderGroup, "order.avgSold");
+  const showReady       = want(hasStockGroup, "stock.ready");
+  const showOngoing     = want(hasStockGroup, "stock.ongoing");
+  const showLastRestock = want(hasStockGroup, "stock.lastRestock");
+  const showExpiring    = want(hasStockGroup, "stock.expiring");
+  const orderCols =
+    (showTerjual ? 1 : 0) + (showHpp ? 1 : 0) + (showProfit ? 1 : 0) +
+    (showLastOrder ? 1 : 0) + (showAvgSold ? 1 : 0);
+  const stockCols =
+    (showReady ? 1 : 0) + (showOngoing ? 1 : 0) +
+    (showLastRestock ? 1 : 0) + (showExpiring ? 1 : 0);
   const hasOrder = orderCols > 0;
   const hasStock = stockCols > 0;
   const colSpan = 1 + orderCols + stockCols;
@@ -72,8 +80,12 @@ export default function MetricTable({
     | "order-terjual"
     | "order-hpp"
     | "order-profit"
+    | "order-lastOrder"
+    | "order-avgSold"
     | "stock-ready"
-    | "stock-ongoing";
+    | "stock-ongoing"
+    | "stock-lastRestock"
+    | "stock-expiring";
   const sortFor = (
     field: ColField,
   ): { arrow: React.ReactNode; next: Sort | undefined; hasNext: boolean } => {
@@ -130,6 +142,20 @@ export default function MetricTable({
                 onClick={onSortChange}
               />
             )}
+            {showLastOrder && (
+              <SortableHeader
+                label={t("analytics.metric.order.lastOrder")}
+                meta={sortFor("order-lastOrder")}
+                onClick={onSortChange}
+              />
+            )}
+            {showAvgSold && (
+              <SortableHeader
+                label={t("analytics.metric.order.avgSold")}
+                meta={sortFor("order-avgSold")}
+                onClick={onSortChange}
+              />
+            )}
             {showReady && (
               <SortableHeader
                 label={t("analytics.metric.stock.ready")}
@@ -141,6 +167,20 @@ export default function MetricTable({
               <SortableHeader
                 label={t("analytics.metric.stock.ongoing")}
                 meta={sortFor("stock-ongoing")}
+                onClick={onSortChange}
+              />
+            )}
+            {showLastRestock && (
+              <SortableHeader
+                label={t("analytics.metric.stock.lastRestock")}
+                meta={sortFor("stock-lastRestock")}
+                onClick={onSortChange}
+              />
+            )}
+            {showExpiring && (
+              <SortableHeader
+                label={t("analytics.metric.stock.expiring")}
+                meta={sortFor("stock-expiring")}
                 onClick={onSortChange}
               />
             )}
@@ -167,8 +207,20 @@ export default function MetricTable({
                   {showTerjual && <Table.Cell>{formatMoney(Number(o?.terjual ?? 0n))}</Table.Cell>}
                   {showHpp && <Table.Cell>{formatMoney(Number(o?.hpp ?? 0n))}</Table.Cell>}
                   {showProfit && <Table.Cell>{formatMoney(Number(o?.profit ?? 0n))}</Table.Cell>}
+                  {showLastOrder && (
+                    <Table.Cell>
+                      {(o?.lastOrderUnix ?? 0n) > 0n ? formatUnix(o!.lastOrderUnix) : "—"}
+                    </Table.Cell>
+                  )}
+                  {showAvgSold && <Table.Cell>{String(o?.avgSold ?? 0n)}</Table.Cell>}
                   {showReady && <Table.Cell>{String(s?.ready ?? 0n)}</Table.Cell>}
                   {showOngoing && <Table.Cell>{String(s?.ongoing ?? 0n)}</Table.Cell>}
+                  {showLastRestock && (
+                    <Table.Cell>
+                      {(s?.lastRestockUnix ?? 0n) > 0n ? formatUnix(s!.lastRestockUnix) : "—"}
+                    </Table.Cell>
+                  )}
+                  {showExpiring && <Table.Cell>{String(s?.expiring ?? 0n)}</Table.Cell>}
                 </Table.Row>
               );
             })}
@@ -213,31 +265,41 @@ function SortableHeader({
 
 // matchSort returns the current SortDirection for the column field, or null
 // when the current sort doesn't reference this column.
-function matchSort(
-  sort: Sort | undefined,
-  field: "order-terjual" | "order-hpp" | "order-profit" | "stock-ready" | "stock-ongoing",
-): SortDirection | null {
+type ColField =
+  | "order-terjual"
+  | "order-hpp"
+  | "order-profit"
+  | "order-lastOrder"
+  | "order-avgSold"
+  | "stock-ready"
+  | "stock-ongoing"
+  | "stock-lastRestock"
+  | "stock-expiring";
+
+const ORDER_FIELD_MAP: Record<string, OrderMetricField | undefined> = {
+  "order-terjual":   OrderMetricField.TERJUAL,
+  "order-hpp":       OrderMetricField.HPP,
+  "order-profit":    OrderMetricField.PROFIT,
+  "order-lastOrder": OrderMetricField.LAST_ORDER,
+  "order-avgSold":   OrderMetricField.AVG_SOLD,
+};
+const STOCK_FIELD_MAP: Record<string, StockMetricField | undefined> = {
+  "stock-ready":       StockMetricField.READY,
+  "stock-ongoing":     StockMetricField.ONGOING,
+  "stock-lastRestock": StockMetricField.LAST_RESTOCK,
+  "stock-expiring":    StockMetricField.EXPIRING,
+};
+
+function matchSort(sort: Sort | undefined, field: ColField): SortDirection | null {
   if (!sort || !sort.field) return null;
   switch (sort.field.case) {
     case "order": {
-      const want =
-        field === "order-terjual"
-          ? OrderMetricField.TERJUAL
-          : field === "order-hpp"
-          ? OrderMetricField.HPP
-          : field === "order-profit"
-          ? OrderMetricField.PROFIT
-          : null;
-      return want !== null && sort.field.value === want ? sort.direction : null;
+      const want = ORDER_FIELD_MAP[field];
+      return want !== undefined && sort.field.value === want ? sort.direction : null;
     }
     case "stock": {
-      const want =
-        field === "stock-ready"
-          ? StockMetricField.READY
-          : field === "stock-ongoing"
-          ? StockMetricField.ONGOING
-          : null;
-      return want !== null && sort.field.value === want ? sort.direction : null;
+      const want = STOCK_FIELD_MAP[field];
+      return want !== undefined && sort.field.value === want ? sort.direction : null;
     }
   }
   return null;
@@ -245,10 +307,7 @@ function matchSort(
 
 // nextSort cycles the sort direction for a column: unsorted -> DESC -> ASC ->
 // unsorted (returns undefined to clear).
-function nextSort(
-  field: "order-terjual" | "order-hpp" | "order-profit" | "stock-ready" | "stock-ongoing",
-  current: SortDirection | null,
-): Sort | undefined {
+function nextSort(field: ColField, current: SortDirection | null): Sort | undefined {
   const newDir =
     current === null
       ? SortDirection.DESC
@@ -259,21 +318,16 @@ function nextSort(
     // Cycle back to "unsorted" — let the caller clear it.
     return undefined;
   }
-  const isOrder = field.startsWith("order-");
-  if (isOrder) {
-    const orderField =
-      field === "order-terjual"
-        ? OrderMetricField.TERJUAL
-        : field === "order-hpp"
-        ? OrderMetricField.HPP
-        : OrderMetricField.PROFIT;
+  if (field.startsWith("order-")) {
+    const orderField = ORDER_FIELD_MAP[field];
+    if (orderField === undefined) return undefined;
     return new Sort({
       direction: newDir,
       field: { case: "order", value: orderField },
     });
   }
-  const stockField =
-    field === "stock-ready" ? StockMetricField.READY : StockMetricField.ONGOING;
+  const stockField = STOCK_FIELD_MAP[field];
+  if (stockField === undefined) return undefined;
   return new Sort({
     direction: newDir,
     field: { case: "stock", value: stockField },
