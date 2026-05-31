@@ -12,7 +12,7 @@ import {
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import WarehouseSelect from "./WarehouseSelect";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, KeyRound, Languages, LogOut, Menu as MenuIcon, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
+import { Bell, KeyRound, Languages, LogOut, Menu as MenuIcon, Moon, Settings as SettingsIcon, Sun, Warehouse as WarehouseIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -166,14 +166,40 @@ function WarehouseSelector() {
     localStorage.setItem(WAREHOUSE_KEY, fallback);
   }, [myWarehousesQ.data]);
 
-  if (!myWarehousesQ.data || myWarehousesQ.data.warehouses.length <= 1) return null;
+  if (!myWarehousesQ.data) return null;
+  const list = myWarehousesQ.data.warehouses;
+  // 0 accessible warehouses: nothing to show; downstream calls already surface
+  // a "no warehouse configured" error if they actually need one.
+  if (list.length === 0) return null;
 
   // Chip label uses the cached full list — survives a typed query that filters
   // the selected warehouse out of the popover (async search source).
-  const selectedFromFull = myWarehousesQ.data.warehouses.find((w) => w.id === current);
+  const selectedFromFull = list.find((w) => w.id === current);
   const selectedLabel = selectedFromFull
     ? `${selectedFromFull.code} · ${selectedFromFull.name}`
     : undefined;
+
+  // Single-warehouse user: render an informational read-only label so the
+  // cashier always knows where they are. No popover, no chevron.
+  if (list.length === 1) {
+    const only = list[0];
+    return (
+      <HStack
+        gap={2}
+        px={3}
+        py={1}
+        borderWidth="1px"
+        borderRadius="md"
+        bg="bg.subtle"
+        color="fg.muted"
+      >
+        <WarehouseIcon size={14} />
+        <Text fontSize="sm" maxW="180px" truncate>
+          {`${only.code} · ${only.name}`}
+        </Text>
+      </HStack>
+    );
+  }
 
   return (
     <WarehouseSelect

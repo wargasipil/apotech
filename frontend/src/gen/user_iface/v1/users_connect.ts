@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, IssuePasswordResetTokenRequest, IssuePasswordResetTokenResponse, ListUsersRequest, ListUsersResponse, RedeemPasswordResetTokenRequest, RedeemPasswordResetTokenResponse, ResolveUsersRequest, ResolveUsersResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
+import { ChangePasswordRequest, ChangePasswordResponse, CreateUserRequest, CreateUserResponse, IssuePasswordResetTokenRequest, IssuePasswordResetTokenResponse, ListUsersRequest, ListUsersResponse, RedeemPasswordResetTokenRequest, RedeemPasswordResetTokenResponse, ResolveUsersRequest, ResolveUsersResponse, SearchUsersRequest, SearchUsersResponse, SetUserActiveRequest, SetUserActiveResponse, UpdateUserRoleRequest, UpdateUserRoleResponse } from "./users_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -31,6 +31,18 @@ export const UserService = {
       name: "ResolveUsers",
       I: ResolveUsersRequest,
       O: ResolveUsersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Server-side fuzzy search for the warehouse-detail "Add user" picker.
+     * OWNER-only because this is an admin path.
+     *
+     * @generated from rpc user_iface.v1.UserService.SearchUsers
+     */
+    searchUsers: {
+      name: "SearchUsers",
+      I: SearchUsersRequest,
+      O: SearchUsersResponse,
       kind: MethodKind.Unary,
     },
     /**

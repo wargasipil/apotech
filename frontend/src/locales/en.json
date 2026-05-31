@@ -574,7 +574,16 @@
     "editTitle": "Edit warehouse",
     "searchPlaceholder": "Search code or name…",
     "setAsDefault": "Set as default",
-    "confirmSetDefault": "Set \"{{name}}\" as the default warehouse?"
+    "confirmSetDefault": "Set \"{{name}}\" as the default warehouse?",
+    "confirmArchive": "Archive \"{{name}}\"?",
+    "usersSection": "Users with access",
+    "addUser": "Add user",
+    "searchUserPlaceholder": "Search by email or name",
+    "revokeAccess": "Revoke access",
+    "confirmRevoke": "Revoke {{email}}'s access?",
+    "defaultForUser": "Default for this user",
+    "defaultLockedTooltip": "This is the user's default — promote another warehouse instead.",
+    "noUsers": "No users have access yet."
   },
   "expiryBadge": {
     "expired": "expired",

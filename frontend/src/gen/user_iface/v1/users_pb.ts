@@ -268,6 +268,86 @@ export class ResolveUsersResponse extends Message<ResolveUsersResponse> {
 }
 
 /**
+ * @generated from message user_iface.v1.SearchUsersRequest
+ */
+export class SearchUsersRequest extends Message<SearchUsersRequest> {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<SearchUsersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.SearchUsersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchUsersRequest {
+    return new SearchUsersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchUsersRequest {
+    return new SearchUsersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchUsersRequest {
+    return new SearchUsersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchUsersRequest | PlainMessage<SearchUsersRequest> | undefined, b: SearchUsersRequest | PlainMessage<SearchUsersRequest> | undefined): boolean {
+    return proto3.util.equals(SearchUsersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message user_iface.v1.SearchUsersResponse
+ */
+export class SearchUsersResponse extends Message<SearchUsersResponse> {
+  /**
+   * @generated from field: repeated user_iface.v1.UserRef users = 1;
+   */
+  users: UserRef[] = [];
+
+  constructor(data?: PartialMessage<SearchUsersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "user_iface.v1.SearchUsersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "users", kind: "message", T: UserRef, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchUsersResponse {
+    return new SearchUsersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchUsersResponse {
+    return new SearchUsersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchUsersResponse {
+    return new SearchUsersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchUsersResponse | PlainMessage<SearchUsersResponse> | undefined, b: SearchUsersResponse | PlainMessage<SearchUsersResponse> | undefined): boolean {
+    return proto3.util.equals(SearchUsersResponse, a, b);
+  }
+}
+
+/**
  * @generated from message user_iface.v1.CreateUserRequest
  */
 export class CreateUserRequest extends Message<CreateUserRequest> {

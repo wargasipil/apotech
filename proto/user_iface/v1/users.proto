@@ -26,6 +26,11 @@ service UserService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  // Server-side fuzzy search for the warehouse-detail "Add user" picker.
+  // OWNER-only because this is an admin path.
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
   }
@@ -63,6 +68,9 @@ message UserRef {
 }
 message ResolveUsersRequest  { repeated string ids = 1; }
 message ResolveUsersResponse { repeated UserRef users = 1; }
+
+message SearchUsersRequest  { string query = 1; int32 limit = 2; }
+message SearchUsersResponse { repeated UserRef users = 1; }
 
 message CreateUserRequest {
   string email = 1;

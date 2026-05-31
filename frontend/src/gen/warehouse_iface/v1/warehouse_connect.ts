@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveWarehouseRequest, ArchiveWarehouseResponse, CreateWarehouseRequest, CreateWarehouseResponse, GrantWarehouseAccessRequest, GrantWarehouseAccessResponse, ListUserWarehousesRequest, ListUserWarehousesResponse, ListWarehousesRequest, ListWarehousesResponse, RevokeWarehouseAccessRequest, RevokeWarehouseAccessResponse, SetDefaultWarehouseRequest, SetDefaultWarehouseResponse, SetGlobalDefaultWarehouseRequest, SetGlobalDefaultWarehouseResponse, UpdateWarehouseRequest, UpdateWarehouseResponse } from "./warehouse_pb.js";
+import { ArchiveWarehouseRequest, ArchiveWarehouseResponse, CreateWarehouseRequest, CreateWarehouseResponse, GetWarehouseRequest, GetWarehouseResponse, GrantWarehouseAccessRequest, GrantWarehouseAccessResponse, ListUserWarehousesRequest, ListUserWarehousesResponse, ListWarehousesRequest, ListWarehousesResponse, ListWarehouseUsersRequest, ListWarehouseUsersResponse, RevokeWarehouseAccessRequest, RevokeWarehouseAccessResponse, SetDefaultWarehouseRequest, SetDefaultWarehouseResponse, SetGlobalDefaultWarehouseRequest, SetGlobalDefaultWarehouseResponse, UpdateWarehouseRequest, UpdateWarehouseResponse } from "./warehouse_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -19,6 +19,24 @@ export const WarehouseService = {
       name: "ListWarehouses",
       I: ListWarehousesRequest,
       O: ListWarehousesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc warehouse_iface.v1.WarehouseService.GetWarehouse
+     */
+    getWarehouse: {
+      name: "GetWarehouse",
+      I: GetWarehouseRequest,
+      O: GetWarehouseResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc warehouse_iface.v1.WarehouseService.ListWarehouseUsers
+     */
+    listWarehouseUsers: {
+      name: "ListWarehouseUsers",
+      I: ListWarehouseUsersRequest,
+      O: ListWarehouseUsersResponse,
       kind: MethodKind.Unary,
     },
     /**

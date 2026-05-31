@@ -188,7 +188,10 @@
       "Bash(xargs -I{} taskkill //F //PID {})",
       "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run TestListUserWarehouses_Search -v)",
       "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestProductMetric_Extras|TestListSales_WarehouseScoped\" -v)",
-      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestProductMetric_Extras\" -v)"
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestProductMetric_Extras\" -v)",
+      "Bash(make reset-devel-data *)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestEnsureBootstrapOwner_GrantsDefaultWarehouse|TestCreateUser_GrantsDefaultWarehouse\" -v)",
+      "Bash(APOTECH_CONFIG=../../config.yaml go -C backend test ./e2e -run \"TestGetWarehouse|TestListWarehouseUsers|TestSearchUsers\" -v)"
     ],
     "additionalDirectories": [
       "\\tmp"

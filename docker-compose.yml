@@ -9,8 +9,20 @@ services:
       POSTGRES_PASSWORD: apotech
     ports:
       - "5432:5432"
+    # Named volume (was a bind-mount to ./data/postgres). Named volume so
+    # `docker compose down -v` cleanly wipes it from any shell, enabling the
+    # cross-platform `make reset-devel-data` target.
     volumes:
-      - ./data/postgres:/var/lib/postgresql
+      - apotech_devel_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apotech -d apotech"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  apotech_devel_data:
 
 
 

@@ -184,6 +184,7 @@ All commands run from the repo root (the Makefile lives there).
 ```sh
 make up              # docker compose up -d (Postgres)
 make down            # docker compose down
+make reset-devel-data # wipe + reinit dev Postgres (use when fixtures get polluted)
 make generate        # buf generate -> backend/gen + frontend/src/gen
 make tidy            # go -C backend mod tidy
 make migrate-up      # apply goose migrations
@@ -202,6 +203,9 @@ make docker-down     # tear down the prod stack
 make installer       # build dist-windows + assemble the Windows installer (needs Inno Setup)
 ```
 
+### Development workflow (HARD RULE)
+**Clean up dev processes after verifying.** If you (the assistant) start `make run` (Go backend, binds `:8080`) or `make web` (Vite dev server, binds `:5173`) — typically with `run_in_background: true` to drive a Playwright verification — you MUST kill that process before ending the turn / reporting the task complete. Find the PID via `netstat -ano | grep ":8080.*LISTENING"` (or `:5173`) and call `taskkill //F //PID <pid>` (Windows shell) / `kill <pid>` (POSIX). Dev servers the **user** started in their own terminal are NOT in scope — only processes the assistant launched itself. Leftover processes block the user's own dev workflow; the user has had to ask "stop it" / "clean up" multiple times. Killing on exit is cheap and the user can always restart.
+
 ## Conventions
 - **New RPC method**: add it to a `.proto` file under `proto/<pkg>/v1/`, run `make generate`, implement the handler in `backend/internal/service/`, register it in `backend/cmd/server/main.go`.
 - **List RPC pagination (convention)**: every `List*` RPC is server-paginated. The request carries `int32 limit` + `int32 offset`; the response carries `int32 total` (the unfiltered-by-page count for the same filters). Handlers use `normPage(limit, offset)` ([service/pagination.go](backend/internal/service/pagination.go)) — default page size **25**, cap **1000** (large limits are **clamped** to 1000, not reset to the default — so `useAll*` / `ALL_LIMIT` preloads receive the full list up to 1000), `offset` floored at 0 — then a two-chain GORM pattern: an `applyFilters(q)` closure feeds both a `Count(&total)` and the paginated `Offset/Limit/Find`, so filters can't contaminate the count. Denormalized per-page data (names, stock aggregates) is batch-loaded after the page loads (an `enrich*` method), never N+1. `ListBatches` computes per-warehouse stock in SQL (`GROUP BY` + `HAVING`) so `only_in_stock` + paging + `total` stay consistent; `ListPrescriptions` paginates the base (customer-scoped) rows and applies the computed-status filter client-side over the page (`total` reflects the base rows — documented v1 limitation).
@@ -210,7 +214,7 @@ make installer       # build dist-windows + assemble the Windows installer (need
 - **Chakra UI v3**: use **`defaultSystem`** (no custom system, no custom palette, no custom semantic tokens). Compose with other components via `asChild` (e.g. `<ChakraLink asChild><RouterLink to="/">...</RouterLink></ChakraLink>`). Brand accent is expressed via `colorPalette="blue"` on interactive components; surface and text tokens (`bg`, `bg.subtle`, `bg.muted`, `fg`, `fg.muted`, `border`, `border.muted`) come straight from `defaultSystem`.
 - **Module path**: `github.com/apotech/backend` (placeholder — rename after pushing to a real Git host).
 - **Migrations**: embedded via `backend/migrations/embed.go`. `cmd/migrate` calls `goose.SetBaseFS(migrations.FS)` for all commands except `create`, which still writes a new `.sql` to the on-disk `backend/migrations/` (run via `make migrate-create`, CWD = `backend/`). The server auto-applies them on boot (`internal/dbmigrate`).
-- **Postgres volume mount**: dev `docker-compose.yml` mounts `./data/postgres` at `/var/lib/postgresql` (NOT `/var/lib/postgresql/data`). Required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. Do not "fix" the mount target back. (Prod `docker-compose.prod.yml` uses a named volume instead.)
+- **Postgres volume mount**: dev `docker-compose.yml` uses a **named volume** (`apotech_devel_data` mounted at `/var/lib/postgresql`, NOT `/var/lib/postgresql/data`). The named volume enables `make reset-devel-data` to wipe + recreate the dev cluster portably (`docker compose down -v` → `up -d --wait`) from cmd.exe, PowerShell, or bash. The unusual mount target (`/var/lib/postgresql` rather than `/data`) is still required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. The compose's `healthcheck` (`pg_isready`) is what `--wait` polls. Prod `docker-compose.prod.yml` uses a separate named volume.
 
 ## Packaging & distribution
 The app ships as **one self-contained binary** that serves the SPA + `/api` on a single port and auto-migrates on boot. Both flavors build from this binary. Full ops in [DEPLOYMENT.md](DEPLOYMENT.md); Windows specifics in [packaging/windows/README.md](packaging/windows/README.md).
@@ -326,6 +330,7 @@ To display a referenced entity's **name** from an ID (supplier/medicine/customer
 - **Handlers must NOT call role-check helpers.** They use `auth.MustPrincipal(ctx)` only for row-level decisions (e.g. `ChangePassword` self-vs-other). Adding a role check inside a handler is a code smell — the policy belongs in the proto.
 - **Default policy**: a new RPC with no annotation is authenticated-only. To open it up you must explicitly mark `public = true`. Safe failure mode for forgotten annotations.
 - **Bootstrap owner**: on every boot, `Users.EnsureBootstrapOwner` upserts the user described by `cfg.Bootstrap.owner_email/owner_password`. Empty email → skip. Changing the password in `config.yaml` rotates it on next restart.
+- **Default-warehouse auto-grant**: both `EnsureBootstrapOwner` and `CreateUser` call `grantDefaultWarehouse(tx, userID)` ([service/users.go](backend/internal/service/users.go)) after the user lands — idempotent insert of a `user_warehouses` membership for the global default warehouse, with `is_default = true` only when the user has no other default. Closes the gap where migration 00019's at-migration-time grant produced **zero rows** on a fresh DB (no users to grant to yet), leaving the bootstrap owner with no access to MAIN.
 - **Frontend tokens**: stored in `localStorage["apotech_access_token"]` and `localStorage["apotech_refresh_token"]`. Only `AuthProvider` ([lib/auth.tsx](frontend/src/lib/auth.tsx)) and the transport interceptor ([lib/transport.ts](frontend/src/lib/transport.ts)) touch them; everything else uses `useAuth()`. `logout()` is async — calls `AuthService.Logout` first (best-effort), then clears both keys.
 - **Route protection**: `<ProtectedRoute>` (with optional `requiredRole`) wraps router children. UI gating only — the backend `auth.NewInterceptor` is the real enforcement.
 

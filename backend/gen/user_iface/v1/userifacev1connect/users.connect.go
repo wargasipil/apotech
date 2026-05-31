@@ -38,6 +38,8 @@ const (
 	// UserServiceResolveUsersProcedure is the fully-qualified name of the UserService's ResolveUsers
 	// RPC.
 	UserServiceResolveUsersProcedure = "/user_iface.v1.UserService/ResolveUsers"
+	// UserServiceSearchUsersProcedure is the fully-qualified name of the UserService's SearchUsers RPC.
+	UserServiceSearchUsersProcedure = "/user_iface.v1.UserService/SearchUsers"
 	// UserServiceCreateUserProcedure is the fully-qualified name of the UserService's CreateUser RPC.
 	UserServiceCreateUserProcedure = "/user_iface.v1.UserService/CreateUser"
 	// UserServiceUpdateUserRoleProcedure is the fully-qualified name of the UserService's
@@ -63,6 +65,9 @@ type UserServiceClient interface {
 	// ResolveUsers returns minimal display refs for a set of ids (batch
 	// lookup-by-IDs for name resolution; used by analytics).
 	ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error)
+	// Server-side fuzzy search for the warehouse-detail "Add user" picker.
+	// OWNER-only because this is an admin path.
+	SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
@@ -95,6 +100,12 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceResolveUsersProcedure,
 			connect.WithSchema(userServiceMethods.ByName("ResolveUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		searchUsers: connect.NewClient[v1.SearchUsersRequest, v1.SearchUsersResponse](
+			httpClient,
+			baseURL+UserServiceSearchUsersProcedure,
+			connect.WithSchema(userServiceMethods.ByName("SearchUsers")),
 			connect.WithClientOptions(opts...),
 		),
 		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
@@ -140,6 +151,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type userServiceClient struct {
 	listUsers                *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
 	resolveUsers             *connect.Client[v1.ResolveUsersRequest, v1.ResolveUsersResponse]
+	searchUsers              *connect.Client[v1.SearchUsersRequest, v1.SearchUsersResponse]
 	createUser               *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
 	updateUserRole           *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
 	setUserActive            *connect.Client[v1.SetUserActiveRequest, v1.SetUserActiveResponse]
@@ -156,6 +168,11 @@ func (c *userServiceClient) ListUsers(ctx context.Context, req *connect.Request[
 // ResolveUsers calls user_iface.v1.UserService.ResolveUsers.
 func (c *userServiceClient) ResolveUsers(ctx context.Context, req *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error) {
 	return c.resolveUsers.CallUnary(ctx, req)
+}
+
+// SearchUsers calls user_iface.v1.UserService.SearchUsers.
+func (c *userServiceClient) SearchUsers(ctx context.Context, req *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error) {
+	return c.searchUsers.CallUnary(ctx, req)
 }
 
 // CreateUser calls user_iface.v1.UserService.CreateUser.
@@ -194,6 +211,9 @@ type UserServiceHandler interface {
 	// ResolveUsers returns minimal display refs for a set of ids (batch
 	// lookup-by-IDs for name resolution; used by analytics).
 	ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error)
+	// Server-side fuzzy search for the warehouse-detail "Add user" picker.
+	// OWNER-only because this is an admin path.
+	SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error)
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
 	SetUserActive(context.Context, *connect.Request[v1.SetUserActiveRequest]) (*connect.Response[v1.SetUserActiveResponse], error)
@@ -222,6 +242,12 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceResolveUsersProcedure,
 		svc.ResolveUsers,
 		connect.WithSchema(userServiceMethods.ByName("ResolveUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceSearchUsersHandler := connect.NewUnaryHandler(
+		UserServiceSearchUsersProcedure,
+		svc.SearchUsers,
+		connect.WithSchema(userServiceMethods.ByName("SearchUsers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceCreateUserHandler := connect.NewUnaryHandler(
@@ -266,6 +292,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceListUsersHandler.ServeHTTP(w, r)
 		case UserServiceResolveUsersProcedure:
 			userServiceResolveUsersHandler.ServeHTTP(w, r)
+		case UserServiceSearchUsersProcedure:
+			userServiceSearchUsersHandler.ServeHTTP(w, r)
 		case UserServiceCreateUserProcedure:
 			userServiceCreateUserHandler.ServeHTTP(w, r)
 		case UserServiceUpdateUserRoleProcedure:
@@ -293,6 +321,10 @@ func (UnimplementedUserServiceHandler) ListUsers(context.Context, *connect.Reque
 
 func (UnimplementedUserServiceHandler) ResolveUsers(context.Context, *connect.Request[v1.ResolveUsersRequest]) (*connect.Response[v1.ResolveUsersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.ResolveUsers is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) SearchUsers(context.Context, *connect.Request[v1.SearchUsersRequest]) (*connect.Response[v1.SearchUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("user_iface.v1.UserService.SearchUsers is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {

@@ -39,6 +39,7 @@ import Purchasing from "./routes/purchasing/Purchasing";
 import Tax from "./routes/Tax";
 import Bpjs from "./routes/Bpjs";
 import Warehouses from "./routes/Warehouses";
+import WarehouseDetail from "./routes/WarehouseDetail";
 import Settings from "./routes/Settings";
 import Transfers from "./routes/inventory/Transfers";
 import PurchaseOrdersList from "./routes/purchasing/PurchaseOrdersList";
@@ -136,6 +137,7 @@ const router = createBrowserRouter([
             children: [
               { path: "tax", element: <Tax /> },
               { path: "warehouses", element: <Warehouses /> },
+              { path: "warehouses/:id", element: <WarehouseDetail /> },
             ],
           },
         ],

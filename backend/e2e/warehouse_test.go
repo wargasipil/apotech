@@ -11,8 +11,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 
+	authifacev1 "github.com/apotech/backend/gen/auth_iface/v1"
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	posifacev1 "github.com/apotech/backend/gen/pos_iface/v1"
+	userifacev1 "github.com/apotech/backend/gen/user_iface/v1"
 	warehouseifacev1 "github.com/apotech/backend/gen/warehouse_iface/v1"
 )
 
@@ -284,6 +286,120 @@ func TestListUserWarehouses_Search(t *testing.T) {
 
 // TestWarehouse_SetGlobalDefault verifies promoting a warehouse to the
 // company-wide default clears the previous default.
+// TestGetWarehouse covers the new single-fetch RPC: returns a warehouse by
+// id; rejects empty id (InvalidArgument); 404 on unknown id.
+func TestGetWarehouse(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+	whID := makeWarehouse(env, t, ctx, fmt.Sprintf("GWH%d", uniq))
+
+	res, err := env.Warehouses.GetWarehouse(ctx, authReq(env, t,
+		&warehouseifacev1.GetWarehouseRequest{Id: whID}))
+	require.NoError(t, err)
+	require.Equal(t, whID, res.Msg.Warehouse.Id)
+
+	_, err = env.Warehouses.GetWarehouse(ctx, authReq(env, t,
+		&warehouseifacev1.GetWarehouseRequest{Id: ""}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	_, err = env.Warehouses.GetWarehouse(ctx, authReq(env, t,
+		&warehouseifacev1.GetWarehouseRequest{Id: "00000000-0000-0000-0000-000000000000"}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+// TestListWarehouseUsers covers the warehouse-detail "Users with access"
+// query: lists members joined with user info; reflects grant + revoke.
+func TestListWarehouseUsers(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano() % 1000000
+	whID := makeWarehouse(env, t, ctx, fmt.Sprintf("LWU%d", uniq))
+
+	// Auto-grant from CreateWarehouse means the OWNER appears.
+	first, err := env.Warehouses.ListWarehouseUsers(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehouseUsersRequest{WarehouseId: whID}))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(first.Msg.Users), 1)
+	ownerSeen := false
+	for _, u := range first.Msg.Users {
+		if u.Email == env.Owner.Email {
+			ownerSeen = true
+		}
+	}
+	require.True(t, ownerSeen, "OWNER should appear via CreateWarehouse auto-grant")
+
+	// Add a CASHIER and grant access to this warehouse.
+	uniqEmail := fmt.Sprintf("lwu-%d@apotech.local", uniq)
+	created, err := env.Users.CreateUser(ctx, authReq(env, t,
+		&userifacev1.CreateUserRequest{
+			Email: uniqEmail, Name: "LWU Test", Password: "Test1234!",
+			Role: authifacev1.Role_ROLE_CASHIER,
+		}))
+	require.NoError(t, err)
+	cashierID := created.Msg.User.Id
+	t.Cleanup(func() {
+		_, _ = env.Users.SetUserActive(ctx, authReq(env, t,
+			&userifacev1.SetUserActiveRequest{UserId: cashierID, Active: false}))
+	})
+
+	_, err = env.Warehouses.GrantWarehouseAccess(ctx, authReq(env, t,
+		&warehouseifacev1.GrantWarehouseAccessRequest{
+			UserId: cashierID, WarehouseId: whID, IsDefault: false,
+		}))
+	require.NoError(t, err)
+
+	second, err := env.Warehouses.ListWarehouseUsers(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehouseUsersRequest{WarehouseId: whID}))
+	require.NoError(t, err)
+	require.Equal(t, len(first.Msg.Users)+1, len(second.Msg.Users), "grant adds one member")
+
+	// Revoke and confirm removal.
+	_, err = env.Warehouses.RevokeWarehouseAccess(ctx, authReq(env, t,
+		&warehouseifacev1.RevokeWarehouseAccessRequest{
+			UserId: cashierID, WarehouseId: whID,
+		}))
+	require.NoError(t, err)
+
+	third, err := env.Warehouses.ListWarehouseUsers(ctx, authReq(env, t,
+		&warehouseifacev1.ListWarehouseUsersRequest{WarehouseId: whID}))
+	require.NoError(t, err)
+	require.Equal(t, len(first.Msg.Users), len(third.Msg.Users), "revoke removes the member")
+}
+
+// TestSearchUsers verifies the new ILIKE search drives the Add-user picker
+// (mirrors SearchCustomers / SearchSuppliers).
+func TestSearchUsers(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+
+	// Empty query returns at least one row (bootstrap owner is seeded).
+	all, err := env.Users.SearchUsers(ctx, authReq(env, t,
+		&userifacev1.SearchUsersRequest{Query: "", Limit: 50}))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(all.Msg.Users), 1)
+
+	// Substring of the seeded owner email returns the owner.
+	hit, err := env.Users.SearchUsers(ctx, authReq(env, t,
+		&userifacev1.SearchUsersRequest{Query: "owner@", Limit: 10}))
+	require.NoError(t, err)
+	seen := false
+	for _, u := range hit.Msg.Users {
+		if u.Email == env.Owner.Email {
+			seen = true
+		}
+	}
+	require.True(t, seen, "owner appears in 'owner@' search")
+
+	// Non-matching query returns nothing of relevance.
+	miss, err := env.Users.SearchUsers(ctx, authReq(env, t,
+		&userifacev1.SearchUsersRequest{Query: "ZZ-NO-MATCH-ZZ", Limit: 10}))
+	require.NoError(t, err)
+	require.Empty(t, miss.Msg.Users)
+}
+
 func TestWarehouse_SetGlobalDefault(t *testing.T) {
 	env := SetupEnv(t)
 	ctx := context.Background()

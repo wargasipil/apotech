@@ -14,6 +14,8 @@ export const warehouseKeys = {
   all: ["warehouses"] as const,
   list: (filters: object) => [...warehouseKeys.all, "list", filters] as const,
   user: (userId: string) => [...warehouseKeys.all, "user", userId] as const,
+  detail: (id: string) => [...warehouseKeys.all, "detail", id] as const,
+  users: (warehouseId: string) => [...warehouseKeys.all, "users", warehouseId] as const,
 };
 
 export type WarehousesQueryOpts = {
@@ -63,6 +65,30 @@ export function useMyWarehousesQuery() {
   });
 }
 
+// useWarehouseQuery — single warehouse by id; drives WarehouseDetail.
+export function useWarehouseQuery(id: string) {
+  return useQuery({
+    queryKey: warehouseKeys.detail(id),
+    queryFn: async () => {
+      const res = await warehouseClient.getWarehouse({ id });
+      return res.warehouse;
+    },
+    enabled: !!id,
+  });
+}
+
+// useWarehouseUsersQuery — users with access to a warehouse (OWNER-only).
+export function useWarehouseUsersQuery(warehouseId: string) {
+  return useQuery({
+    queryKey: warehouseKeys.users(warehouseId),
+    queryFn: async () => {
+      const res = await warehouseClient.listWarehouseUsers({ warehouseId });
+      return [...res.users];
+    },
+    enabled: !!warehouseId,
+  });
+}
+
 // Imperative search over the caller's accessible warehouses — backend ILIKEs
 // code/name. Used by the TopBar warehouse popup so each keystroke (debounced)
 // hits the backend. Mirrors the searchSuppliers / searchMedicines pattern.
@@ -100,6 +126,15 @@ export function useGrantWarehouseAccessMutation() {
   return useMutation({
     mutationFn: (req: PartialMessage<GrantWarehouseAccessRequest>) =>
       warehouseClient.grantWarehouseAccess(req),
+    onSuccess: () => qc.invalidateQueries({ queryKey: warehouseKeys.all }),
+  });
+}
+
+export function useRevokeWarehouseAccessMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: { userId: string; warehouseId: string }) =>
+      warehouseClient.revokeWarehouseAccess(req),
     onSuccess: () => qc.invalidateQueries({ queryKey: warehouseKeys.all }),
   });
 }

@@ -56,3 +56,10 @@ export function useChangePasswordMutation() {
       userClient.changePassword(req),
   });
 }
+
+// Imperative search helper — backend ILIKEs email/name. Drives the warehouse
+// detail "Add user" picker via SearchableSelect's loadOptions async mode.
+export async function searchUsers(query: string) {
+  const res = await userClient.searchUsers({ query, limit: 20 });
+  return [...res.users];
+}

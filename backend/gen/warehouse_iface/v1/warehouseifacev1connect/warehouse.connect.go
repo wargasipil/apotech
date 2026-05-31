@@ -36,6 +36,12 @@ const (
 	// WarehouseServiceListWarehousesProcedure is the fully-qualified name of the WarehouseService's
 	// ListWarehouses RPC.
 	WarehouseServiceListWarehousesProcedure = "/warehouse_iface.v1.WarehouseService/ListWarehouses"
+	// WarehouseServiceGetWarehouseProcedure is the fully-qualified name of the WarehouseService's
+	// GetWarehouse RPC.
+	WarehouseServiceGetWarehouseProcedure = "/warehouse_iface.v1.WarehouseService/GetWarehouse"
+	// WarehouseServiceListWarehouseUsersProcedure is the fully-qualified name of the WarehouseService's
+	// ListWarehouseUsers RPC.
+	WarehouseServiceListWarehouseUsersProcedure = "/warehouse_iface.v1.WarehouseService/ListWarehouseUsers"
 	// WarehouseServiceCreateWarehouseProcedure is the fully-qualified name of the WarehouseService's
 	// CreateWarehouse RPC.
 	WarehouseServiceCreateWarehouseProcedure = "/warehouse_iface.v1.WarehouseService/CreateWarehouse"
@@ -65,6 +71,8 @@ const (
 // WarehouseServiceClient is a client for the warehouse_iface.v1.WarehouseService service.
 type WarehouseServiceClient interface {
 	ListWarehouses(context.Context, *connect.Request[v1.ListWarehousesRequest]) (*connect.Response[v1.ListWarehousesResponse], error)
+	GetWarehouse(context.Context, *connect.Request[v1.GetWarehouseRequest]) (*connect.Response[v1.GetWarehouseResponse], error)
+	ListWarehouseUsers(context.Context, *connect.Request[v1.ListWarehouseUsersRequest]) (*connect.Response[v1.ListWarehouseUsersResponse], error)
 	CreateWarehouse(context.Context, *connect.Request[v1.CreateWarehouseRequest]) (*connect.Response[v1.CreateWarehouseResponse], error)
 	UpdateWarehouse(context.Context, *connect.Request[v1.UpdateWarehouseRequest]) (*connect.Response[v1.UpdateWarehouseResponse], error)
 	ArchiveWarehouse(context.Context, *connect.Request[v1.ArchiveWarehouseRequest]) (*connect.Response[v1.ArchiveWarehouseResponse], error)
@@ -91,6 +99,18 @@ func NewWarehouseServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+WarehouseServiceListWarehousesProcedure,
 			connect.WithSchema(warehouseServiceMethods.ByName("ListWarehouses")),
+			connect.WithClientOptions(opts...),
+		),
+		getWarehouse: connect.NewClient[v1.GetWarehouseRequest, v1.GetWarehouseResponse](
+			httpClient,
+			baseURL+WarehouseServiceGetWarehouseProcedure,
+			connect.WithSchema(warehouseServiceMethods.ByName("GetWarehouse")),
+			connect.WithClientOptions(opts...),
+		),
+		listWarehouseUsers: connect.NewClient[v1.ListWarehouseUsersRequest, v1.ListWarehouseUsersResponse](
+			httpClient,
+			baseURL+WarehouseServiceListWarehouseUsersProcedure,
+			connect.WithSchema(warehouseServiceMethods.ByName("ListWarehouseUsers")),
 			connect.WithClientOptions(opts...),
 		),
 		createWarehouse: connect.NewClient[v1.CreateWarehouseRequest, v1.CreateWarehouseResponse](
@@ -147,6 +167,8 @@ func NewWarehouseServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // warehouseServiceClient implements WarehouseServiceClient.
 type warehouseServiceClient struct {
 	listWarehouses            *connect.Client[v1.ListWarehousesRequest, v1.ListWarehousesResponse]
+	getWarehouse              *connect.Client[v1.GetWarehouseRequest, v1.GetWarehouseResponse]
+	listWarehouseUsers        *connect.Client[v1.ListWarehouseUsersRequest, v1.ListWarehouseUsersResponse]
 	createWarehouse           *connect.Client[v1.CreateWarehouseRequest, v1.CreateWarehouseResponse]
 	updateWarehouse           *connect.Client[v1.UpdateWarehouseRequest, v1.UpdateWarehouseResponse]
 	archiveWarehouse          *connect.Client[v1.ArchiveWarehouseRequest, v1.ArchiveWarehouseResponse]
@@ -160,6 +182,16 @@ type warehouseServiceClient struct {
 // ListWarehouses calls warehouse_iface.v1.WarehouseService.ListWarehouses.
 func (c *warehouseServiceClient) ListWarehouses(ctx context.Context, req *connect.Request[v1.ListWarehousesRequest]) (*connect.Response[v1.ListWarehousesResponse], error) {
 	return c.listWarehouses.CallUnary(ctx, req)
+}
+
+// GetWarehouse calls warehouse_iface.v1.WarehouseService.GetWarehouse.
+func (c *warehouseServiceClient) GetWarehouse(ctx context.Context, req *connect.Request[v1.GetWarehouseRequest]) (*connect.Response[v1.GetWarehouseResponse], error) {
+	return c.getWarehouse.CallUnary(ctx, req)
+}
+
+// ListWarehouseUsers calls warehouse_iface.v1.WarehouseService.ListWarehouseUsers.
+func (c *warehouseServiceClient) ListWarehouseUsers(ctx context.Context, req *connect.Request[v1.ListWarehouseUsersRequest]) (*connect.Response[v1.ListWarehouseUsersResponse], error) {
+	return c.listWarehouseUsers.CallUnary(ctx, req)
 }
 
 // CreateWarehouse calls warehouse_iface.v1.WarehouseService.CreateWarehouse.
@@ -205,6 +237,8 @@ func (c *warehouseServiceClient) SetGlobalDefaultWarehouse(ctx context.Context, 
 // WarehouseServiceHandler is an implementation of the warehouse_iface.v1.WarehouseService service.
 type WarehouseServiceHandler interface {
 	ListWarehouses(context.Context, *connect.Request[v1.ListWarehousesRequest]) (*connect.Response[v1.ListWarehousesResponse], error)
+	GetWarehouse(context.Context, *connect.Request[v1.GetWarehouseRequest]) (*connect.Response[v1.GetWarehouseResponse], error)
+	ListWarehouseUsers(context.Context, *connect.Request[v1.ListWarehouseUsersRequest]) (*connect.Response[v1.ListWarehouseUsersResponse], error)
 	CreateWarehouse(context.Context, *connect.Request[v1.CreateWarehouseRequest]) (*connect.Response[v1.CreateWarehouseResponse], error)
 	UpdateWarehouse(context.Context, *connect.Request[v1.UpdateWarehouseRequest]) (*connect.Response[v1.UpdateWarehouseResponse], error)
 	ArchiveWarehouse(context.Context, *connect.Request[v1.ArchiveWarehouseRequest]) (*connect.Response[v1.ArchiveWarehouseResponse], error)
@@ -227,6 +261,18 @@ func NewWarehouseServiceHandler(svc WarehouseServiceHandler, opts ...connect.Han
 		WarehouseServiceListWarehousesProcedure,
 		svc.ListWarehouses,
 		connect.WithSchema(warehouseServiceMethods.ByName("ListWarehouses")),
+		connect.WithHandlerOptions(opts...),
+	)
+	warehouseServiceGetWarehouseHandler := connect.NewUnaryHandler(
+		WarehouseServiceGetWarehouseProcedure,
+		svc.GetWarehouse,
+		connect.WithSchema(warehouseServiceMethods.ByName("GetWarehouse")),
+		connect.WithHandlerOptions(opts...),
+	)
+	warehouseServiceListWarehouseUsersHandler := connect.NewUnaryHandler(
+		WarehouseServiceListWarehouseUsersProcedure,
+		svc.ListWarehouseUsers,
+		connect.WithSchema(warehouseServiceMethods.ByName("ListWarehouseUsers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	warehouseServiceCreateWarehouseHandler := connect.NewUnaryHandler(
@@ -281,6 +327,10 @@ func NewWarehouseServiceHandler(svc WarehouseServiceHandler, opts ...connect.Han
 		switch r.URL.Path {
 		case WarehouseServiceListWarehousesProcedure:
 			warehouseServiceListWarehousesHandler.ServeHTTP(w, r)
+		case WarehouseServiceGetWarehouseProcedure:
+			warehouseServiceGetWarehouseHandler.ServeHTTP(w, r)
+		case WarehouseServiceListWarehouseUsersProcedure:
+			warehouseServiceListWarehouseUsersHandler.ServeHTTP(w, r)
 		case WarehouseServiceCreateWarehouseProcedure:
 			warehouseServiceCreateWarehouseHandler.ServeHTTP(w, r)
 		case WarehouseServiceUpdateWarehouseProcedure:
@@ -308,6 +358,14 @@ type UnimplementedWarehouseServiceHandler struct{}
 
 func (UnimplementedWarehouseServiceHandler) ListWarehouses(context.Context, *connect.Request[v1.ListWarehousesRequest]) (*connect.Response[v1.ListWarehousesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse_iface.v1.WarehouseService.ListWarehouses is not implemented"))
+}
+
+func (UnimplementedWarehouseServiceHandler) GetWarehouse(context.Context, *connect.Request[v1.GetWarehouseRequest]) (*connect.Response[v1.GetWarehouseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse_iface.v1.WarehouseService.GetWarehouse is not implemented"))
+}
+
+func (UnimplementedWarehouseServiceHandler) ListWarehouseUsers(context.Context, *connect.Request[v1.ListWarehouseUsersRequest]) (*connect.Response[v1.ListWarehouseUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse_iface.v1.WarehouseService.ListWarehouseUsers is not implemented"))
 }
 
 func (UnimplementedWarehouseServiceHandler) CreateWarehouse(context.Context, *connect.Request[v1.CreateWarehouseRequest]) (*connect.Response[v1.CreateWarehouseResponse], error) {

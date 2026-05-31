@@ -33,6 +33,14 @@ service WarehouseService {
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
     option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
   }
+  rpc GetWarehouse(GetWarehouseRequest) returns (GetWarehouseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc ListWarehouseUsers(ListWarehouseUsersRequest) returns (ListWarehouseUsersResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
   rpc CreateWarehouse(CreateWarehouseRequest) returns (CreateWarehouseResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
   }
@@ -64,6 +72,23 @@ service WarehouseService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
   }
 }
+
+message GetWarehouseRequest  { string id = 1; }
+message GetWarehouseResponse { Warehouse warehouse = 1; }
+
+// WarehouseUser is a single row in the warehouse-detail "Users with access"
+// table — denormalized join of users + user_warehouses for the OWNER admin.
+message WarehouseUser {
+  string user_id     = 1;
+  string email       = 2;
+  string name        = 3;
+  string role        = 4;   // "OWNER" / "PHARMACIST" / "CASHIER"
+  bool   is_default  = 5;   // is this warehouse THIS user's default?
+  bool   user_active = 6;
+}
+
+message ListWarehouseUsersRequest  { string warehouse_id = 1; }
+message ListWarehouseUsersResponse { repeated WarehouseUser users = 1; }
 
 message ListWarehousesRequest {
   bool   include_inactive = 1;

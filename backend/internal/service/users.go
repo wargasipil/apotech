@@ -34,6 +34,46 @@ type Users struct {
 
 func NewUsers(db *gorm.DB) *Users { return &Users{db: db} }
 
+// grantDefaultWarehouse ensures the user has a membership for the global
+// default warehouse. Idempotent — safe to call on every boot. The membership's
+// is_default is set true only when the user has no existing default (so a
+// per-user default explicitly set later via SetDefaultWarehouse is preserved).
+//
+// Closes the gap in migration 00019_warehouses.sql, which grants every
+// EXISTING user access to MAIN at migration time — users created after that
+// (bootstrap owner, CreateUser admin path) used to land with zero memberships.
+func grantDefaultWarehouse(tx *gorm.DB, userID string) error {
+	var defaultWHID string
+	err := tx.Table("warehouses").Select("id").Where("is_default").Limit(1).Scan(&defaultWHID).Error
+	if err != nil {
+		return fmt.Errorf("lookup default warehouse: %w", err)
+	}
+	if defaultWHID == "" {
+		// No default warehouse seeded; nothing to grant.
+		return nil
+	}
+	// If the user already has any default-flagged membership, don't disrupt it
+	// — grant the default warehouse non-defaulted.
+	var hasDefault bool
+	err = tx.Raw(`SELECT EXISTS (
+		SELECT 1 FROM user_warehouses WHERE user_id = ? AND is_default
+	)`, userID).Scan(&hasDefault).Error
+	if err != nil {
+		return fmt.Errorf("check existing default: %w", err)
+	}
+	// INSERT ... ON CONFLICT DO NOTHING — re-running on an already-granted
+	// user is a true no-op (keeps whatever is_default that row already has).
+	res := tx.Exec(`
+		INSERT INTO user_warehouses (user_id, warehouse_id, is_default)
+		VALUES (?, ?, ?)
+		ON CONFLICT (user_id, warehouse_id) DO NOTHING
+	`, userID, defaultWHID, !hasDefault)
+	if res.Error != nil {
+		return fmt.Errorf("grant default warehouse: %w", res.Error)
+	}
+	return nil
+}
+
 // EnsureBootstrapOwner upserts the owner described in config.Bootstrap.
 // If owner_email is empty, it's a no-op (with a warning to the caller).
 func (u *Users) EnsureBootstrapOwner(ctx context.Context, b config.Bootstrap) error {
@@ -52,6 +92,7 @@ func (u *Users) EnsureBootstrapOwner(ctx context.Context, b config.Bootstrap) er
 
 	var existing model.User
 	err = u.db.WithContext(ctx).Where("email = ?", b.OwnerEmail).First(&existing).Error
+	var ownerID string
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		newUser := model.User{
@@ -64,6 +105,7 @@ func (u *Users) EnsureBootstrapOwner(ctx context.Context, b config.Bootstrap) er
 		if err := u.db.WithContext(ctx).Create(&newUser).Error; err != nil {
 			return fmt.Errorf("create bootstrap owner: %w", err)
 		}
+		ownerID = newUser.ID
 		fmt.Printf("bootstrap: created owner %s\n", b.OwnerEmail)
 	case err != nil:
 		return fmt.Errorf("lookup bootstrap owner: %w", err)
@@ -75,7 +117,14 @@ func (u *Users) EnsureBootstrapOwner(ctx context.Context, b config.Bootstrap) er
 		}).Error; err != nil {
 			return fmt.Errorf("update bootstrap owner: %w", err)
 		}
+		ownerID = existing.ID
 		fmt.Printf("bootstrap: ensured owner %s\n", b.OwnerEmail)
+	}
+	// Idempotent: grant the owner access to the default warehouse if no
+	// existing membership for it. Heals owners created on a fresh DB where
+	// migration 00019's at-migration-time grant had no users to grant.
+	if err := grantDefaultWarehouse(u.db.WithContext(ctx), ownerID); err != nil {
+		return fmt.Errorf("bootstrap owner default warehouse grant: %w", err)
 	}
 	return nil
 }
@@ -127,6 +176,38 @@ func (u *Users) ResolveUsers(
 	return connect.NewResponse(&userifacev1.ResolveUsersResponse{Users: out}), nil
 }
 
+// SearchUsers — server-side fuzzy search for the warehouse-detail "Add user"
+// picker. Mirrors SearchCustomers / SearchSuppliers. ILIKE on email + name.
+func (u *Users) SearchUsers(
+	ctx context.Context,
+	req *connect.Request[userifacev1.SearchUsersRequest],
+) (*connect.Response[userifacev1.SearchUsersResponse], error) {
+	limit := int(req.Msg.Limit)
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	q := strings.TrimSpace(req.Msg.Query)
+	type row struct {
+		ID    string `gorm:"column:id"`
+		Name  string `gorm:"column:name"`
+		Email string `gorm:"column:email"`
+	}
+	tx := u.db.WithContext(ctx).Model(&model.User{}).Select("id, name, email")
+	if q != "" {
+		like := "%" + q + "%"
+		tx = tx.Where("email ILIKE ? OR name ILIKE ?", like, like)
+	}
+	var rows []row
+	if err := tx.Order("email ASC").Limit(limit).Scan(&rows).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*userifacev1.UserRef, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &userifacev1.UserRef{Id: r.ID, Name: r.Name, Email: r.Email})
+	}
+	return connect.NewResponse(&userifacev1.SearchUsersResponse{Users: out}), nil
+}
+
 func (u *Users) CreateUser(
 	ctx context.Context,
 	req *connect.Request[userifacev1.CreateUserRequest],
@@ -158,6 +239,12 @@ func (u *Users) CreateUser(
 	}
 	if err := u.db.WithContext(ctx).Create(&user).Error; err != nil {
 		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("create user: %w", err))
+	}
+	// Grant the new user access to the default warehouse (their first usable
+	// location). Owners can later grant access to additional warehouses via
+	// the /warehouses admin UI.
+	if err := grantDefaultWarehouse(u.db.WithContext(ctx), user.ID); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("grant default warehouse: %w", err))
 	}
 
 	return connect.NewResponse(&userifacev1.CreateUserResponse{User: toProto(&user)}), nil

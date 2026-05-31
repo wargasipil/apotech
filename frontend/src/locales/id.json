@@ -574,7 +574,16 @@
     "editTitle": "Ubah gudang",
     "searchPlaceholder": "Cari kode atau nama…",
     "setAsDefault": "Jadikan utama",
-    "confirmSetDefault": "Jadikan \"{{name}}\" sebagai gudang utama?"
+    "confirmSetDefault": "Jadikan \"{{name}}\" sebagai gudang utama?",
+    "confirmArchive": "Arsipkan \"{{name}}\"?",
+    "usersSection": "Pengguna dengan akses",
+    "addUser": "Tambah pengguna",
+    "searchUserPlaceholder": "Cari berdasarkan email atau nama",
+    "revokeAccess": "Cabut akses",
+    "confirmRevoke": "Cabut akses {{email}}?",
+    "defaultForUser": "Default untuk pengguna ini",
+    "defaultLockedTooltip": "Sudah menjadi default pengguna — pindahkan default ke gudang lain.",
+    "noUsers": "Belum ada pengguna dengan akses."
   },
   "expiryBadge": {
     "expired": "kedaluwarsa",

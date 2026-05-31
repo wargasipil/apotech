@@ -1,4 +1,4 @@
-.PHONY: up down generate tidy run test-e2e test-browser test-all \
+.PHONY: up down reset-devel-data generate tidy run test-e2e test-browser test-all \
         migrate-up migrate-down migrate-status migrate-create \
         web-install web \
         embed-web build dist-windows docker-build docker-up docker-down installer \
@@ -18,6 +18,15 @@ up:
 
 down:
 	docker compose down
+
+# Wipe the dev DB and start fresh. Works in cmd.exe, PowerShell, and bash —
+# no shell idioms. `down -v` removes the named volume (the cluster); `up -d
+# --wait` blocks on the compose-defined healthcheck until Postgres accepts
+# connections. The next `make run` auto-applies migrations and creates the
+# bootstrap owner.
+reset-devel-data:
+	docker compose down -v
+	docker compose up -d --wait
 
 # --- Proto codegen -----------------------------------------------------------
 generate:

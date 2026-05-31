@@ -82,4 +82,45 @@ test.describe("TopBar warehouse picker", () => {
       await archiveWarehouse(page, seed.id);
     }
   });
+
+  // When the user has access to exactly one warehouse, the TopBar renders a
+  // read-only label (warehouse icon + `code · name`) instead of the searchable
+  // chip. We MOCK the ListUserWarehouses response with `page.route` to force
+  // the single-warehouse path without mutating any real OWNER memberships
+  // (mass-revoking + restoring is fragile across the shared dev DB).
+  test("single accessible warehouse renders a read-only label, not a clickable chip", async ({
+    page,
+  }) => {
+    // Intercept ListUserWarehouses and return a single-membership response.
+    const fakeWh = { id: "00000000-0000-0000-0000-000000000001", code: "SOLO", name: "Solo gudang", isDefault: true, active: true };
+    await page.route(
+      "**/api/warehouse_iface.v1.WarehouseService/ListUserWarehouses",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            memberships: [{
+              userId: "00000000-0000-0000-0000-000000000000",
+              warehouseId: fakeWh.id,
+              isDefault: true,
+            }],
+            warehouses: [fakeWh],
+          }),
+        });
+      },
+    );
+
+    await page.goto("/");
+
+    const labelText = `${fakeWh.code} · ${fakeWh.name}`;
+    // Label text is visible.
+    await expect(page.getByText(labelText)).toBeVisible();
+    // …but it is NOT inside a button (no chevron, no popover trigger).
+    await expect(
+      page.getByRole("button", { name: new RegExp(labelText) }),
+    ).toHaveCount(0);
+
+    await page.unroute("**/api/warehouse_iface.v1.WarehouseService/ListUserWarehouses");
+  });
 });

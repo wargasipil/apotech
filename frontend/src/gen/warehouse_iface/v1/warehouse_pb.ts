@@ -141,6 +141,228 @@ export class UserWarehouseMembership extends Message<UserWarehouseMembership> {
 }
 
 /**
+ * @generated from message warehouse_iface.v1.GetWarehouseRequest
+ */
+export class GetWarehouseRequest extends Message<GetWarehouseRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<GetWarehouseRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.GetWarehouseRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetWarehouseRequest {
+    return new GetWarehouseRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetWarehouseRequest {
+    return new GetWarehouseRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetWarehouseRequest {
+    return new GetWarehouseRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetWarehouseRequest | PlainMessage<GetWarehouseRequest> | undefined, b: GetWarehouseRequest | PlainMessage<GetWarehouseRequest> | undefined): boolean {
+    return proto3.util.equals(GetWarehouseRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message warehouse_iface.v1.GetWarehouseResponse
+ */
+export class GetWarehouseResponse extends Message<GetWarehouseResponse> {
+  /**
+   * @generated from field: warehouse_iface.v1.Warehouse warehouse = 1;
+   */
+  warehouse?: Warehouse;
+
+  constructor(data?: PartialMessage<GetWarehouseResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.GetWarehouseResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "warehouse", kind: "message", T: Warehouse },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetWarehouseResponse {
+    return new GetWarehouseResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetWarehouseResponse {
+    return new GetWarehouseResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetWarehouseResponse {
+    return new GetWarehouseResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetWarehouseResponse | PlainMessage<GetWarehouseResponse> | undefined, b: GetWarehouseResponse | PlainMessage<GetWarehouseResponse> | undefined): boolean {
+    return proto3.util.equals(GetWarehouseResponse, a, b);
+  }
+}
+
+/**
+ * WarehouseUser is a single row in the warehouse-detail "Users with access"
+ * table — denormalized join of users + user_warehouses for the OWNER admin.
+ *
+ * @generated from message warehouse_iface.v1.WarehouseUser
+ */
+export class WarehouseUser extends Message<WarehouseUser> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email = "";
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name = "";
+
+  /**
+   * "OWNER" / "PHARMACIST" / "CASHIER"
+   *
+   * @generated from field: string role = 4;
+   */
+  role = "";
+
+  /**
+   * is this warehouse THIS user's default?
+   *
+   * @generated from field: bool is_default = 5;
+   */
+  isDefault = false;
+
+  /**
+   * @generated from field: bool user_active = 6;
+   */
+  userActive = false;
+
+  constructor(data?: PartialMessage<WarehouseUser>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.WarehouseUser";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "is_default", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "user_active", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WarehouseUser {
+    return new WarehouseUser().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): WarehouseUser {
+    return new WarehouseUser().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): WarehouseUser {
+    return new WarehouseUser().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: WarehouseUser | PlainMessage<WarehouseUser> | undefined, b: WarehouseUser | PlainMessage<WarehouseUser> | undefined): boolean {
+    return proto3.util.equals(WarehouseUser, a, b);
+  }
+}
+
+/**
+ * @generated from message warehouse_iface.v1.ListWarehouseUsersRequest
+ */
+export class ListWarehouseUsersRequest extends Message<ListWarehouseUsersRequest> {
+  /**
+   * @generated from field: string warehouse_id = 1;
+   */
+  warehouseId = "";
+
+  constructor(data?: PartialMessage<ListWarehouseUsersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.ListWarehouseUsersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListWarehouseUsersRequest {
+    return new ListWarehouseUsersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListWarehouseUsersRequest {
+    return new ListWarehouseUsersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListWarehouseUsersRequest {
+    return new ListWarehouseUsersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListWarehouseUsersRequest | PlainMessage<ListWarehouseUsersRequest> | undefined, b: ListWarehouseUsersRequest | PlainMessage<ListWarehouseUsersRequest> | undefined): boolean {
+    return proto3.util.equals(ListWarehouseUsersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message warehouse_iface.v1.ListWarehouseUsersResponse
+ */
+export class ListWarehouseUsersResponse extends Message<ListWarehouseUsersResponse> {
+  /**
+   * @generated from field: repeated warehouse_iface.v1.WarehouseUser users = 1;
+   */
+  users: WarehouseUser[] = [];
+
+  constructor(data?: PartialMessage<ListWarehouseUsersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "warehouse_iface.v1.ListWarehouseUsersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "users", kind: "message", T: WarehouseUser, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListWarehouseUsersResponse {
+    return new ListWarehouseUsersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListWarehouseUsersResponse {
+    return new ListWarehouseUsersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListWarehouseUsersResponse {
+    return new ListWarehouseUsersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListWarehouseUsersResponse | PlainMessage<ListWarehouseUsersResponse> | undefined, b: ListWarehouseUsersResponse | PlainMessage<ListWarehouseUsersResponse> | undefined): boolean {
+    return proto3.util.equals(ListWarehouseUsersResponse, a, b);
+  }
+}
+
+/**
  * @generated from message warehouse_iface.v1.ListWarehousesRequest
  */
 export class ListWarehousesRequest extends Message<ListWarehousesRequest> {
