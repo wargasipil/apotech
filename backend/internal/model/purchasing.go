@@ -3,21 +3,28 @@ package model
 import "time"
 
 type PurchaseOrder struct {
-	ID            string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	PoNo          *string    `gorm:"uniqueIndex;column:po_no"`
-	SupplierID    string     `gorm:"not null;type:uuid;column:supplier_id"`
-	Status        string     `gorm:"not null;default:'DRAFT'"`
-	ExpectedAt    *time.Time `gorm:"type:date;column:expected_at"`
-	Note          string     `gorm:"not null;default:''"`
-	OrderedTotal  int64      `gorm:"not null;default:0;column:ordered_total"`
-	PaidAmount    int64      `gorm:"not null;default:0;column:paid_amount"`
-	CreatedBy     string     `gorm:"not null;type:uuid;column:created_by"`
-	BranchID      *string    `gorm:"type:uuid;column:branch_id"`
-	WarehouseID   string     `gorm:"not null;type:uuid;column:warehouse_id"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	SentAt        *time.Time `gorm:"column:sent_at"`
-	ClosedAt      *time.Time `gorm:"column:closed_at"`
+	ID           string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	PoNo         *string    `gorm:"uniqueIndex;column:po_no"`
+	SupplierID   string     `gorm:"not null;type:uuid;column:supplier_id"`
+	Status       string     `gorm:"not null;default:'DRAFT'"`
+	InvoiceNo    string     `gorm:"not null;default:'';column:invoice_no"`
+	InvoiceDate  *time.Time `gorm:"type:date;column:invoice_date"`
+	DueAt        *time.Time `gorm:"type:date;column:due_at"`
+	Note         string     `gorm:"not null;default:''"`
+	Subtotal     int64      `gorm:"not null;default:0;column:subtotal"`
+	CartDiscount int64      `gorm:"not null;default:0;column:cart_discount"`
+	PpnEnabled   bool       `gorm:"not null;default:false;column:ppn_enabled"`
+	PpnRate      int32      `gorm:"not null;default:11;column:ppn_rate"` // percent (0-100); ignored when PpnEnabled=false
+	PpnAmount    int64      `gorm:"not null;default:0;column:ppn_amount"`
+	OrderedTotal int64      `gorm:"not null;default:0;column:ordered_total"` // = Subtotal − CartDiscount + PpnAmount
+	PaidAmount   int64      `gorm:"not null;default:0;column:paid_amount"`
+	CreatedBy    string     `gorm:"not null;type:uuid;column:created_by"`
+	BranchID     *string    `gorm:"type:uuid;column:branch_id"`
+	WarehouseID  string     `gorm:"not null;type:uuid;column:warehouse_id"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	SentAt       *time.Time `gorm:"column:sent_at"`
+	ClosedAt     *time.Time `gorm:"column:closed_at"`
 
 	Items []PurchaseOrderItem `gorm:"foreignKey:PurchaseOrderID"`
 }

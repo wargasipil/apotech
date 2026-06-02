@@ -8,6 +8,7 @@ import {
   Input,
   Link as ChakraLink,
   Stack,
+  Switch,
   Table,
   Text,
 } from "@chakra-ui/react";
@@ -62,11 +63,24 @@ export default function NewPurchaseOrder() {
   const createMut = useCreatePurchaseOrderMutation();
 
   const [supplierId, setSupplierId] = useState("");
-  const [expectedAt, setExpectedAt] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState("");
+  const [dueAt, setDueAt] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [cartDiscount, setCartDiscount] = useState(0);
+  const [ppnEnabled, setPpnEnabled] = useState(false);
+  const [ppnRate, setPpnRate] = useState(11); // percent; current Indonesian default
 
-  const total = useMemo(() => lines.reduce((sum, l) => sum + l.lineTotal, 0), [lines]);
+  const subtotal = useMemo(
+    () => lines.reduce((sum, l) => sum + l.lineTotal, 0),
+    [lines],
+  );
+  const discountClamped = Math.max(0, Math.min(cartDiscount, subtotal));
+  const dpp = subtotal - discountClamped;
+  const rateClamped = Math.max(0, Math.min(100, ppnRate || 0));
+  const ppnAmount = ppnEnabled ? Math.round((dpp * rateClamped) / 100) : 0;
+  const total = dpp + ppnAmount;
 
   const updateLine = (idx: number, patch: Partial<Line>) => {
     setLines((cur) => cur.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -89,8 +103,13 @@ export default function NewPurchaseOrder() {
     try {
       const res = await createMut.mutateAsync({
         supplierId,
-        expectedAt,
+        invoiceNo,
+        invoiceDate,
+        dueAt,
         note,
+        cartDiscount: BigInt(discountClamped),
+        ppnEnabled,
+        ppnRate: rateClamped,
         items: lines.map((l) => ({
           medicineId: l.medicineId,
           medicineUnitId: l.medicineUnitId,
@@ -140,11 +159,25 @@ export default function NewPurchaseOrder() {
               {t("purchasing.addSupplierLink")}
             </ChakraLink>
           </Box>
-          <Box flex="1" minW="200px">
+          <Box flex="1" minW="180px">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
-              {t("purchasing.expectedAt")}
+              {t("purchasing.invoiceNo")}
             </Text>
-            <DatePickerField value={expectedAt} onChange={setExpectedAt} />
+            <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
+          </Box>
+        </Flex>
+        <Flex gap={3} wrap="wrap">
+          <Box flex="1" minW="180px">
+            <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
+              {t("purchasing.invoiceDate")}
+            </Text>
+            <DatePickerField value={invoiceDate} onChange={setInvoiceDate} />
+          </Box>
+          <Box flex="1" minW="180px">
+            <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
+              {t("purchasing.dueAt")}
+            </Text>
+            <DatePickerField value={dueAt} onChange={setDueAt} />
           </Box>
           <Box flex="2" minW="240px">
             <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={1}>
@@ -245,12 +278,64 @@ export default function NewPurchaseOrder() {
               ))}
             </Table.Body>
           </Table.Root>
-          <HStack justify="flex-end" mt={2}>
-            <Text fontWeight="semibold">{t("purchasing.subtotal")}:</Text>
-            <Text fontWeight="semibold" fontFamily="mono">
-              {formatMoney(total)}
-            </Text>
-          </HStack>
+        </Box>
+
+        <Box
+          borderWidth="1px"
+          borderRadius="md"
+          p={4}
+          maxW="420px"
+          alignSelf="flex-end"
+          w="full"
+        >
+          <Stack gap={2}>
+            <HStack justify="space-between">
+              <Text color="fg.muted">{t("purchasing.subtotal")}</Text>
+              <Text fontFamily="mono">{formatMoney(subtotal)}</Text>
+            </HStack>
+            <HStack justify="space-between" align="center">
+              <Text color="fg.muted">{t("purchasing.cartDiscount")}</Text>
+              <MoneyInput
+                size="sm"
+                width="140px"
+                value={cartDiscount}
+                onChange={(raw) => setCartDiscount(Number(raw || 0))}
+              />
+            </HStack>
+            <HStack justify="space-between" align="center">
+              <HStack gap={2}>
+                <Switch.Root
+                  checked={ppnEnabled}
+                  onCheckedChange={(e) => setPpnEnabled(e.checked)}
+                >
+                  <Switch.HiddenInput />
+                  <Switch.Control />
+                </Switch.Root>
+                <Text color="fg.muted">{t("purchasing.ppn")}</Text>
+                <Input
+                  size="xs"
+                  type="number"
+                  width="60px"
+                  value={ppnRate}
+                  onChange={(e) => setPpnRate(parseInt(e.target.value, 10) || 0)}
+                  disabled={!ppnEnabled}
+                  min={0}
+                  max={100}
+                  aria-label={t("purchasing.ppnRate")}
+                />
+                <Text color="fg.muted">%</Text>
+              </HStack>
+              <Text fontFamily="mono" color={ppnEnabled ? "fg" : "fg.muted"}>
+                {formatMoney(ppnAmount)}
+              </Text>
+            </HStack>
+            <HStack justify="space-between" pt={2} borderTopWidth="1px">
+              <Text fontWeight="bold">{t("purchasing.total")}</Text>
+              <Text fontWeight="bold" fontFamily="mono">
+                {formatMoney(total)}
+              </Text>
+            </HStack>
+          </Stack>
         </Box>
 
         <HStack justify="flex-end" gap={2} pt={2}>

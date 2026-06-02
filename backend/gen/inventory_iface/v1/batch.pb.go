@@ -33,6 +33,10 @@ type Batch struct {
 	ReceivedAt      string                 `protobuf:"bytes,7,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`
 	CurrentQuantity int64                  `protobuf:"varint,8,opt,name=current_quantity,json=currentQuantity,proto3" json:"current_quantity,omitempty"`
 	CreatedAt       int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// PO that originated this batch via its receipt (empty for legacy / manual
+	// CreateBatch path). Populated as display-only enrichment in ListBatches.
+	PurchaseOrderId string `protobuf:"bytes,10,opt,name=purchase_order_id,json=purchaseOrderId,proto3" json:"purchase_order_id,omitempty"`
+	PoNo            string `protobuf:"bytes,11,opt,name=po_no,json=poNo,proto3" json:"po_no,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -130,16 +134,31 @@ func (x *Batch) GetCreatedAt() int64 {
 	return 0
 }
 
+func (x *Batch) GetPurchaseOrderId() string {
+	if x != nil {
+		return x.PurchaseOrderId
+	}
+	return ""
+}
+
+func (x *Batch) GetPoNo() string {
+	if x != nil {
+		return x.PoNo
+	}
+	return ""
+}
+
 type ListBatchesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MedicineId    string                 `protobuf:"bytes,1,opt,name=medicine_id,json=medicineId,proto3" json:"medicine_id,omitempty"`
 	OnlyInStock   bool                   `protobuf:"varint,2,opt,name=only_in_stock,json=onlyInStock,proto3" json:"only_in_stock,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
-	Query         string                 `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`                          // ILIKE batch_number / medicine name / sku
-	FromUnix      int64                  `protobuf:"varint,6,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`   // date-range lower bound (0 = unbounded)
-	ToUnix        int64                  `protobuf:"varint,7,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`         // date-range upper bound (exclusive; 0 = unbounded)
-	DateField     string                 `protobuf:"bytes,8,opt,name=date_field,json=dateField,proto3" json:"date_field,omitempty"` // which date the range filters: "received" | "expiry"
+	Query         string                 `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`                             // ILIKE batch_number / medicine name / sku
+	FromUnix      int64                  `protobuf:"varint,6,opt,name=from_unix,json=fromUnix,proto3" json:"from_unix,omitempty"`      // date-range lower bound (0 = unbounded)
+	ToUnix        int64                  `protobuf:"varint,7,opt,name=to_unix,json=toUnix,proto3" json:"to_unix,omitempty"`            // date-range upper bound (exclusive; 0 = unbounded)
+	DateField     string                 `protobuf:"bytes,8,opt,name=date_field,json=dateField,proto3" json:"date_field,omitempty"`    // which date the range filters: "received" | "expiry"
+	SupplierId    string                 `protobuf:"bytes,9,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"` // optional supplier ID filter
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,6 +245,13 @@ func (x *ListBatchesRequest) GetToUnix() int64 {
 func (x *ListBatchesRequest) GetDateField() string {
 	if x != nil {
 		return x.DateField
+	}
+	return ""
+}
+
+func (x *ListBatchesRequest) GetSupplierId() string {
+	if x != nil {
+		return x.SupplierId
 	}
 	return ""
 }
@@ -899,7 +925,7 @@ var File_inventory_iface_v1_batch_proto protoreflect.FileDescriptor
 
 const file_inventory_iface_v1_batch_proto_rawDesc = "" +
 	"\n" +
-	"\x1einventory_iface/v1/batch.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xa7\x02\n" +
+	"\x1einventory_iface/v1/batch.proto\x12\x12inventory_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xe8\x02\n" +
 	"\x05Batch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vmedicine_id\x18\x02 \x01(\tR\n" +
@@ -915,7 +941,10 @@ const file_inventory_iface_v1_batch_proto_rawDesc = "" +
 	"receivedAt\x12)\n" +
 	"\x10current_quantity\x18\b \x01(\x03R\x0fcurrentQuantity\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\x03R\tcreatedAt\"\xf2\x01\n" +
+	"created_at\x18\t \x01(\x03R\tcreatedAt\x12*\n" +
+	"\x11purchase_order_id\x18\n" +
+	" \x01(\tR\x0fpurchaseOrderId\x12\x13\n" +
+	"\x05po_no\x18\v \x01(\tR\x04poNo\"\x93\x02\n" +
 	"\x12ListBatchesRequest\x12\x1f\n" +
 	"\vmedicine_id\x18\x01 \x01(\tR\n" +
 	"medicineId\x12\"\n" +
@@ -926,7 +955,9 @@ const file_inventory_iface_v1_batch_proto_rawDesc = "" +
 	"\tfrom_unix\x18\x06 \x01(\x03R\bfromUnix\x12\x17\n" +
 	"\ato_unix\x18\a \x01(\x03R\x06toUnix\x12\x1d\n" +
 	"\n" +
-	"date_field\x18\b \x01(\tR\tdateField\"`\n" +
+	"date_field\x18\b \x01(\tR\tdateField\x12\x1f\n" +
+	"\vsupplier_id\x18\t \x01(\tR\n" +
+	"supplierId\"`\n" +
 	"\x13ListBatchesResponse\x123\n" +
 	"\abatches\x18\x01 \x03(\v2\x19.inventory_iface.v1.BatchR\abatches\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"!\n" +

@@ -55,6 +55,19 @@ export class Batch extends Message<Batch> {
    */
   createdAt = protoInt64.zero;
 
+  /**
+   * PO that originated this batch via its receipt (empty for legacy / manual
+   * CreateBatch path). Populated as display-only enrichment in ListBatches.
+   *
+   * @generated from field: string purchase_order_id = 10;
+   */
+  purchaseOrderId = "";
+
+  /**
+   * @generated from field: string po_no = 11;
+   */
+  poNo = "";
+
   constructor(data?: PartialMessage<Batch>) {
     super();
     proto3.util.initPartial(data, this);
@@ -72,6 +85,8 @@ export class Batch extends Message<Batch> {
     { no: 7, name: "received_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "current_quantity", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 9, name: "created_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "purchase_order_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "po_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Batch {
@@ -143,6 +158,13 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
    */
   dateField = "";
 
+  /**
+   * optional supplier ID filter
+   *
+   * @generated from field: string supplier_id = 9;
+   */
+  supplierId = "";
+
   constructor(data?: PartialMessage<ListBatchesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -159,6 +181,7 @@ export class ListBatchesRequest extends Message<ListBatchesRequest> {
     { no: 6, name: "from_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "to_unix", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "date_field", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "supplier_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListBatchesRequest {

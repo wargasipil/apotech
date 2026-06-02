@@ -74,7 +74,7 @@ async function deleteBackupBestEffort(
 
 test.describe("Settings — Backups section", () => {
   test("renders heading + Create button + help text", async ({ page }) => {
-    await page.goto("/settings");
+    await page.goto("/settings/backups");
     // Section is below the low-stock-threshold form. The heading is the
     // primary regression guard: if the BackupsSection ever stops rendering,
     // this fails.
@@ -103,7 +103,7 @@ test.describe("Settings — Backups section", () => {
 
     const backupName = seed.name;
     try {
-      await page.goto("/settings");
+      await page.goto("/settings/backups");
 
       // The seeded backup appears as a row in the table.
       const row = page.getByRole("row", { name: new RegExp(backupName) });

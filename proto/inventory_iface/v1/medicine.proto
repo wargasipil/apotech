@@ -7,10 +7,11 @@ import "auth_iface/v1/policy.proto";
 option go_package = "github.com/apotech/backend/gen/inventory_iface/v1;inventoryifacev1";
 
 message Medicine {
+  reserved 4;
+  reserved "manufacturer";
   string id = 1;
   string sku = 2;
   string name = 3;
-  string manufacturer = 4;
   string unit = 5;
   int64 unit_price = 6;
   bool prescription_required = 7;
@@ -24,6 +25,8 @@ message Medicine {
   int64 stock_valuation = 15;         // global value at cost = Σ qty × cost_price (GetMedicine only)
   repeated MedicineUnit units = 16;   // units of measure (base + larger packs)
   int64 reference_cost = 17;          // latest batch cost_price, per base unit (GetMedicine only; 0 if none)
+  string last_stocktake_date = 18;    // YYYY-MM-DD of most recent COMPLETED stocktake touching this medicine in the active warehouse (GetMedicine only; empty if none)
+  int64 last_stocktake_variance = 19; // signed sum(counted_qty − expected_qty) for this medicine's lines in that session, BASE units (GetMedicine only)
 }
 
 // A unit of measure for a medicine. Stock is stored in the base unit (factor 1);
@@ -130,6 +133,9 @@ message ListMedicinesRequest {
   int32 limit = 2;
   int32 offset = 3;
   string query = 4;          // optional ILIKE name / sku
+  string opname_before = 5;  // YYYY-MM-DD. When set, include only medicines whose latest
+                             // COMPLETED opname in the active warehouse is < this date OR
+                             // who have never been counted there (overdue / never-counted).
 }
 message ListMedicinesResponse {
   repeated Medicine medicines = 1;
@@ -140,9 +146,10 @@ message GetMedicineRequest { string id = 1; }
 message GetMedicineResponse { Medicine medicine = 1; }
 
 message CreateMedicineRequest {
+  reserved 3;
+  reserved "manufacturer";
   string sku = 1;
   string name = 2;
-  string manufacturer = 3;
   string unit = 4;            // base unit name (also used if `units` is empty)
   int64 unit_price = 5;       // base unit sell price
   bool prescription_required = 6;
@@ -151,9 +158,10 @@ message CreateMedicineRequest {
 message CreateMedicineResponse { Medicine medicine = 1; }
 
 message UpdateMedicineRequest {
+  reserved 3;
+  reserved "manufacturer";
   string id = 1;
   string name = 2;
-  string manufacturer = 3;
   string unit = 4;
   int64 unit_price = 5;
   bool prescription_required = 6;

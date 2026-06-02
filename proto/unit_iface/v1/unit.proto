@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package unit_iface.v1;
+
+import "auth_iface/v1/policy.proto";
+
+option go_package = "github.com/apotech/backend/gen/unit_iface/v1;unitifacev1";
+
+// Global unit catalog managed in Settings. Base units (tablet, ml) carry a set
+// of derivatives (strip ×10, box ×100). Forward-looking: serves as a preset
+// library for the medicine form. Existing `medicine_units` rows reference the
+// per-medicine table (unchanged); the catalog is not joined into POS / PO /
+// receipts at runtime.
+
+message UnitBase {
+  string id = 1;
+  string name = 2;
+  bool active = 3;
+  int64 created_at = 4;
+  repeated UnitDerivative derivatives = 5; // hydrated active derivatives, by sort_order
+}
+
+message UnitDerivative {
+  string id = 1;
+  string base_unit_id = 2;
+  string name = 3;
+  int64 factor = 4;         // base units per 1 of this derivative; > 1
+  int32 sort_order = 5;
+  bool active = 6;
+}
+
+service UnitService {
+  rpc ListUnitBases(ListUnitBasesRequest) returns (ListUnitBasesResponse) {
+    // Open to all authenticated roles — POS / list pages may read it for
+    // display formatting.
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+    option (auth_iface.v1.allowed_roles) = ROLE_CASHIER;
+  }
+  rpc CreateUnitBase(CreateUnitBaseRequest) returns (CreateUnitBaseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc UpdateUnitBase(UpdateUnitBaseRequest) returns (UpdateUnitBaseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ArchiveUnitBase(ArchiveUnitBaseRequest) returns (ArchiveUnitBaseResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc CreateUnitDerivative(CreateUnitDerivativeRequest) returns (CreateUnitDerivativeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc UpdateUnitDerivative(UpdateUnitDerivativeRequest) returns (UpdateUnitDerivativeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+  rpc ArchiveUnitDerivative(ArchiveUnitDerivativeRequest) returns (ArchiveUnitDerivativeResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+  }
+}
+
+message ListUnitBasesRequest { bool include_inactive = 1; }
+message ListUnitBasesResponse { repeated UnitBase bases = 1; }
+
+message CreateUnitBaseRequest { string name = 1; }
+message CreateUnitBaseResponse { UnitBase base = 1; }
+
+message UpdateUnitBaseRequest {
+  string id = 1;
+  string name = 2;
+}
+message UpdateUnitBaseResponse { UnitBase base = 1; }
+
+message ArchiveUnitBaseRequest { string id = 1; }
+message ArchiveUnitBaseResponse { UnitBase base = 1; }
+
+message CreateUnitDerivativeRequest {
+  string base_unit_id = 1;
+  string name = 2;
+  int64 factor = 3;
+  int32 sort_order = 4;
+}
+message CreateUnitDerivativeResponse { UnitDerivative derivative = 1; }
+
+message UpdateUnitDerivativeRequest {
+  string id = 1;
+  string name = 2;
+  int64 factor = 3;
+  int32 sort_order = 4;
+}
+message UpdateUnitDerivativeResponse { UnitDerivative derivative = 1; }
+
+message ArchiveUnitDerivativeRequest { string id = 1; }
+message ArchiveUnitDerivativeResponse { UnitDerivative derivative = 1; }

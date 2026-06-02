@@ -21,6 +21,7 @@ import { StocktakeService } from "../gen/stocktake_iface/v1/stocktake_connect";
 import { WarehouseService } from "../gen/warehouse_iface/v1/warehouse_connect";
 import { StockTransferService } from "../gen/warehouse_iface/v1/transfer_connect";
 import { SettingsService } from "../gen/settings_iface/v1/settings_connect";
+import { UnitService } from "../gen/unit_iface/v1/unit_connect";
 import { BackupService } from "../gen/backup_iface/v1/backup_connect";
 import { transport } from "./transport";
 
@@ -45,4 +46,5 @@ export const stocktakeClient = createPromiseClient(StocktakeService, transport);
 export const warehouseClient = createPromiseClient(WarehouseService, transport);
 export const stockTransferClient = createPromiseClient(StockTransferService, transport);
 export const settingsClient = createPromiseClient(SettingsService, transport);
+export const unitClient = createPromiseClient(UnitService, transport);
 export const backupClient = createPromiseClient(BackupService, transport);

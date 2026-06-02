@@ -48,6 +48,43 @@ test.describe("warehouses", () => {
     await expect(drawer.getByText(/To warehouse/i)).toBeVisible();
   });
 
+  test("admin: edit a warehouse changes the displayed name", async ({ page }) => {
+    await page.goto("/warehouses");
+    // Seed via the UI Add drawer (same as the other tests in this file).
+    const code = `EDT${Date.now() % 1000000}`;
+    const originalName = "Original gudang";
+    const newName = "Renamed gudang";
+    await page.getByRole("button", { name: "Add" }).click();
+    const addDrawer = page.getByRole("dialog");
+    await addDrawer.locator("input").nth(0).fill(code);
+    await addDrawer.locator("input").nth(1).fill(originalName);
+    await addDrawer.getByRole("button", { name: "Save" }).click();
+    await expect(addDrawer).toBeHidden();
+
+    // Search for our row, then click it → /warehouses/:id detail page where the
+    // edit affordance lives (an "Edit" button opens the drawer).
+    await page.getByPlaceholder(/Search code or name|Cari kode/i).fill(code);
+    await page.waitForTimeout(400);
+    await page.getByRole("cell", { name: code }).click();
+    await page.waitForURL(/\/warehouses\/[0-9a-f-]{36}$/);
+
+    // Open the edit drawer, change name, save.
+    await page.getByRole("button", { name: /^Edit$|^Ubah$/ }).click();
+    const editDrawer = page.getByRole("dialog");
+    await expect(editDrawer).toBeVisible();
+    // The Name input — second input in the drawer (first is the immutable Code).
+    const nameInput = editDrawer.locator("input").nth(1);
+    await nameInput.fill(newName);
+    await editDrawer.getByRole("button", { name: /^Save$|^Simpan$/ }).click();
+    await expect(editDrawer).toBeHidden();
+
+    // Back to the list, search again, confirm new name shows in the row.
+    await page.goto("/warehouses");
+    await page.getByPlaceholder(/Search code or name|Cari kode/i).fill(code);
+    await page.waitForTimeout(400);
+    await expect(page.getByRole("cell", { name: newName })).toBeVisible();
+  });
+
   test("POS asks which warehouse when none is chosen", async ({ page }) => {
     // Ensure the owner has at least two warehouses so the gate is shown.
     await page.goto("/warehouses");

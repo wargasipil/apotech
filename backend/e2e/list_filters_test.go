@@ -154,3 +154,80 @@ func TestListFilters_SearchAndDateRange(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, flHasTransfer(notHere.Msg.Transfers, trID), "transfer absent from an unrelated warehouse's list")
 }
+
+// TestListBatches_SupplierFilter pins the new `supplier_id` filter on
+// ListBatches: rows are constrained to lots from the specified supplier.
+func TestListBatches_SupplierFilter(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	supA, err := env.Suppliers.CreateSupplier(ctx, authReq(env, t,
+		&inventoryifacev1.CreateSupplierRequest{
+			Name: "Filter A", Code: fmt.Sprintf("FSA%d", uniq%100000),
+		}))
+	require.NoError(t, err)
+	supB, err := env.Suppliers.CreateSupplier(ctx, authReq(env, t,
+		&inventoryifacev1.CreateSupplierRequest{
+			Name: "Filter B", Code: fmt.Sprintf("FSB%d", uniq%100000),
+		}))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = env.Suppliers.ArchiveSupplier(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveSupplierRequest{Id: supA.Msg.Supplier.Id}))
+		_, _ = env.Suppliers.ArchiveSupplier(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveSupplierRequest{Id: supB.Msg.Supplier.Id}))
+	})
+
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("fls-%d", uniq), Name: fmt.Sprintf("FLS-Med-%d", uniq),
+			Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	batchA, err := env.Batches.CreateBatch(ctx, authReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, SupplierId: supA.Msg.Supplier.Id,
+			BatchNumber: fmt.Sprintf("FLS-A-%d", uniq), ExpiryDate: "2099-12-31",
+			CostPrice: 100, InitialQuantity: 5,
+		}))
+	require.NoError(t, err)
+	batchB, err := env.Batches.CreateBatch(ctx, authReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, SupplierId: supB.Msg.Supplier.Id,
+			BatchNumber: fmt.Sprintf("FLS-B-%d", uniq), ExpiryDate: "2099-12-31",
+			CostPrice: 100, InitialQuantity: 5,
+		}))
+	require.NoError(t, err)
+
+	// Filter on supA → only batchA.
+	resA, err := env.Batches.ListBatches(ctx, authReq(env, t,
+		&inventoryifacev1.ListBatchesRequest{
+			MedicineId: medID, SupplierId: supA.Msg.Supplier.Id, Limit: 50,
+		}))
+	require.NoError(t, err)
+	require.True(t, flHasBatch(resA.Msg.Batches, batchA.Msg.Batch.Id))
+	require.False(t, flHasBatch(resA.Msg.Batches, batchB.Msg.Batch.Id))
+
+	// Filter on supB → only batchB.
+	resB, err := env.Batches.ListBatches(ctx, authReq(env, t,
+		&inventoryifacev1.ListBatchesRequest{
+			MedicineId: medID, SupplierId: supB.Msg.Supplier.Id, Limit: 50,
+		}))
+	require.NoError(t, err)
+	require.True(t, flHasBatch(resB.Msg.Batches, batchB.Msg.Batch.Id))
+	require.False(t, flHasBatch(resB.Msg.Batches, batchA.Msg.Batch.Id))
+
+	// No supplier filter → both visible.
+	resAll, err := env.Batches.ListBatches(ctx, authReq(env, t,
+		&inventoryifacev1.ListBatchesRequest{MedicineId: medID, Limit: 50}))
+	require.NoError(t, err)
+	require.True(t, flHasBatch(resAll.Msg.Batches, batchA.Msg.Batch.Id))
+	require.True(t, flHasBatch(resAll.Msg.Batches, batchB.Msg.Batch.Id))
+}

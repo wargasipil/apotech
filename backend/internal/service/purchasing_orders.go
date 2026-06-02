@@ -23,7 +23,36 @@ const (
 	poStatusReceived           = "RECEIVED"
 	poStatusClosed             = "CLOSED"
 	poStatusVoided             = "VOIDED"
+	defaultPPNRate             = 11 // Indonesia's standard PPN rate as of 2026
 )
+
+// computePOTotals computes PPN-exclusive purchase totals.
+// dpp = subtotal − cart_discount; ppn = ppnEnabled ? round(dpp × rate%) : 0;
+// ordered_total = dpp + ppn. cartDiscount is clamped to [0, subtotal]. rate
+// falls back to the Indonesia default (11) when 0/negative.
+func computePOTotals(items []model.PurchaseOrderItem, cartDiscount int64, ppnEnabled bool, ppnRate int32) (subtotal, discount int64, effectiveRate int32, ppn, total int64) {
+	for _, it := range items {
+		subtotal += it.Subtotal
+	}
+	if cartDiscount < 0 {
+		cartDiscount = 0
+	}
+	if cartDiscount > subtotal {
+		cartDiscount = subtotal
+	}
+	dpp := subtotal - cartDiscount
+	effectiveRate = ppnRate
+	if effectiveRate <= 0 {
+		effectiveRate = defaultPPNRate
+	}
+	if effectiveRate > 100 {
+		effectiveRate = 100
+	}
+	if ppnEnabled {
+		ppn = (dpp*int64(effectiveRate) + 50) / 100 // round to nearest rupiah
+	}
+	return subtotal, cartDiscount, effectiveRate, ppn, dpp + ppn
+}
 
 type PurchaseOrders struct {
 	db *gorm.DB
@@ -189,7 +218,11 @@ func (p *PurchaseOrders) enrichList(ctx context.Context, orders []*purchasingifa
 	for _, po := range orders {
 		if info, ok := rcvByPO[po.Id]; ok {
 			po.ReceivedAt = info.at
-			po.InvoiceNo = info.inv
+			// Only fall back to the latest receipt's faktur when the PO
+			// has no faktur of its own (legacy rows pre-00027).
+			if po.InvoiceNo == "" {
+				po.InvoiceNo = info.inv
+			}
 		}
 	}
 
@@ -263,16 +296,22 @@ func (p *PurchaseOrders) CreatePurchaseOrder(
 			SupplierID:  req.Msg.SupplierId,
 			Status:      poStatusDraft,
 			Note:        strings.TrimSpace(req.Msg.Note),
+			InvoiceNo:   strings.TrimSpace(req.Msg.InvoiceNo),
 			CreatedBy:   caller.UserID,
 			WarehouseID: warehouseID,
+			PpnEnabled:  req.Msg.PpnEnabled,
 		}
-		if e, err := parseDateMaybe(req.Msg.ExpectedAt); err != nil {
+		if e, err := parseDateMaybe(req.Msg.InvoiceDate); err != nil {
 			return connect.NewError(connect.CodeInvalidArgument, err)
 		} else if e != nil {
-			po.ExpectedAt = e
+			po.InvoiceDate = e
+		}
+		if e, err := parseDateMaybe(req.Msg.DueAt); err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		} else if e != nil {
+			po.DueAt = e
 		}
 
-		var subtotal int64
 		var items []model.PurchaseOrderItem
 		for _, in := range req.Msg.Items {
 			if in.OrderedQty <= 0 {
@@ -295,10 +334,14 @@ func (p *PurchaseOrders) CreatePurchaseOrder(
 				UnitName:       unit.Name,
 				UnitFactor:     unit.Factor,
 			}
-			subtotal += it.Subtotal
 			items = append(items, it)
 		}
-		po.OrderedTotal = subtotal
+		subtotal, discount, rate, ppn, total := computePOTotals(items, req.Msg.CartDiscount, req.Msg.PpnEnabled, req.Msg.PpnRate)
+		po.Subtotal = subtotal
+		po.CartDiscount = discount
+		po.PpnRate = rate
+		po.PpnAmount = ppn
+		po.OrderedTotal = total
 
 		// Assign PO number up-front (per-year sequence).
 		poNo, err := assignPONo(tx, time.Now())
@@ -342,23 +385,33 @@ func (p *PurchaseOrders) UpdatePurchaseOrder(
 			return connect.NewError(connect.CodeFailedPrecondition,
 				fmt.Errorf("only DRAFT POs are editable; this one is %s", po.Status))
 		}
-		updates := map[string]any{"note": strings.TrimSpace(req.Msg.Note)}
-		if e, err := parseDateMaybe(req.Msg.ExpectedAt); err != nil {
+		updates := map[string]any{
+			"note":         strings.TrimSpace(req.Msg.Note),
+			"invoice_no":   strings.TrimSpace(req.Msg.InvoiceNo),
+			"ppn_enabled":  req.Msg.PpnEnabled,
+		}
+		if e, err := parseDateMaybe(req.Msg.InvoiceDate); err != nil {
 			return connect.NewError(connect.CodeInvalidArgument, err)
 		} else {
-			updates["expected_at"] = e
+			updates["invoice_date"] = e
+		}
+		if e, err := parseDateMaybe(req.Msg.DueAt); err != nil {
+			return connect.NewError(connect.CodeInvalidArgument, err)
+		} else {
+			updates["due_at"] = e
 		}
 		if err := tx.Model(po).Updates(updates).Error; err != nil {
 			return connect.NewError(connect.CodeInternal, err)
 		}
 
-		// Full replace of items only if provided. Empty items list = leave alone.
+		// Recompute totals: either with the new items (if provided) or with the
+		// existing items reloaded from DB. Either way the PPN/discount inputs
+		// from the request drive the math.
+		var items []model.PurchaseOrderItem
 		if len(req.Msg.Items) > 0 {
 			if err := tx.Where("purchase_order_id = ?", po.ID).Delete(&model.PurchaseOrderItem{}).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
-			var subtotal int64
-			var items []model.PurchaseOrderItem
 			for _, in := range req.Msg.Items {
 				if in.OrderedQty <= 0 {
 					return connect.NewError(connect.CodeInvalidArgument, errors.New("ordered_qty must be > 0"))
@@ -378,15 +431,25 @@ func (p *PurchaseOrders) UpdatePurchaseOrder(
 					UnitName:        unit.Name,
 					UnitFactor:      unit.Factor,
 				}
-				subtotal += it.Subtotal
 				items = append(items, it)
 			}
 			if err := tx.Create(&items).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
-			if err := tx.Model(po).Update("ordered_total", subtotal).Error; err != nil {
+		} else {
+			if err := tx.Where("purchase_order_id = ?", po.ID).Find(&items).Error; err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
+		}
+		subtotal, discount, rate, ppn, total := computePOTotals(items, req.Msg.CartDiscount, req.Msg.PpnEnabled, req.Msg.PpnRate)
+		if err := tx.Model(po).Updates(map[string]any{
+			"subtotal":      subtotal,
+			"cart_discount": discount,
+			"ppn_rate":      rate,
+			"ppn_amount":    ppn,
+			"ordered_total": total,
+		}).Error; err != nil {
+			return connect.NewError(connect.CodeInternal, err)
 		}
 		return nil
 	})
@@ -628,6 +691,12 @@ func poToProto(po *model.PurchaseOrder) *purchasingifacev1.PurchaseOrder {
 		SupplierId:   po.SupplierID,
 		Status:       poStatusFromString(po.Status),
 		Note:         po.Note,
+		InvoiceNo:    po.InvoiceNo,
+		Subtotal:     po.Subtotal,
+		CartDiscount: po.CartDiscount,
+		PpnEnabled:   po.PpnEnabled,
+		PpnRate:      po.PpnRate,
+		PpnAmount:    po.PpnAmount,
 		OrderedTotal: po.OrderedTotal,
 		PaidAmount:   po.PaidAmount,
 		Outstanding:  po.OrderedTotal - po.PaidAmount,
@@ -638,8 +707,11 @@ func poToProto(po *model.PurchaseOrder) *purchasingifacev1.PurchaseOrder {
 	if po.PoNo != nil {
 		out.PoNo = *po.PoNo
 	}
-	if po.ExpectedAt != nil {
-		out.ExpectedAt = po.ExpectedAt.Format("2006-01-02")
+	if po.InvoiceDate != nil {
+		out.InvoiceDate = po.InvoiceDate.Format("2006-01-02")
+	}
+	if po.DueAt != nil {
+		out.DueAt = po.DueAt.Format("2006-01-02")
 	}
 	if po.BranchID != nil {
 		out.BranchId = *po.BranchID

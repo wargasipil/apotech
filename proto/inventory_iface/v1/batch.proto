@@ -16,6 +16,10 @@ message Batch {
   string received_at = 7;
   int64 current_quantity = 8;
   int64 created_at = 9;
+  // PO that originated this batch via its receipt (empty for legacy / manual
+  // CreateBatch path). Populated as display-only enrichment in ListBatches.
+  string purchase_order_id = 10;
+  string po_no = 11;
 }
 
 service BatchService {
@@ -60,6 +64,7 @@ message ListBatchesRequest {
   int64 from_unix = 6;     // date-range lower bound (0 = unbounded)
   int64 to_unix = 7;       // date-range upper bound (exclusive; 0 = unbounded)
   string date_field = 8;   // which date the range filters: "received" | "expiry"
+  string supplier_id = 9;  // optional supplier ID filter
 }
 message ListBatchesResponse {
   repeated Batch batches = 1;

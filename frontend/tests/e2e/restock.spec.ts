@@ -197,4 +197,56 @@ test.describe("restock (purchase order) end-to-end", () => {
       await cleanup(page, { medicineId: ids.medicineId, supplierId: ids.supplierId });
     }
   });
+
+  // Cart-level discount + variable PPN rate drive the totals math; detail
+  // page surfaces the breakdown including the chosen rate. Two spinbuttons
+  // exist on the page: the items-table Qty (scoped via `table`) and the
+  // totals-card rate input (outside the table).
+  test("create PO with PPN @ variable rate updates totals + detail shows rate", async ({
+    page,
+  }) => {
+    const m = String(Date.now());
+    const ids = await seed(page, m);
+    let poId: string | undefined;
+    try {
+      await page.goto("/purchasing/new");
+
+      // Supplier.
+      await page.getByPlaceholder("Select supplier").fill(`Restock Supplier ${m}`);
+      await page.waitForTimeout(700);
+      await page.getByRole("option", { name: new RegExp(`Restock Supplier ${m}`) }).click();
+
+      // Item line: base unit (tablet), qty 10 @ line total 100_000.
+      await page.getByPlaceholder("Select medicine").fill(`Restock Med ${m}`);
+      await page.waitForTimeout(700);
+      await page.getByRole("option", { name: new RegExp(`Restock Med ${m}`) }).click();
+      await page.getByRole("table").getByRole("spinbutton").first().fill("10");
+      await page.getByRole("table").getByRole("textbox").fill("100000");
+
+      // Toggle PPN on at the default rate (11). Chakra Switch.HiddenInput is
+      // display:none, so force-click the only checkbox on this page.
+      await page.getByRole("checkbox").click({ force: true });
+      // 100 000 × 11% = 11 000 → total 111 000.
+      await expect(page.getByText(/111[.,]000/).first()).toBeVisible();
+
+      // Change the rate to 12% (Indonesian rate transition).
+      // The rate spinbutton is the rate input in the totals card — i.e. the
+      // only non-table spinbutton on the page.
+      const rateInput = page.getByLabel("PPN rate (%)");
+      await rateInput.fill("12");
+      // 100 000 × 12% = 12 000 → total 112 000.
+      await expect(page.getByText(/112[.,]000/).first()).toBeVisible();
+
+      // Create.
+      await page.getByRole("button", { name: "Create" }).click();
+      await page.waitForURL(/\/purchasing\/[0-9a-f-]{36}$/);
+      poId = page.url().split("/").pop();
+
+      // Detail page totals breakdown shows the chosen rate.
+      await expect(page.getByText("PPN 12%")).toBeVisible();
+      await expect(page.getByText(/112[.,]000/).first()).toBeVisible();
+    } finally {
+      await cleanup(page, { ...ids, poId });
+    }
+  });
 });

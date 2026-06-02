@@ -18,7 +18,6 @@ import { useCreateMedicineMutation, useUpdateMedicineMutation } from "../../quer
 const Schema = z.object({
   sku: z.string().min(1),
   name: z.string().min(1),
-  manufacturer: z.string(),
   unit: z.string().min(1),
   unitPrice: z.coerce.bigint().min(0n),
   prescriptionRequired: z.boolean(),
@@ -123,11 +122,6 @@ function MedicineForm({
         autoFocus={isCreate}
       />
       <FormField control={form.control} name="name" label={t("inventory.medicines.name")} required />
-      <FormField
-        control={form.control}
-        name="manufacturer"
-        label={t("inventory.medicines.manufacturer")}
-      />
       <FormField
         control={form.control}
         name="unit"
@@ -258,7 +252,6 @@ export function CreateMedicineDialog({ open, onClose }: { open: boolean; onClose
     defaultValues: {
       sku: "",
       name: "",
-      manufacturer: "",
       unit: "tablet",
       unitPrice: 0n,
       prescriptionRequired: false,
@@ -321,7 +314,6 @@ export function EditMedicineDialog({
       ? {
           sku: medicine.sku,
           name: medicine.name,
-          manufacturer: medicine.manufacturer,
           unit: medicine.unit,
           unitPrice: medicine.unitPrice,
           prescriptionRequired: medicine.prescriptionRequired,
@@ -335,7 +327,6 @@ export function EditMedicineDialog({
       await update.mutateAsync({
         id: medicine.id,
         name: values.name,
-        manufacturer: values.manufacturer,
         unit: values.unit,
         unitPrice: values.unitPrice,
         prescriptionRequired: values.prescriptionRequired,

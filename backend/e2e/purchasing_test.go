@@ -332,6 +332,99 @@ func TestPurchaseOrder_WarehouseScoping(t *testing.T) {
 	require.Equal(t, int64(0), totalB, "stock did NOT land in caller's warehouse (WH-B)")
 }
 
+// TestCreatePO_WithInvoiceAndPPN covers the new Create-PO fields: faktur
+// number, invoice + due dates, cart discount, and the PPN-exclusive total
+// math. Also verifies UpdatePurchaseOrder recomputes when PPN/discount flip.
+func TestCreatePO_WithInvoiceAndPPN(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	sup, err := env.Suppliers.CreateSupplier(ctx, authReq(env, t,
+		&inventoryifacev1.CreateSupplierRequest{
+			Name: "PPN supplier", Code: fmt.Sprintf("PPN%d", uniq%1000000),
+		}))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = env.Suppliers.ArchiveSupplier(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveSupplierRequest{Id: sup.Msg.Supplier.Id}))
+	})
+
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("ppn-%d", uniq), Name: fmt.Sprintf("PPN-Med-%d", uniq),
+			Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	// Create with: 10 × 1000 = 10000 subtotal, 1000 cart_discount, PPN on @ 11%.
+	// dpp = 9000; ppn = round(9000 × 0.11) = 990; total = 9990.
+	created, err := env.POs.CreatePurchaseOrder(ctx, authReq(env, t,
+		&purchasingifacev1.CreatePurchaseOrderRequest{
+			SupplierId:   sup.Msg.Supplier.Id,
+			InvoiceNo:    "INV-001",
+			InvoiceDate:  "2026-06-01",
+			DueAt:        "2026-07-01",
+			CartDiscount: 1000,
+			PpnEnabled:   true,
+			// PpnRate omitted (=0) → backend defaults to 11.
+			Items: []*purchasingifacev1.PurchaseOrderItemInput{
+				{MedicineId: medID, OrderedQty: 10, UnitCostPrice: 1000},
+			},
+		}))
+	require.NoError(t, err)
+	o := created.Msg.Order
+	require.Equal(t, "INV-001", o.InvoiceNo)
+	require.Equal(t, "2026-06-01", o.InvoiceDate)
+	require.Equal(t, "2026-07-01", o.DueAt)
+	require.Equal(t, int64(10000), o.Subtotal)
+	require.Equal(t, int64(1000), o.CartDiscount)
+	require.True(t, o.PpnEnabled)
+	require.Equal(t, int32(11), o.PpnRate, "rate defaults to 11 when 0")
+	require.Equal(t, int64(990), o.PpnAmount)
+	require.Equal(t, int64(9990), o.OrderedTotal)
+
+	// Update with a 12% rate → ppn = round(9000 × 0.12) = 1080; total = 10080.
+	updated, err := env.POs.UpdatePurchaseOrder(ctx, authReq(env, t,
+		&purchasingifacev1.UpdatePurchaseOrderRequest{
+			Id:           o.Id,
+			InvoiceNo:    "INV-001",
+			InvoiceDate:  "2026-06-01",
+			DueAt:        "2026-07-01",
+			CartDiscount: 1000,
+			PpnEnabled:   true,
+			PpnRate:      12,
+		}))
+	require.NoError(t, err)
+	u := updated.Msg.Order
+	require.True(t, u.PpnEnabled)
+	require.Equal(t, int32(12), u.PpnRate)
+	require.Equal(t, int64(1080), u.PpnAmount)
+	require.Equal(t, int64(10080), u.OrderedTotal)
+
+	// Disable PPN → ordered_total drops back to subtotal − discount = 9000.
+	disabled, err := env.POs.UpdatePurchaseOrder(ctx, authReq(env, t,
+		&purchasingifacev1.UpdatePurchaseOrderRequest{
+			Id:           o.Id,
+			InvoiceNo:    "INV-001",
+			InvoiceDate:  "2026-06-01",
+			DueAt:        "2026-07-01",
+			CartDiscount: 1000,
+			PpnEnabled:   false,
+			PpnRate:      12, // remembered but not applied
+		}))
+	require.NoError(t, err)
+	d := disabled.Msg.Order
+	require.False(t, d.PpnEnabled)
+	require.Equal(t, int64(0), d.PpnAmount)
+	require.Equal(t, int64(9000), d.OrderedTotal)
+}
+
 func anyPO(rows []*purchasingifacev1.PurchaseOrder, id string) bool {
 	return findPO(rows, id) != nil
 }
@@ -343,4 +436,93 @@ func findPO(rows []*purchasingifacev1.PurchaseOrder, id string) *purchasingiface
 		}
 	}
 	return nil
+}
+
+// TestListBatches_PopulatesPurchaseOrderLink pins the new Batch.purchase_order_id
+// / po_no enrichment in ListBatches: a batch created through the PO + Receipt
+// flow carries its originating PO; the legacy CreateBatch path leaves it empty.
+func TestListBatches_PopulatesPurchaseOrderLink(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+
+	sup, err := env.Suppliers.CreateSupplier(ctx, authReq(env, t,
+		&inventoryifacev1.CreateSupplierRequest{
+			Name: "PO link supplier", Code: fmt.Sprintf("PLS%d", uniq%100000),
+		}))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = env.Suppliers.ArchiveSupplier(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveSupplierRequest{Id: sup.Msg.Supplier.Id}))
+	})
+
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("plnk-%d", uniq), Name: fmt.Sprintf("PO-Link-Med-%d", uniq),
+			Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	// Create + send + receive a PO. The receipt creates the batch.
+	po, err := env.POs.CreatePurchaseOrder(ctx, authReq(env, t,
+		&purchasingifacev1.CreatePurchaseOrderRequest{
+			SupplierId: sup.Msg.Supplier.Id,
+			Items: []*purchasingifacev1.PurchaseOrderItemInput{
+				{MedicineId: medID, OrderedQty: 5, UnitCostPrice: 1000},
+			},
+		}))
+	require.NoError(t, err)
+	poID := po.Msg.Order.Id
+	poNo := po.Msg.Order.PoNo
+	require.Len(t, po.Msg.Order.Items, 1)
+	poItemID := po.Msg.Order.Items[0].Id
+	_, err = env.POs.SendPurchaseOrder(ctx, authReq(env, t,
+		&purchasingifacev1.SendPurchaseOrderRequest{Id: poID}))
+	require.NoError(t, err)
+	_, err = env.Receipts.CreateReceipt(ctx, authReq(env, t,
+		&purchasingifacev1.CreateReceiptRequest{
+			PurchaseOrderId: poID,
+			Lines: []*purchasingifacev1.ReceiveLineInput{
+				{PurchaseOrderItemId: poItemID, Qty: 5, ExpiryDate: "2099-12-31",
+					BatchNumber: fmt.Sprintf("PLNK-B-%d", uniq)},
+			},
+		}))
+	require.NoError(t, err)
+
+	// Find the receipt-created batch and check its PO enrichment.
+	listed, err := env.Batches.ListBatches(ctx, authReq(env, t,
+		&inventoryifacev1.ListBatchesRequest{MedicineId: medID, Limit: 50}))
+	require.NoError(t, err)
+	require.Len(t, listed.Msg.Batches, 1, "exactly one batch under this fresh medicine")
+	got := listed.Msg.Batches[0]
+	require.Equal(t, poID, got.PurchaseOrderId, "PO link populated from receipt chain")
+	require.Equal(t, poNo, got.PoNo)
+
+	// Negative case: a second batch via the legacy direct CreateBatch path → no PO.
+	manualName := fmt.Sprintf("PLNK-MAN-%d", uniq)
+	_, err = env.Batches.CreateBatch(ctx, authReq(env, t,
+		&inventoryifacev1.CreateBatchRequest{
+			MedicineId: medID, SupplierId: sup.Msg.Supplier.Id,
+			BatchNumber: manualName, ExpiryDate: "2099-12-31",
+			CostPrice: 100, InitialQuantity: 1,
+		}))
+	require.NoError(t, err)
+	listed2, err := env.Batches.ListBatches(ctx, authReq(env, t,
+		&inventoryifacev1.ListBatchesRequest{MedicineId: medID, Limit: 50}))
+	require.NoError(t, err)
+	var manual *inventoryifacev1.Batch
+	for _, b := range listed2.Msg.Batches {
+		if b.BatchNumber == manualName {
+			manual = b
+			break
+		}
+	}
+	require.NotNil(t, manual)
+	require.Equal(t, "", manual.PurchaseOrderId, "legacy CreateBatch path → empty PO")
+	require.Equal(t, "", manual.PoNo)
 }

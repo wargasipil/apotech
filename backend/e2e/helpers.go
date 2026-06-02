@@ -18,6 +18,7 @@ import (
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
 	"github.com/apotech/backend/gen/settings_iface/v1/settingsifacev1connect"
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
+	"github.com/apotech/backend/gen/unit_iface/v1/unitifacev1connect"
 	userifacev1 "github.com/apotech/backend/gen/user_iface/v1"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
 	"github.com/apotech/backend/gen/warehouse_iface/v1/warehouseifacev1connect"
@@ -53,6 +54,7 @@ type Env struct {
 	POs        purchasingifacev1connect.PurchaseOrderServiceClient
 	Receipts   purchasingifacev1connect.PurchaseReceiptServiceClient
 	Settings   settingsifacev1connect.SettingsServiceClient
+	Units      unitifacev1connect.UnitServiceClient
 	Backups    backupifacev1connect.BackupServiceClient
 	Analytics  analyticsifacev1connect.AnalyticsServiceClient
 	// BackupDir is t.TempDir() — Setup wires Backups against this directory via
@@ -139,6 +141,7 @@ func SetupEnv(t *testing.T) *Env {
 	poSvc := service.NewPurchaseOrders(gormDB)
 	receiptSvc := service.NewPurchaseReceipts(gormDB)
 	settingsSvc := service.NewSettings(gormDB)
+	unitsSvc := service.NewUnits(gormDB)
 	// Wire BackupService against a per-test temp dir so backup_<ts>/ never
 	// pollutes the real ./backups; the test can read files under backupDir.
 	backupDir := t.TempDir()
@@ -167,6 +170,7 @@ func SetupEnv(t *testing.T) *Env {
 	mux.Handle(purchasingifacev1connect.NewPurchaseOrderServiceHandler(poSvc, interceptors))
 	mux.Handle(purchasingifacev1connect.NewPurchaseReceiptServiceHandler(receiptSvc, interceptors))
 	mux.Handle(settingsifacev1connect.NewSettingsServiceHandler(settingsSvc, interceptors))
+	mux.Handle(unitifacev1connect.NewUnitServiceHandler(unitsSvc, interceptors))
 	mux.Handle(backupifacev1connect.NewBackupServiceHandler(backupSvc, interceptors))
 	mux.Handle(analyticsifacev1connect.NewAnalyticsServiceHandler(analyticsSvc, interceptors))
 
@@ -190,6 +194,7 @@ func SetupEnv(t *testing.T) *Env {
 		POs:        purchasingifacev1connect.NewPurchaseOrderServiceClient(srv.Client(), srv.URL),
 		Receipts:   purchasingifacev1connect.NewPurchaseReceiptServiceClient(srv.Client(), srv.URL),
 		Settings:   settingsifacev1connect.NewSettingsServiceClient(srv.Client(), srv.URL),
+		Units:      unitifacev1connect.NewUnitServiceClient(srv.Client(), srv.URL),
 		Backups:    backupifacev1connect.NewBackupServiceClient(srv.Client(), srv.URL),
 		Analytics:  analyticsifacev1connect.NewAnalyticsServiceClient(srv.Client(), srv.URL),
 		BackupDir:  backupDir,

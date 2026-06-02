@@ -21,11 +21,11 @@ message PurchaseOrder {
   string po_no = 2;
   string supplier_id = 3;
   POStatus status = 4;
-  string expected_at = 5;        // YYYY-MM-DD or empty
+  string invoice_date = 5;         // YYYY-MM-DD or empty — supplier faktur date
   string note = 6;
-  int64 ordered_total = 7;
+  int64 ordered_total = 7;         // FINAL total = subtotal − cart_discount + ppn_amount
   int64 paid_amount = 8;
-  int64 outstanding = 9;          // ordered_total - paid_amount (computed)
+  int64 outstanding = 9;           // ordered_total - paid_amount (computed)
   string created_by = 10;
   string branch_id = 11;
   int64 created_at = 12;
@@ -33,9 +33,15 @@ message PurchaseOrder {
   int64 closed_at = 14;
   repeated PurchaseOrderItem items = 15;
   int64 received_at = 16;          // most recent receipt date (0 if none)
-  string invoice_no = 17;         // most recent receipt's supplier faktur
+  string invoice_no = 17;          // supplier faktur (PO-level; receipts may carry their own)
   string warehouse_id = 18;        // stamped at create time via resolveWarehouse
   string warehouse_name = 19;      // denormalized for display
+  string due_at = 20;              // YYYY-MM-DD or empty — payment due (jatuh tempo)
+  int64 subtotal = 21;             // sum of item subtotals (PPN-exclusive)
+  int64 cart_discount = 22;        // cart-level discount
+  bool ppn_enabled = 23;           // whether PPN is applied
+  int64 ppn_amount = 24;           // round((subtotal − cart_discount) × ppn_rate%) when enabled, else 0
+  int32 ppn_rate = 25;             // PPN rate as a percent (default 11; ignored when ppn_enabled=false)
 }
 
 message PurchaseOrderItem {
@@ -110,18 +116,28 @@ message GetPurchaseOrderResponse { PurchaseOrder order = 1; }
 
 message CreatePurchaseOrderRequest {
   string supplier_id = 1;
-  string expected_at = 2;          // YYYY-MM-DD or empty
+  string invoice_date = 2;          // YYYY-MM-DD or empty — supplier faktur date
   string note = 3;
   repeated PurchaseOrderItemInput items = 4;
+  string invoice_no = 5;            // supplier faktur number
+  string due_at = 6;                // YYYY-MM-DD or empty — payment due (jatuh tempo)
+  int64 cart_discount = 7;
+  bool ppn_enabled = 8;
+  int32 ppn_rate = 9;             // percent (default 11 when 0; ignored when ppn_enabled=false)
 }
 message CreatePurchaseOrderResponse { PurchaseOrder order = 1; }
 
 message UpdatePurchaseOrderRequest {
   string id = 1;
-  string expected_at = 2;
+  string invoice_date = 2;
   string note = 3;
   // Full replace of lines (only allowed while DRAFT).
   repeated PurchaseOrderItemInput items = 4;
+  string invoice_no = 5;
+  string due_at = 6;
+  int64 cart_discount = 7;
+  bool ppn_enabled = 8;
+  int32 ppn_rate = 9;
 }
 message UpdatePurchaseOrderResponse { PurchaseOrder order = 1; }
 

@@ -49,6 +49,9 @@ func (b *Batches) ListBatches(
 		if req.Msg.MedicineId != "" {
 			q = q.Where("b.medicine_id = ?", req.Msg.MedicineId)
 		}
+		if sid := strings.TrimSpace(req.Msg.SupplierId); sid != "" {
+			q = q.Where("b.supplier_id = ?", sid)
+		}
 		if req.Msg.OnlyInStock {
 			q = q.Having("COALESCE(SUM(sm.qty), 0) > 0")
 		}
@@ -94,6 +97,39 @@ func (b *Batches) ListBatches(
 	out := make([]*inventoryifacev1.Batch, 0, len(rows))
 	for i := range rows {
 		out = append(out, batchToProto(&rows[i].Batch, rows[i].Qty))
+	}
+	// Enrich each row with its originating PO (via the receipt that created
+	// it). Empty for legacy / manual CreateBatch path. One batched query.
+	if len(out) > 0 {
+		batchIDs := make([]string, 0, len(out))
+		for _, x := range out {
+			batchIDs = append(batchIDs, x.Id)
+		}
+		type poRow struct {
+			BatchID         string `gorm:"column:batch_id"`
+			PurchaseOrderID string `gorm:"column:purchase_order_id"`
+			PoNo            string `gorm:"column:po_no"`
+		}
+		var poRows []poRow
+		if err := b.db.WithContext(ctx).
+			Table("purchase_receipt_items AS pri").
+			Select("pri.batch_id AS batch_id, po.id AS purchase_order_id, COALESCE(po.po_no, '') AS po_no").
+			Joins("JOIN purchase_receipts pr ON pr.id = pri.purchase_receipt_id").
+			Joins("JOIN purchase_orders po ON po.id = pr.purchase_order_id").
+			Where("pri.batch_id IN ?", batchIDs).
+			Scan(&poRows).Error; err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		byBatch := make(map[string]poRow, len(poRows))
+		for _, r := range poRows {
+			byBatch[r.BatchID] = r
+		}
+		for _, x := range out {
+			if r, ok := byBatch[x.Id]; ok {
+				x.PurchaseOrderId = r.PurchaseOrderID
+				x.PoNo = r.PoNo
+			}
+		}
 	}
 	return connect.NewResponse(&inventoryifacev1.ListBatchesResponse{
 		Batches: out,

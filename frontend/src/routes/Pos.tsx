@@ -211,7 +211,7 @@ export default function Pos() {
     const q = query.trim().toLowerCase();
     const meds = q
       ? medicinesQ.rows.filter((m) =>
-          [m.sku, m.name, m.manufacturer].some((s) => s.toLowerCase().includes(q)),
+          [m.sku, m.name].some((s) => s.toLowerCase().includes(q)),
         )
       : medicinesQ.rows;
     const out: UnitRow[] = [];

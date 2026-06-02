@@ -4,11 +4,13 @@ import {
   Button,
   HStack,
   Input,
+  Link as ChakraLink,
   Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
+import { Link as RouterLink } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -28,7 +30,7 @@ import { formatMoney } from "../../lib/format";
 import { usePageState } from "../../lib/pagination";
 import { toast } from "../../lib/toaster";
 import { useBatchesQuery, useCreateBatchMutation } from "../../queries/batches";
-import { useMedicineRefs } from "../../queries/refs";
+import { useMedicineRefs, useSupplierRefs } from "../../queries/refs";
 
 const Schema = z.object({
   medicineId: z.string().min(1),
@@ -53,14 +55,16 @@ export default function Batches() {
   const [dateField, setDateField] = useState<"off" | "received" | "expiry">("off");
   const [range, setRange] = useState<DateRange>(() => resolveRange("30d"));
   const useRange = dateField !== "off";
+  const [supplierId, setSupplierId] = useState("");
   const { page, setPage, pageSize, setPageSize } = usePageState(
-    `${query}|${dateField}|${useRange ? range.fromUnix : 0}|${useRange ? range.toUnix : 0}`,
+    `${query}|${dateField}|${useRange ? range.fromUnix : 0}|${useRange ? range.toUnix : 0}|${supplierId}`,
   );
   const batchesQ = useBatchesQuery({
     // Scope rows to the active warehouse: only lots with stock here (backend
     // HAVING SUM(qty in warehouse) > 0). Qty is already active-warehouse.
     onlyInStock: true,
     query,
+    supplierId,
     dateField: useRange ? dateField : "",
     fromUnix: useRange ? range.fromUnix : 0,
     toUnix: useRange ? range.toUnix : 0,
@@ -71,6 +75,18 @@ export default function Batches() {
   // use server-side search via loadOptions).
   const medRefs = useMedicineRefs(
     useMemo(() => batchesQ.rows.map((b) => b.medicineId), [batchesQ.rows]),
+  );
+  const supplierRefs = useSupplierRefs(
+    useMemo(() => {
+      const ids = new Set<string>();
+      batchesQ.rows.forEach((b) => {
+        if (b.supplierId) ids.add(b.supplierId);
+      });
+      // Include the active filter ID so the SearchableSelect's selectedLabel
+      // resolves correctly on first render after navigation.
+      if (supplierId) ids.add(supplierId);
+      return Array.from(ids);
+    }, [batchesQ.rows, supplierId]),
   );
 
   return (
@@ -104,6 +120,25 @@ export default function Batches() {
             itemToValue={(o) => o.value}
           />
           {useRange && <DateRangeFilter value={range} onChange={setRange} />}
+          <Box width="200px">
+            <SearchableSelect
+              size="sm"
+              value={supplierId}
+              onChange={setSupplierId}
+              loadOptions={searchSuppliers}
+              itemToString={(s) => `${s.code} · ${s.name}`}
+              itemToValue={(s) => s.id}
+              placeholder={t("inventory.batches.supplier")}
+              selectedLabel={
+                supplierId
+                  ? (() => {
+                      const s = supplierRefs.get(supplierId);
+                      return s ? `${s.code} · ${s.name}` : undefined;
+                    })()
+                  : undefined
+              }
+            />
+          </Box>
         </HStack>
         <Button size="sm" colorPalette="blue" onClick={() => setDrawerOpen(true)}>
           <Plus size={16} />
@@ -121,9 +156,11 @@ export default function Batches() {
             <Table.Row>
               <Table.ColumnHeader>{t("inventory.batches.medicine")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.batches.batchNumber")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("inventory.batches.supplier")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.batches.expiry")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.batches.cost")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("inventory.batches.qty")}</Table.ColumnHeader>
+              <Table.ColumnHeader>{t("inventory.batches.po")}</Table.ColumnHeader>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -132,6 +169,14 @@ export default function Batches() {
                 <Table.Cell>{medRefs.get(b.medicineId)?.name ?? "—"}</Table.Cell>
                 <Table.Cell>{b.batchNumber || "—"}</Table.Cell>
                 <Table.Cell>
+                  {b.supplierId
+                    ? (() => {
+                        const s = supplierRefs.get(b.supplierId);
+                        return s ? `${s.code} · ${s.name}` : "—";
+                      })()
+                    : "—"}
+                </Table.Cell>
+                <Table.Cell>
                   <HStack gap={2}>
                     <Text>{b.expiryDate}</Text>
                     <ExpiryBadge expiry={b.expiryDate} />
@@ -139,11 +184,22 @@ export default function Batches() {
                 </Table.Cell>
                 <Table.Cell>{formatMoney(b.costPrice)}</Table.Cell>
                 <Table.Cell>{String(b.currentQuantity)}</Table.Cell>
+                <Table.Cell fontFamily="mono">
+                  {b.purchaseOrderId ? (
+                    <ChakraLink asChild colorPalette="blue">
+                      <RouterLink to={`/purchasing/${b.purchaseOrderId}`}>
+                        {b.poNo || b.purchaseOrderId.slice(0, 8)}
+                      </RouterLink>
+                    </ChakraLink>
+                  ) : (
+                    <Text color="fg.muted">—</Text>
+                  )}
+                </Table.Cell>
               </Table.Row>
             ))}
             {batchesQ.rows.length === 0 && (
               <Table.Row>
-                <Table.Cell colSpan={5}>
+                <Table.Cell colSpan={7}>
                   <Text color="fg.muted" textAlign="center" py={4}>
                     {t("common.noResults")}
                   </Text>

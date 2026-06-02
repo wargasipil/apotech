@@ -32,6 +32,19 @@ func (m *Medicines) ListMedicines(
 	}
 	limit, offset := normPage(req.Msg.Limit, req.Msg.Offset)
 	query := strings.TrimSpace(req.Msg.Query)
+	opnameBefore := strings.TrimSpace(req.Msg.OpnameBefore)
+	if opnameBefore != "" {
+		if _, perr := time.Parse(dateLayout, opnameBefore); perr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument,
+				fmt.Errorf("opname_before must be YYYY-MM-DD: %w", perr))
+		}
+	}
+	// Resolve once — both the opname filter (active-warehouse-scoped) and the
+	// downstream enrichStock use the same warehouse.
+	warehouseID, err := resolveWarehouse(ctx, m.db, caller)
+	if err != nil {
+		return nil, err
+	}
 
 	applyFilters := func(q *gorm.DB) *gorm.DB {
 		if !req.Msg.IncludeInactive {
@@ -40,6 +53,21 @@ func (m *Medicines) ListMedicines(
 		if query != "" {
 			pattern := "%" + query + "%"
 			q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		}
+		if opnameBefore != "" {
+			// "Last opname < before OR never counted" = "no completed opname
+			// session with completed_at >= before touched this medicine in the
+			// active warehouse". Inverted EXISTS keeps both branches.
+			q = q.Where(`NOT EXISTS (
+				SELECT 1 FROM stocktake_sessions ss
+				JOIN stocktake_lines sl ON sl.session_id = ss.id
+				JOIN batches b ON b.id = sl.batch_id
+				WHERE ss.warehouse_id = ?
+				  AND ss.status = 'COMPLETED'
+				  AND ss.completed_at >= ?::date
+				  AND sl.counted_qty IS NOT NULL
+				  AND b.medicine_id = medicines.id
+			)`, warehouseID, opnameBefore)
 		}
 		return q
 	}
@@ -58,6 +86,9 @@ func (m *Medicines) ListMedicines(
 		out = append(out, medicineToProto(&rows[i]))
 	}
 	if err := m.enrichStock(ctx, caller, out); err != nil {
+		return nil, err
+	}
+	if err := m.enrichLastStocktake(ctx, caller, out); err != nil {
 		return nil, err
 	}
 	if err := m.attachUnits(ctx, out); err != nil {
@@ -134,6 +165,55 @@ func (m *Medicines) enrichStock(
 	return nil
 }
 
+// enrichLastStocktake fills last_stocktake_date for a page of medicines: the
+// most recent COMPLETED stocktake that touched any batch of the medicine in
+// the caller's active warehouse. counted_qty IS NOT NULL keeps untouched lines
+// from electing their session. Variance is intentionally NOT enriched on the
+// list (kept on detail to keep the list column compact).
+func (m *Medicines) enrichLastStocktake(
+	ctx context.Context,
+	caller auth.Principal,
+	meds []*inventoryifacev1.Medicine,
+) error {
+	if len(meds) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(meds))
+	for _, md := range meds {
+		ids = append(ids, md.Id)
+	}
+	warehouseID, err := resolveWarehouse(ctx, m.db, caller)
+	if err != nil {
+		return err
+	}
+	type opnameRow struct {
+		MedicineID  string    `gorm:"column:medicine_id"`
+		CompletedAt time.Time `gorm:"column:completed_at"`
+	}
+	var rows []opnameRow
+	if err := m.db.WithContext(ctx).
+		Table("stocktake_sessions AS ss").
+		Select("b.medicine_id AS medicine_id, MAX(ss.completed_at) AS completed_at").
+		Joins("JOIN stocktake_lines sl ON sl.session_id = ss.id").
+		Joins("JOIN batches b ON b.id = sl.batch_id").
+		Where("ss.warehouse_id = ? AND ss.status = ? AND sl.counted_qty IS NOT NULL AND b.medicine_id IN ?",
+			warehouseID, "COMPLETED", ids).
+		Group("b.medicine_id").
+		Scan(&rows).Error; err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	byID := make(map[string]time.Time, len(rows))
+	for _, r := range rows {
+		byID[r.MedicineID] = r.CompletedAt
+	}
+	for _, md := range meds {
+		if t, ok := byID[md.Id]; ok && !t.IsZero() {
+			md.LastStocktakeDate = t.Format(dateLayout)
+		}
+	}
+	return nil
+}
+
 func (m *Medicines) GetMedicine(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.GetMedicineRequest],
@@ -176,6 +256,31 @@ func (m *Medicines) GetMedicine(
 	if !rr.ReceivedAt.IsZero() {
 		out.LastRestockDate = rr.ReceivedAt.Format(dateLayout)
 		out.LastRestockSupplier = rr.SupplierName
+	}
+	// Last opname = the most recent COMPLETED stocktake session that touched any
+	// batch of this medicine in the active warehouse. Variance is sum(counted -
+	// expected) over this medicine's counted lines in that session (base units;
+	// negative = short, positive = surplus). counted_qty IS NOT NULL guard skips
+	// untouched lines so they don't elect the session as "last touched".
+	var st struct {
+		CompletedAt time.Time `gorm:"column:completed_at"`
+		Variance    int64     `gorm:"column:variance"`
+	}
+	if err := m.db.WithContext(ctx).
+		Table("stocktake_sessions ss").
+		Select("ss.completed_at AS completed_at, COALESCE(SUM(sl.counted_qty - sl.expected_qty), 0) AS variance").
+		Joins("JOIN stocktake_lines sl ON sl.session_id = ss.id").
+		Joins("JOIN batches b ON b.id = sl.batch_id").
+		Where("ss.warehouse_id = ? AND ss.status = ? AND b.medicine_id = ? AND sl.counted_qty IS NOT NULL",
+			warehouseID, "COMPLETED", med.ID).
+		Group("ss.id, ss.completed_at").
+		Order("ss.completed_at DESC").
+		Limit(1).Scan(&st).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !st.CompletedAt.IsZero() {
+		out.LastStocktakeDate = st.CompletedAt.Format(dateLayout)
+		out.LastStocktakeVariance = st.Variance
 	}
 	// Total stock (on-hand in the active warehouse) + valuation at cost.
 	// Σ(qty × cost) over movements == Σ_batch(qty)×cost (cost is per-batch).
@@ -240,7 +345,6 @@ func (m *Medicines) CreateMedicine(
 	med := model.Medicine{
 		SKU:                  sku,
 		Name:                 name,
-		Manufacturer:         strings.TrimSpace(req.Msg.Manufacturer),
 		Unit:                 unit,
 		UnitPrice:            req.Msg.UnitPrice,
 		PrescriptionRequired: req.Msg.PrescriptionRequired,
@@ -316,7 +420,6 @@ func (m *Medicines) UpdateMedicine(
 		}
 		updates := map[string]any{
 			"name":                  name,
-			"manufacturer":          strings.TrimSpace(req.Msg.Manufacturer),
 			"unit":                  unit,
 			"prescription_required": req.Msg.PrescriptionRequired,
 		}
@@ -405,7 +508,7 @@ func (m *Medicines) SearchMedicines(
 	}
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR sku ILIKE ? OR manufacturer ILIKE ?", pattern, pattern, pattern)
+		q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
 	}
 	var rows []model.Medicine
 	if err := q.Find(&rows).Error; err != nil {
@@ -600,7 +703,6 @@ func medicineToProto(m *model.Medicine) *inventoryifacev1.Medicine {
 		Id:                   m.ID,
 		Sku:                  m.SKU,
 		Name:                 m.Name,
-		Manufacturer:         m.Manufacturer,
 		Unit:                 m.Unit,
 		UnitPrice:            m.UnitPrice,
 		PrescriptionRequired: m.PrescriptionRequired,

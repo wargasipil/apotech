@@ -41,6 +41,9 @@ import Bpjs from "./routes/Bpjs";
 import Warehouses from "./routes/Warehouses";
 import WarehouseDetail from "./routes/WarehouseDetail";
 import Settings from "./routes/Settings";
+import SettingsGeneral from "./routes/settings/SettingsGeneral";
+import SettingsUnits from "./routes/settings/SettingsUnits";
+import SettingsBackups from "./routes/settings/SettingsBackups";
 import Transfers from "./routes/inventory/Transfers";
 import PurchaseOrdersList from "./routes/purchasing/PurchaseOrdersList";
 import SuppliersLedger from "./routes/purchasing/SuppliersLedger";
@@ -66,7 +69,16 @@ const router = createBrowserRouter([
         element: <ProtectedRoute requiredRole={Role.OWNER} />,
         children: [
           { path: "users", element: <Users /> },
-          { path: "settings", element: <Settings /> },
+          {
+            path: "settings",
+            element: <Settings />,
+            children: [
+              { index: true, element: <Navigate to="general" replace /> },
+              { path: "general", element: <SettingsGeneral /> },
+              { path: "units", element: <SettingsUnits /> },
+              { path: "backups", element: <SettingsBackups /> },
+            ],
+          },
         ],
       },
       {

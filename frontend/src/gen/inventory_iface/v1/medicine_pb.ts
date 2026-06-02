@@ -26,11 +26,6 @@ export class Medicine extends Message<Medicine> {
   name = "";
 
   /**
-   * @generated from field: string manufacturer = 4;
-   */
-  manufacturer = "";
-
-  /**
    * @generated from field: string unit = 5;
    */
   unit = "";
@@ -111,6 +106,20 @@ export class Medicine extends Message<Medicine> {
    */
   referenceCost = protoInt64.zero;
 
+  /**
+   * YYYY-MM-DD of most recent COMPLETED stocktake touching this medicine in the active warehouse (GetMedicine only; empty if none)
+   *
+   * @generated from field: string last_stocktake_date = 18;
+   */
+  lastStocktakeDate = "";
+
+  /**
+   * signed sum(counted_qty − expected_qty) for this medicine's lines in that session, BASE units (GetMedicine only)
+   *
+   * @generated from field: int64 last_stocktake_variance = 19;
+   */
+  lastStocktakeVariance = protoInt64.zero;
+
   constructor(data?: PartialMessage<Medicine>) {
     super();
     proto3.util.initPartial(data, this);
@@ -122,7 +131,6 @@ export class Medicine extends Message<Medicine> {
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "sku", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "manufacturer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "unit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "unit_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "prescription_required", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
@@ -136,6 +144,8 @@ export class Medicine extends Message<Medicine> {
     { no: 15, name: "stock_valuation", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 16, name: "units", kind: "message", T: MedicineUnit, repeated: true },
     { no: 17, name: "reference_cost", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 18, name: "last_stocktake_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 19, name: "last_stocktake_variance", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Medicine {
@@ -514,6 +524,13 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
    */
   query = "";
 
+  /**
+   * YYYY-MM-DD. When set, include only medicines whose latest
+   *
+   * @generated from field: string opname_before = 5;
+   */
+  opnameBefore = "";
+
   constructor(data?: PartialMessage<ListMedicinesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -526,6 +543,7 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "opname_before", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMedicinesRequest {
@@ -677,11 +695,6 @@ export class CreateMedicineRequest extends Message<CreateMedicineRequest> {
   name = "";
 
   /**
-   * @generated from field: string manufacturer = 3;
-   */
-  manufacturer = "";
-
-  /**
    * base unit name (also used if `units` is empty)
    *
    * @generated from field: string unit = 4;
@@ -717,7 +730,6 @@ export class CreateMedicineRequest extends Message<CreateMedicineRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "sku", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "manufacturer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "unit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "unit_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 6, name: "prescription_required", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
@@ -793,11 +805,6 @@ export class UpdateMedicineRequest extends Message<UpdateMedicineRequest> {
   name = "";
 
   /**
-   * @generated from field: string manufacturer = 3;
-   */
-  manufacturer = "";
-
-  /**
    * @generated from field: string unit = 4;
    */
   unit = "";
@@ -829,7 +836,6 @@ export class UpdateMedicineRequest extends Message<UpdateMedicineRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "manufacturer", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "unit", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "unit_price", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 6, name: "prescription_required", kind: "scalar", T: 8 /* ScalarType.BOOL */ },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   Box,
@@ -30,8 +30,14 @@ import {
   useMedicineUnitPricesQuery,
   useMedicineQuery,
 } from "../../queries/medicines";
+import { useSupplierRefs } from "../../queries/refs";
 import { useMovementsQuery } from "../../queries/stock";
 import { EditMedicineDialog } from "./medicineDrawers";
+
+function fmtVariance(v: bigint): string {
+  if (v === 0n) return "±0";
+  return v > 0n ? `+${v.toString()}` : v.toString();
+}
 
 function movementTypeKey(type: MovementType): string {
   switch (type) {
@@ -58,6 +64,19 @@ export default function MedicineDetail() {
   const archive = useArchiveMedicineMutation();
   const unitPricesQ = useMedicineUnitPricesQuery(id, !!id);
   const batchesQ = useBatchesQuery({ medicineId: id, onlyInStock: true, pageSize: ALL_LIMIT });
+  const batchSupplierRefs = useSupplierRefs(
+    useMemo(
+      () =>
+        Array.from(
+          new Set(
+            (batchesQ.rows ?? [])
+              .map((b) => b.supplierId)
+              .filter((s): s is string => !!s),
+          ),
+        ),
+      [batchesQ.rows],
+    ),
+  );
   const movementsQ = useMovementsQuery({ medicineId: id, pageSize: 10 });
 
   if (medQ.isLoading) {
@@ -117,7 +136,6 @@ export default function MedicineDetail() {
           </Heading>
           <SimpleGrid columns={{ base: 2, md: 4 }} gap={3}>
             <Field label={t("inventory.medicines.sku")} value={med.sku} mono />
-            <Field label={t("inventory.medicines.manufacturer")} value={med.manufacturer || "—"} />
             <Field label={t("inventory.medicines.unit")} value={med.unit} />
             <Field label={t("inventory.medicines.unitPrice")} value={formatMoney(med.unitPrice)} />
             <Field
@@ -130,6 +148,14 @@ export default function MedicineDetail() {
                 med.lastRestockDate
                   ? med.lastRestockDate +
                     (med.lastRestockSupplier ? ` · ${med.lastRestockSupplier}` : "")
+                  : "—"
+              }
+            />
+            <Field
+              label={t("inventory.medicines.lastStocktake")}
+              value={
+                med.lastStocktakeDate
+                  ? `${med.lastStocktakeDate} · ${fmtVariance(med.lastStocktakeVariance)}`
                   : "—"
               }
             />
@@ -217,6 +243,7 @@ export default function MedicineDetail() {
             <Table.Header bg="bg.muted">
               <Table.Row>
                 <Table.ColumnHeader>{t("inventory.batches.batchNumber")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("inventory.batches.supplier")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("inventory.batches.expiry")}</Table.ColumnHeader>
                 <Table.ColumnHeader>{t("inventory.batches.cost")}</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end">{t("inventory.batches.qty")}</Table.ColumnHeader>
@@ -226,6 +253,14 @@ export default function MedicineDetail() {
               {batchesQ.rows.map((b) => (
                 <Table.Row key={b.id}>
                   <Table.Cell>{b.batchNumber || "—"}</Table.Cell>
+                  <Table.Cell>
+                    {b.supplierId
+                      ? (() => {
+                          const s = batchSupplierRefs.get(b.supplierId);
+                          return s ? `${s.code} · ${s.name}` : "—";
+                        })()
+                      : "—"}
+                  </Table.Cell>
                   <Table.Cell>
                     <HStack gap={2}>
                       <Text>{b.expiryDate}</Text>
@@ -238,7 +273,7 @@ export default function MedicineDetail() {
               ))}
               {batchesQ.rows.length === 0 && (
                 <Table.Row>
-                  <Table.Cell colSpan={4}>
+                  <Table.Cell colSpan={5}>
                     <Text color="fg.muted" textAlign="center" py={4}>
                       {t("common.noResults")}
                     </Text>

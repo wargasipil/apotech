@@ -8,10 +8,16 @@ type PreferencesState = {
   theme: Theme;
   locale: Locale;
   sidebarCollapsed: boolean;
+  // Per-base-unit display preference for the Medicines list stock cells.
+  // Key = base unit name (e.g. "tablet", "ml"); value = chosen derivative name
+  // ("" = base / raw count). Rows whose medicine's base unit isn't in the map
+  // render in their base unit by default.
+  medicineStockUnitsByBase: Record<string, string>;
   setTheme: (t: Theme) => void;
   setLocale: (l: Locale) => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (c: boolean) => void;
+  setMedicineStockUnitByBase: (baseName: string, deriv: string) => void;
 };
 
 // Flip Chakra's default semantic tokens between light/dark by toggling the
@@ -29,6 +35,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       theme: "light",
       locale: "id",
       sidebarCollapsed: false,
+      medicineStockUnitsByBase: {},
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
@@ -36,6 +43,13 @@ export const usePreferencesStore = create<PreferencesState>()(
       setLocale: (locale) => set({ locale }),
       toggleSidebar: () => set({ sidebarCollapsed: !get().sidebarCollapsed }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setMedicineStockUnitByBase: (baseName, deriv) =>
+        set({
+          medicineStockUnitsByBase: {
+            ...get().medicineStockUnitsByBase,
+            [baseName]: deriv,
+          },
+        }),
     }),
     {
       name: "apotech_preferences",

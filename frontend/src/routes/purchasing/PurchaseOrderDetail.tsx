@@ -154,10 +154,12 @@ export default function PurchaseOrderDetail() {
 
       {/* Header info */}
       <Box bg="bg.subtle" borderWidth="1px" borderRadius="lg" p={4}>
-        <Grid templateColumns={{ base: "1fr", md: "repeat(5, 1fr)" }} gap={4}>
+        <Grid templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }} gap={4}>
           <Info label={t("purchasing.supplier")} value={supplierRefs.get(po.supplierId)?.name ?? "—"} />
           <Info label={t("purchasing.warehouse")} value={po.warehouseName || "—"} />
-          <Info label={t("purchasing.expectedAt")} value={po.expectedAt ? formatDate(po.expectedAt) : "—"} />
+          <Info label={t("purchasing.invoiceNo")} value={po.invoiceNo || "—"} />
+          <Info label={t("purchasing.invoiceDate")} value={po.invoiceDate ? formatDate(po.invoiceDate) : "—"} />
+          <Info label={t("purchasing.dueAt")} value={po.dueAt ? formatDate(po.dueAt) : "—"} />
           <Info
             label={t("purchasing.totalOrdered")}
             value={formatMoney(Number(po.orderedTotal))}
@@ -208,6 +210,34 @@ export default function PurchaseOrderDetail() {
             ))}
           </Table.Body>
         </Table.Root>
+        <Box mt={4} pt={4} borderTopWidth="1px" display="flex" justifyContent="flex-end">
+          <Stack gap={1} maxW="320px" w="full">
+            <HStack justify="space-between">
+              <Text color="fg.muted">{t("purchasing.subtotal")}</Text>
+              <Text fontFamily="mono">{formatMoney(Number(po.subtotal))}</Text>
+            </HStack>
+            {po.cartDiscount > 0n && (
+              <HStack justify="space-between">
+                <Text color="fg.muted">{t("purchasing.cartDiscount")}</Text>
+                <Text fontFamily="mono">−{formatMoney(Number(po.cartDiscount))}</Text>
+              </HStack>
+            )}
+            {po.ppnEnabled && (
+              <HStack justify="space-between">
+                <Text color="fg.muted">
+                  {t("purchasing.ppn")} {po.ppnRate || 11}%
+                </Text>
+                <Text fontFamily="mono">+{formatMoney(Number(po.ppnAmount))}</Text>
+              </HStack>
+            )}
+            <HStack justify="space-between" pt={2} borderTopWidth="1px">
+              <Text fontWeight="bold">{t("purchasing.total")}</Text>
+              <Text fontWeight="bold" fontFamily="mono">
+                {formatMoney(Number(po.orderedTotal))}
+              </Text>
+            </HStack>
+          </Stack>
+        </Box>
       </Box>
 
       {/* Receipts */}

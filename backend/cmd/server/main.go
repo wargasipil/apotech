@@ -26,6 +26,7 @@ import (
 	"github.com/apotech/backend/gen/prescription_iface/v1/prescriptionifacev1connect"
 	"github.com/apotech/backend/gen/purchasing_iface/v1/purchasingifacev1connect"
 	"github.com/apotech/backend/gen/settings_iface/v1/settingsifacev1connect"
+	"github.com/apotech/backend/gen/unit_iface/v1/unitifacev1connect"
 	"github.com/apotech/backend/gen/stocktake_iface/v1/stocktakeifacev1connect"
 	"github.com/apotech/backend/gen/tax_iface/v1/taxifacev1connect"
 	"github.com/apotech/backend/gen/user_iface/v1/userifacev1connect"
@@ -96,6 +97,7 @@ func main() {
 	warehousesSvc := service.NewWarehouses(gormDB)
 	transfersSvc := service.NewTransfers(gormDB)
 	settingsSvc := service.NewSettings(gormDB)
+	unitsSvc := service.NewUnits(gormDB)
 	backupSvc := service.NewBackups(gormDB, cfg)
 
 	if err := userSvc.EnsureBootstrapOwner(context.Background(), cfg.Bootstrap); err != nil {
@@ -130,6 +132,7 @@ func main() {
 	apiMux.Handle(warehouseifacev1connect.NewWarehouseServiceHandler(warehousesSvc, interceptors))
 	apiMux.Handle(warehouseifacev1connect.NewStockTransferServiceHandler(transfersSvc, interceptors))
 	apiMux.Handle(settingsifacev1connect.NewSettingsServiceHandler(settingsSvc, interceptors))
+	apiMux.Handle(unitifacev1connect.NewUnitServiceHandler(unitsSvc, interceptors))
 	apiMux.Handle(backupifacev1connect.NewBackupServiceHandler(backupSvc, interceptors))
 
 	// Root mux: /api/* → Connect handlers, /healthz → liveness probe,

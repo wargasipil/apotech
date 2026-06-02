@@ -89,9 +89,9 @@ type PurchaseOrder struct {
 	PoNo          string                 `protobuf:"bytes,2,opt,name=po_no,json=poNo,proto3" json:"po_no,omitempty"`
 	SupplierId    string                 `protobuf:"bytes,3,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
 	Status        POStatus               `protobuf:"varint,4,opt,name=status,proto3,enum=purchasing_iface.v1.POStatus" json:"status,omitempty"`
-	ExpectedAt    string                 `protobuf:"bytes,5,opt,name=expected_at,json=expectedAt,proto3" json:"expected_at,omitempty"` // YYYY-MM-DD or empty
+	InvoiceDate   string                 `protobuf:"bytes,5,opt,name=invoice_date,json=invoiceDate,proto3" json:"invoice_date,omitempty"` // YYYY-MM-DD or empty — supplier faktur date
 	Note          string                 `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
-	OrderedTotal  int64                  `protobuf:"varint,7,opt,name=ordered_total,json=orderedTotal,proto3" json:"ordered_total,omitempty"`
+	OrderedTotal  int64                  `protobuf:"varint,7,opt,name=ordered_total,json=orderedTotal,proto3" json:"ordered_total,omitempty"` // FINAL total = subtotal − cart_discount + ppn_amount
 	PaidAmount    int64                  `protobuf:"varint,8,opt,name=paid_amount,json=paidAmount,proto3" json:"paid_amount,omitempty"`
 	Outstanding   int64                  `protobuf:"varint,9,opt,name=outstanding,proto3" json:"outstanding,omitempty"` // ordered_total - paid_amount (computed)
 	CreatedBy     string                 `protobuf:"bytes,10,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
@@ -101,9 +101,15 @@ type PurchaseOrder struct {
 	ClosedAt      int64                  `protobuf:"varint,14,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"`
 	Items         []*PurchaseOrderItem   `protobuf:"bytes,15,rep,name=items,proto3" json:"items,omitempty"`
 	ReceivedAt    int64                  `protobuf:"varint,16,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`         // most recent receipt date (0 if none)
-	InvoiceNo     string                 `protobuf:"bytes,17,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`             // most recent receipt's supplier faktur
+	InvoiceNo     string                 `protobuf:"bytes,17,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`             // supplier faktur (PO-level; receipts may carry their own)
 	WarehouseId   string                 `protobuf:"bytes,18,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`       // stamped at create time via resolveWarehouse
 	WarehouseName string                 `protobuf:"bytes,19,opt,name=warehouse_name,json=warehouseName,proto3" json:"warehouse_name,omitempty"` // denormalized for display
+	DueAt         string                 `protobuf:"bytes,20,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"`                         // YYYY-MM-DD or empty — payment due (jatuh tempo)
+	Subtotal      int64                  `protobuf:"varint,21,opt,name=subtotal,proto3" json:"subtotal,omitempty"`                               // sum of item subtotals (PPN-exclusive)
+	CartDiscount  int64                  `protobuf:"varint,22,opt,name=cart_discount,json=cartDiscount,proto3" json:"cart_discount,omitempty"`   // cart-level discount
+	PpnEnabled    bool                   `protobuf:"varint,23,opt,name=ppn_enabled,json=ppnEnabled,proto3" json:"ppn_enabled,omitempty"`         // whether PPN is applied
+	PpnAmount     int64                  `protobuf:"varint,24,opt,name=ppn_amount,json=ppnAmount,proto3" json:"ppn_amount,omitempty"`            // round((subtotal − cart_discount) × ppn_rate%) when enabled, else 0
+	PpnRate       int32                  `protobuf:"varint,25,opt,name=ppn_rate,json=ppnRate,proto3" json:"ppn_rate,omitempty"`                  // PPN rate as a percent (default 11; ignored when ppn_enabled=false)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,9 +172,9 @@ func (x *PurchaseOrder) GetStatus() POStatus {
 	return POStatus_PO_STATUS_UNSPECIFIED
 }
 
-func (x *PurchaseOrder) GetExpectedAt() string {
+func (x *PurchaseOrder) GetInvoiceDate() string {
 	if x != nil {
-		return x.ExpectedAt
+		return x.InvoiceDate
 	}
 	return ""
 }
@@ -269,6 +275,48 @@ func (x *PurchaseOrder) GetWarehouseName() string {
 		return x.WarehouseName
 	}
 	return ""
+}
+
+func (x *PurchaseOrder) GetDueAt() string {
+	if x != nil {
+		return x.DueAt
+	}
+	return ""
+}
+
+func (x *PurchaseOrder) GetSubtotal() int64 {
+	if x != nil {
+		return x.Subtotal
+	}
+	return 0
+}
+
+func (x *PurchaseOrder) GetCartDiscount() int64 {
+	if x != nil {
+		return x.CartDiscount
+	}
+	return 0
+}
+
+func (x *PurchaseOrder) GetPpnEnabled() bool {
+	if x != nil {
+		return x.PpnEnabled
+	}
+	return false
+}
+
+func (x *PurchaseOrder) GetPpnAmount() int64 {
+	if x != nil {
+		return x.PpnAmount
+	}
+	return 0
+}
+
+func (x *PurchaseOrder) GetPpnRate() int32 {
+	if x != nil {
+		return x.PpnRate
+	}
+	return 0
 }
 
 type PurchaseOrderItem struct {
@@ -724,9 +772,14 @@ func (x *GetPurchaseOrderResponse) GetOrder() *PurchaseOrder {
 type CreatePurchaseOrderRequest struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	SupplierId    string                    `protobuf:"bytes,1,opt,name=supplier_id,json=supplierId,proto3" json:"supplier_id,omitempty"`
-	ExpectedAt    string                    `protobuf:"bytes,2,opt,name=expected_at,json=expectedAt,proto3" json:"expected_at,omitempty"` // YYYY-MM-DD or empty
+	InvoiceDate   string                    `protobuf:"bytes,2,opt,name=invoice_date,json=invoiceDate,proto3" json:"invoice_date,omitempty"` // YYYY-MM-DD or empty — supplier faktur date
 	Note          string                    `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
 	Items         []*PurchaseOrderItemInput `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
+	InvoiceNo     string                    `protobuf:"bytes,5,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"` // supplier faktur number
+	DueAt         string                    `protobuf:"bytes,6,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"`             // YYYY-MM-DD or empty — payment due (jatuh tempo)
+	CartDiscount  int64                     `protobuf:"varint,7,opt,name=cart_discount,json=cartDiscount,proto3" json:"cart_discount,omitempty"`
+	PpnEnabled    bool                      `protobuf:"varint,8,opt,name=ppn_enabled,json=ppnEnabled,proto3" json:"ppn_enabled,omitempty"`
+	PpnRate       int32                     `protobuf:"varint,9,opt,name=ppn_rate,json=ppnRate,proto3" json:"ppn_rate,omitempty"` // percent (default 11 when 0; ignored when ppn_enabled=false)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -768,9 +821,9 @@ func (x *CreatePurchaseOrderRequest) GetSupplierId() string {
 	return ""
 }
 
-func (x *CreatePurchaseOrderRequest) GetExpectedAt() string {
+func (x *CreatePurchaseOrderRequest) GetInvoiceDate() string {
 	if x != nil {
-		return x.ExpectedAt
+		return x.InvoiceDate
 	}
 	return ""
 }
@@ -787,6 +840,41 @@ func (x *CreatePurchaseOrderRequest) GetItems() []*PurchaseOrderItemInput {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *CreatePurchaseOrderRequest) GetInvoiceNo() string {
+	if x != nil {
+		return x.InvoiceNo
+	}
+	return ""
+}
+
+func (x *CreatePurchaseOrderRequest) GetDueAt() string {
+	if x != nil {
+		return x.DueAt
+	}
+	return ""
+}
+
+func (x *CreatePurchaseOrderRequest) GetCartDiscount() int64 {
+	if x != nil {
+		return x.CartDiscount
+	}
+	return 0
+}
+
+func (x *CreatePurchaseOrderRequest) GetPpnEnabled() bool {
+	if x != nil {
+		return x.PpnEnabled
+	}
+	return false
+}
+
+func (x *CreatePurchaseOrderRequest) GetPpnRate() int32 {
+	if x != nil {
+		return x.PpnRate
+	}
+	return 0
 }
 
 type CreatePurchaseOrderResponse struct {
@@ -834,12 +922,17 @@ func (x *CreatePurchaseOrderResponse) GetOrder() *PurchaseOrder {
 }
 
 type UpdatePurchaseOrderRequest struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ExpectedAt string                 `protobuf:"bytes,2,opt,name=expected_at,json=expectedAt,proto3" json:"expected_at,omitempty"`
-	Note       string                 `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	InvoiceDate string                 `protobuf:"bytes,2,opt,name=invoice_date,json=invoiceDate,proto3" json:"invoice_date,omitempty"`
+	Note        string                 `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
 	// Full replace of lines (only allowed while DRAFT).
 	Items         []*PurchaseOrderItemInput `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
+	InvoiceNo     string                    `protobuf:"bytes,5,opt,name=invoice_no,json=invoiceNo,proto3" json:"invoice_no,omitempty"`
+	DueAt         string                    `protobuf:"bytes,6,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"`
+	CartDiscount  int64                     `protobuf:"varint,7,opt,name=cart_discount,json=cartDiscount,proto3" json:"cart_discount,omitempty"`
+	PpnEnabled    bool                      `protobuf:"varint,8,opt,name=ppn_enabled,json=ppnEnabled,proto3" json:"ppn_enabled,omitempty"`
+	PpnRate       int32                     `protobuf:"varint,9,opt,name=ppn_rate,json=ppnRate,proto3" json:"ppn_rate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -881,9 +974,9 @@ func (x *UpdatePurchaseOrderRequest) GetId() string {
 	return ""
 }
 
-func (x *UpdatePurchaseOrderRequest) GetExpectedAt() string {
+func (x *UpdatePurchaseOrderRequest) GetInvoiceDate() string {
 	if x != nil {
-		return x.ExpectedAt
+		return x.InvoiceDate
 	}
 	return ""
 }
@@ -900,6 +993,41 @@ func (x *UpdatePurchaseOrderRequest) GetItems() []*PurchaseOrderItemInput {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *UpdatePurchaseOrderRequest) GetInvoiceNo() string {
+	if x != nil {
+		return x.InvoiceNo
+	}
+	return ""
+}
+
+func (x *UpdatePurchaseOrderRequest) GetDueAt() string {
+	if x != nil {
+		return x.DueAt
+	}
+	return ""
+}
+
+func (x *UpdatePurchaseOrderRequest) GetCartDiscount() int64 {
+	if x != nil {
+		return x.CartDiscount
+	}
+	return 0
+}
+
+func (x *UpdatePurchaseOrderRequest) GetPpnEnabled() bool {
+	if x != nil {
+		return x.PpnEnabled
+	}
+	return false
+}
+
+func (x *UpdatePurchaseOrderRequest) GetPpnRate() int32 {
+	if x != nil {
+		return x.PpnRate
+	}
+	return 0
 }
 
 type UpdatePurchaseOrderResponse struct {
@@ -1126,15 +1254,14 @@ var File_purchasing_iface_v1_order_proto protoreflect.FileDescriptor
 
 const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\x82\x05\n" +
+	"\x1fpurchasing_iface/v1/order.proto\x12\x13purchasing_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xb7\x06\n" +
 	"\rPurchaseOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x13\n" +
 	"\x05po_no\x18\x02 \x01(\tR\x04poNo\x12\x1f\n" +
 	"\vsupplier_id\x18\x03 \x01(\tR\n" +
 	"supplierId\x125\n" +
-	"\x06status\x18\x04 \x01(\x0e2\x1d.purchasing_iface.v1.POStatusR\x06status\x12\x1f\n" +
-	"\vexpected_at\x18\x05 \x01(\tR\n" +
-	"expectedAt\x12\x12\n" +
+	"\x06status\x18\x04 \x01(\x0e2\x1d.purchasing_iface.v1.POStatusR\x06status\x12!\n" +
+	"\finvoice_date\x18\x05 \x01(\tR\vinvoiceDate\x12\x12\n" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12#\n" +
 	"\rordered_total\x18\a \x01(\x03R\forderedTotal\x12\x1f\n" +
 	"\vpaid_amount\x18\b \x01(\x03R\n" +
@@ -1154,7 +1281,15 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"invoice_no\x18\x11 \x01(\tR\tinvoiceNo\x12!\n" +
 	"\fwarehouse_id\x18\x12 \x01(\tR\vwarehouseId\x12%\n" +
-	"\x0ewarehouse_name\x18\x13 \x01(\tR\rwarehouseName\"\xa8\x03\n" +
+	"\x0ewarehouse_name\x18\x13 \x01(\tR\rwarehouseName\x12\x15\n" +
+	"\x06due_at\x18\x14 \x01(\tR\x05dueAt\x12\x1a\n" +
+	"\bsubtotal\x18\x15 \x01(\x03R\bsubtotal\x12#\n" +
+	"\rcart_discount\x18\x16 \x01(\x03R\fcartDiscount\x12\x1f\n" +
+	"\vppn_enabled\x18\x17 \x01(\bR\n" +
+	"ppnEnabled\x12\x1d\n" +
+	"\n" +
+	"ppn_amount\x18\x18 \x01(\x03R\tppnAmount\x12\x19\n" +
+	"\bppn_rate\x18\x19 \x01(\x05R\appnRate\"\xa8\x03\n" +
 	"\x11PurchaseOrderItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x11purchase_order_id\x18\x02 \x01(\tR\x0fpurchaseOrderId\x12\x1f\n" +
@@ -1197,22 +1332,34 @@ const file_purchasing_iface_v1_order_proto_rawDesc = "" +
 	"\x17GetPurchaseOrderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"T\n" +
 	"\x18GetPurchaseOrderResponse\x128\n" +
-	"\x05order\x18\x01 \x01(\v2\".purchasing_iface.v1.PurchaseOrderR\x05order\"\xb5\x01\n" +
+	"\x05order\x18\x01 \x01(\v2\".purchasing_iface.v1.PurchaseOrderR\x05order\"\xce\x02\n" +
 	"\x1aCreatePurchaseOrderRequest\x12\x1f\n" +
 	"\vsupplier_id\x18\x01 \x01(\tR\n" +
-	"supplierId\x12\x1f\n" +
-	"\vexpected_at\x18\x02 \x01(\tR\n" +
-	"expectedAt\x12\x12\n" +
+	"supplierId\x12!\n" +
+	"\finvoice_date\x18\x02 \x01(\tR\vinvoiceDate\x12\x12\n" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12A\n" +
-	"\x05items\x18\x04 \x03(\v2+.purchasing_iface.v1.PurchaseOrderItemInputR\x05items\"W\n" +
+	"\x05items\x18\x04 \x03(\v2+.purchasing_iface.v1.PurchaseOrderItemInputR\x05items\x12\x1d\n" +
+	"\n" +
+	"invoice_no\x18\x05 \x01(\tR\tinvoiceNo\x12\x15\n" +
+	"\x06due_at\x18\x06 \x01(\tR\x05dueAt\x12#\n" +
+	"\rcart_discount\x18\a \x01(\x03R\fcartDiscount\x12\x1f\n" +
+	"\vppn_enabled\x18\b \x01(\bR\n" +
+	"ppnEnabled\x12\x19\n" +
+	"\bppn_rate\x18\t \x01(\x05R\appnRate\"W\n" +
 	"\x1bCreatePurchaseOrderResponse\x128\n" +
-	"\x05order\x18\x01 \x01(\v2\".purchasing_iface.v1.PurchaseOrderR\x05order\"\xa4\x01\n" +
+	"\x05order\x18\x01 \x01(\v2\".purchasing_iface.v1.PurchaseOrderR\x05order\"\xbd\x02\n" +
 	"\x1aUpdatePurchaseOrderRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
-	"\vexpected_at\x18\x02 \x01(\tR\n" +
-	"expectedAt\x12\x12\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\finvoice_date\x18\x02 \x01(\tR\vinvoiceDate\x12\x12\n" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12A\n" +
-	"\x05items\x18\x04 \x03(\v2+.purchasing_iface.v1.PurchaseOrderItemInputR\x05items\"W\n" +
+	"\x05items\x18\x04 \x03(\v2+.purchasing_iface.v1.PurchaseOrderItemInputR\x05items\x12\x1d\n" +
+	"\n" +
+	"invoice_no\x18\x05 \x01(\tR\tinvoiceNo\x12\x15\n" +
+	"\x06due_at\x18\x06 \x01(\tR\x05dueAt\x12#\n" +
+	"\rcart_discount\x18\a \x01(\x03R\fcartDiscount\x12\x1f\n" +
+	"\vppn_enabled\x18\b \x01(\bR\n" +
+	"ppnEnabled\x12\x19\n" +
+	"\bppn_rate\x18\t \x01(\x05R\appnRate\"W\n" +
 	"\x1bUpdatePurchaseOrderResponse\x128\n" +
 	"\x05order\x18\x01 \x01(\v2\".purchasing_iface.v1.PurchaseOrderR\x05order\"*\n" +
 	"\x18SendPurchaseOrderRequest\x12\x0e\n" +

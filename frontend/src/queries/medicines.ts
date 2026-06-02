@@ -13,6 +13,7 @@ import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
 export type MedicinesQueryOpts = {
   includeInactive?: boolean;
   query?: string;
+  opnameBefore?: string; // YYYY-MM-DD; filter to medicines counted before this date OR never counted
   page?: number;
   pageSize?: number;
 };
@@ -67,15 +68,17 @@ export function useMedicinesQuery(opts: MedicinesQueryOpts = {}) {
   const {
     includeInactive = false,
     query = "",
+    opnameBefore = "",
     page = 0,
     pageSize = DEFAULT_PAGE_SIZE,
   } = opts;
   const q = useQuery({
-    queryKey: medicineKeys.list({ includeInactive, query, page, pageSize }),
+    queryKey: medicineKeys.list({ includeInactive, query, opnameBefore, page, pageSize }),
     queryFn: async () => {
       const res = await medicineClient.listMedicines({
         includeInactive,
         query,
+        opnameBefore,
         limit: pageSize,
         offset: page * pageSize,
       });
@@ -100,10 +103,11 @@ export async function searchMedicines(query: string) {
 // Imperative one-shot fetch of ALL medicines matching the filter (cap
 // ALL_LIMIT), for CSV export. Not a hook — call from an export handler.
 export async function fetchMedicinesForExport(opts: MedicinesQueryOpts = {}) {
-  const { includeInactive = false, query = "" } = opts;
+  const { includeInactive = false, query = "", opnameBefore = "" } = opts;
   const res = await medicineClient.listMedicines({
     includeInactive,
     query,
+    opnameBefore,
     limit: ALL_LIMIT,
     offset: 0,
   });

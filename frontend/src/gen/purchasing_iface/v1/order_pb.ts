@@ -81,11 +81,11 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
   status = POStatus.PO_STATUS_UNSPECIFIED;
 
   /**
-   * YYYY-MM-DD or empty
+   * YYYY-MM-DD or empty — supplier faktur date
    *
-   * @generated from field: string expected_at = 5;
+   * @generated from field: string invoice_date = 5;
    */
-  expectedAt = "";
+  invoiceDate = "";
 
   /**
    * @generated from field: string note = 6;
@@ -93,6 +93,8 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
   note = "";
 
   /**
+   * FINAL total = subtotal − cart_discount + ppn_amount
+   *
    * @generated from field: int64 ordered_total = 7;
    */
   orderedTotal = protoInt64.zero;
@@ -147,7 +149,7 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
   receivedAt = protoInt64.zero;
 
   /**
-   * most recent receipt's supplier faktur
+   * supplier faktur (PO-level; receipts may carry their own)
    *
    * @generated from field: string invoice_no = 17;
    */
@@ -167,6 +169,48 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
    */
   warehouseName = "";
 
+  /**
+   * YYYY-MM-DD or empty — payment due (jatuh tempo)
+   *
+   * @generated from field: string due_at = 20;
+   */
+  dueAt = "";
+
+  /**
+   * sum of item subtotals (PPN-exclusive)
+   *
+   * @generated from field: int64 subtotal = 21;
+   */
+  subtotal = protoInt64.zero;
+
+  /**
+   * cart-level discount
+   *
+   * @generated from field: int64 cart_discount = 22;
+   */
+  cartDiscount = protoInt64.zero;
+
+  /**
+   * whether PPN is applied
+   *
+   * @generated from field: bool ppn_enabled = 23;
+   */
+  ppnEnabled = false;
+
+  /**
+   * round((subtotal − cart_discount) × ppn_rate%) when enabled, else 0
+   *
+   * @generated from field: int64 ppn_amount = 24;
+   */
+  ppnAmount = protoInt64.zero;
+
+  /**
+   * PPN rate as a percent (default 11; ignored when ppn_enabled=false)
+   *
+   * @generated from field: int32 ppn_rate = 25;
+   */
+  ppnRate = 0;
+
   constructor(data?: PartialMessage<PurchaseOrder>) {
     super();
     proto3.util.initPartial(data, this);
@@ -179,7 +223,7 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
     { no: 2, name: "po_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "supplier_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(POStatus) },
-    { no: 5, name: "expected_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "invoice_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "ordered_total", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 8, name: "paid_amount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
@@ -194,6 +238,12 @@ export class PurchaseOrder extends Message<PurchaseOrder> {
     { no: 17, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 18, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 19, name: "warehouse_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 20, name: "due_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 21, name: "subtotal", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 22, name: "cart_discount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 23, name: "ppn_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 24, name: "ppn_amount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 25, name: "ppn_rate", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PurchaseOrder {
@@ -608,11 +658,11 @@ export class CreatePurchaseOrderRequest extends Message<CreatePurchaseOrderReque
   supplierId = "";
 
   /**
-   * YYYY-MM-DD or empty
+   * YYYY-MM-DD or empty — supplier faktur date
    *
-   * @generated from field: string expected_at = 2;
+   * @generated from field: string invoice_date = 2;
    */
-  expectedAt = "";
+  invoiceDate = "";
 
   /**
    * @generated from field: string note = 3;
@@ -624,6 +674,37 @@ export class CreatePurchaseOrderRequest extends Message<CreatePurchaseOrderReque
    */
   items: PurchaseOrderItemInput[] = [];
 
+  /**
+   * supplier faktur number
+   *
+   * @generated from field: string invoice_no = 5;
+   */
+  invoiceNo = "";
+
+  /**
+   * YYYY-MM-DD or empty — payment due (jatuh tempo)
+   *
+   * @generated from field: string due_at = 6;
+   */
+  dueAt = "";
+
+  /**
+   * @generated from field: int64 cart_discount = 7;
+   */
+  cartDiscount = protoInt64.zero;
+
+  /**
+   * @generated from field: bool ppn_enabled = 8;
+   */
+  ppnEnabled = false;
+
+  /**
+   * percent (default 11 when 0; ignored when ppn_enabled=false)
+   *
+   * @generated from field: int32 ppn_rate = 9;
+   */
+  ppnRate = 0;
+
   constructor(data?: PartialMessage<CreatePurchaseOrderRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -633,9 +714,14 @@ export class CreatePurchaseOrderRequest extends Message<CreatePurchaseOrderReque
   static readonly typeName = "purchasing_iface.v1.CreatePurchaseOrderRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "supplier_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "expected_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "invoice_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "items", kind: "message", T: PurchaseOrderItemInput, repeated: true },
+    { no: 5, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "due_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "cart_discount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "ppn_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "ppn_rate", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreatePurchaseOrderRequest {
@@ -702,9 +788,9 @@ export class UpdatePurchaseOrderRequest extends Message<UpdatePurchaseOrderReque
   id = "";
 
   /**
-   * @generated from field: string expected_at = 2;
+   * @generated from field: string invoice_date = 2;
    */
-  expectedAt = "";
+  invoiceDate = "";
 
   /**
    * @generated from field: string note = 3;
@@ -718,6 +804,31 @@ export class UpdatePurchaseOrderRequest extends Message<UpdatePurchaseOrderReque
    */
   items: PurchaseOrderItemInput[] = [];
 
+  /**
+   * @generated from field: string invoice_no = 5;
+   */
+  invoiceNo = "";
+
+  /**
+   * @generated from field: string due_at = 6;
+   */
+  dueAt = "";
+
+  /**
+   * @generated from field: int64 cart_discount = 7;
+   */
+  cartDiscount = protoInt64.zero;
+
+  /**
+   * @generated from field: bool ppn_enabled = 8;
+   */
+  ppnEnabled = false;
+
+  /**
+   * @generated from field: int32 ppn_rate = 9;
+   */
+  ppnRate = 0;
+
   constructor(data?: PartialMessage<UpdatePurchaseOrderRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -727,9 +838,14 @@ export class UpdatePurchaseOrderRequest extends Message<UpdatePurchaseOrderReque
   static readonly typeName = "purchasing_iface.v1.UpdatePurchaseOrderRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "expected_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "invoice_date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "items", kind: "message", T: PurchaseOrderItemInput, repeated: true },
+    { no: 5, name: "invoice_no", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "due_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "cart_discount", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "ppn_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "ppn_rate", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdatePurchaseOrderRequest {

@@ -393,3 +393,121 @@ func seedMedicineAndBatches(
 	}
 	return medID, batchIDs
 }
+
+// TestGetMedicine_LastStocktake covers the GetMedicine enrichment that surfaces
+// the most recent COMPLETED stocktake's date + variance per medicine, scoped to
+// the active warehouse. Variance is signed (counted - expected) in BASE units.
+func TestGetMedicine_LastStocktake(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	cleanupLeftoverDrafts(t, env, ctx)
+
+	// Two medicines: A gets stocktaken (expect 10, count 8 → variance -2),
+	// B is left untouched (assert empty/zero).
+	medA, batchIDsA := seedMedicineAndBatches(t, env, ctx,
+		fmt.Sprintf("e2e-st-last-%d", time.Now().UnixNano()),
+		[]int32{10},
+	)
+	medB, _ := seedMedicineAndBatches(t, env, ctx,
+		fmt.Sprintf("e2e-st-untouched-%d", time.Now().UnixNano()),
+		[]int32{5},
+	)
+
+	start, err := env.Stocktakes.StartStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.StartStocktakeRequest{Name: "Last opname coverage"}))
+	require.NoError(t, err)
+	sessID := start.Msg.Session.Id
+	t.Cleanup(func() {
+		_, _ = env.Stocktakes.VoidStocktake(ctx, authReq(env, t,
+			&stocktakeifacev1.VoidStocktakeRequest{SessionId: sessID}))
+	})
+
+	_, err = env.Stocktakes.AddBatchesToSession(ctx, authReq(env, t,
+		&stocktakeifacev1.AddBatchesToSessionRequest{SessionId: sessID, BatchIds: batchIDsA}))
+	require.NoError(t, err)
+
+	got, err := env.Stocktakes.GetStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.GetStocktakeRequest{Id: sessID}))
+	require.NoError(t, err)
+	require.Len(t, got.Msg.Lines, 1)
+
+	// Count 8 vs expected 10 → variance −2.
+	_, err = env.Stocktakes.RecordCount(ctx, authReq(env, t,
+		&stocktakeifacev1.RecordCountRequest{LineId: got.Msg.Lines[0].Id, CountedQty: 8}))
+	require.NoError(t, err)
+
+	_, err = env.Stocktakes.CompleteStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.CompleteStocktakeRequest{SessionId: sessID}))
+	require.NoError(t, err)
+
+	// Medicine A: GetMedicine surfaces the stocktake date + signed variance.
+	gotA, err := env.Medicines.GetMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.GetMedicineRequest{Id: medA}))
+	require.NoError(t, err)
+	require.Equal(t, time.Now().Format("2006-01-02"), gotA.Msg.Medicine.LastStocktakeDate,
+		"last stocktake date == today (the session's completed_at)")
+	require.Equal(t, int64(-2), gotA.Msg.Medicine.LastStocktakeVariance,
+		"variance = 8 (counted) - 10 (expected) = -2")
+
+	// Medicine B was never counted → fields stay empty/zero.
+	gotB, err := env.Medicines.GetMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.GetMedicineRequest{Id: medB}))
+	require.NoError(t, err)
+	require.Equal(t, "", gotB.Msg.Medicine.LastStocktakeDate, "untouched medicine has no last stocktake")
+	require.Equal(t, int64(0), gotB.Msg.Medicine.LastStocktakeVariance)
+}
+
+// TestVoidedStocktake_DoesNotUpdateLastOpname pins the audit semantic: only
+// COMPLETED sessions promote a medicine's last_stocktake_date. A voided
+// session must NOT elect the medicine — both via GetMedicine and the list
+// enrichment path.
+func TestVoidedStocktake_DoesNotUpdateLastOpname(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	cleanupLeftoverDrafts(t, env, ctx)
+
+	prefix := fmt.Sprintf("e2e-st-void-%d", time.Now().UnixNano())
+	medID, batchIDs := seedMedicineAndBatches(t, env, ctx, prefix, []int32{10})
+
+	// Baseline: GetMedicine returns empty last-opname.
+	pre, err := env.Medicines.GetMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.GetMedicineRequest{Id: medID}))
+	require.NoError(t, err)
+	require.Equal(t, "", pre.Msg.Medicine.LastStocktakeDate)
+
+	// Start session, add batch, record count — DO NOT complete; void instead.
+	start, err := env.Stocktakes.StartStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.StartStocktakeRequest{Name: "void test"}))
+	require.NoError(t, err)
+	sessID := start.Msg.Session.Id
+	_, err = env.Stocktakes.AddBatchesToSession(ctx, authReq(env, t,
+		&stocktakeifacev1.AddBatchesToSessionRequest{SessionId: sessID, BatchIds: batchIDs}))
+	require.NoError(t, err)
+	get, err := env.Stocktakes.GetStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.GetStocktakeRequest{Id: sessID}))
+	require.NoError(t, err)
+	_, err = env.Stocktakes.RecordCount(ctx, authReq(env, t,
+		&stocktakeifacev1.RecordCountRequest{LineId: get.Msg.Lines[0].Id, CountedQty: 10}))
+	require.NoError(t, err)
+	_, err = env.Stocktakes.VoidStocktake(ctx, authReq(env, t,
+		&stocktakeifacev1.VoidStocktakeRequest{SessionId: sessID}))
+	require.NoError(t, err)
+
+	// GetMedicine: still empty (voided session was not promoted).
+	post, err := env.Medicines.GetMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.GetMedicineRequest{Id: medID}))
+	require.NoError(t, err)
+	require.Equal(t, "", post.Msg.Medicine.LastStocktakeDate,
+		"voided session must not update medicine's last_stocktake_date")
+	require.Equal(t, int64(0), post.Msg.Medicine.LastStocktakeVariance)
+
+	// ListMedicines: row enrichment path also stays empty.
+	list, err := env.Medicines.ListMedicines(ctx, authReq(env, t,
+		&inventoryifacev1.ListMedicinesRequest{Query: prefix, Limit: 100}))
+	require.NoError(t, err)
+	for _, m := range list.Msg.Medicines {
+		if m.Id == medID {
+			require.Equal(t, "", m.LastStocktakeDate, "list row must mirror GetMedicine")
+		}
+	}
+}
