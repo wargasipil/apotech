@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	prescriptionifacev1 "github.com/apotech/backend/gen/prescription_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -301,7 +300,7 @@ func (p *Prescriptions) lockByID(tx *gorm.DB, id string) (*model.Prescription, e
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id required"))
 	}
 	var rx model.Prescription
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&rx).Error
+	err := applyForUpdate(tx).Where("id = ?", id).First(&rx).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("prescription not found"))
 	}
@@ -350,9 +349,8 @@ func assignRxNo(tx *gorm.DB, now time.Time) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
-	if err := tx.Model(&model.RxCounter{}).
-		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	if err := applyForUpdate(tx.Model(&model.RxCounter{}).
+		Where("year = ?", year)).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

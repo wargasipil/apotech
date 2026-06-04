@@ -2,11 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"io/fs"
 	"log"
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/migrations"
@@ -24,25 +26,38 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sqlDB, err := sql.Open("pgx", cfg.Database.DSN())
+	// Select the driver, goose dialect, and migration subdirectory from config.
+	sqlDriver, dialect := "pgx", "postgres"
+	dsn := cfg.Database.DSN()
+	if cfg.Database.IsSQLite() {
+		sqlDriver, dialect = "sqlite", "sqlite3"
+		dsn = cfg.Database.SQLiteDSN()
+	}
+
+	sqlDB, err := sql.Open(sqlDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer sqlDB.Close()
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect(dialect); err != nil {
 		log.Fatal(err)
 	}
 
-	// `create` writes a new .sql file to disk, so it uses the on-disk
-	// migrations dir (relative to backend/ — the Makefile sets that CWD).
-	// Every other command reads the migrations embedded in the binary, so it
-	// works regardless of the working directory.
+	// `create` writes a new .sql file to disk, so it uses the on-disk migrations
+	// dir for the active driver (relative to backend/ — the Makefile sets that
+	// CWD). Author every new migration in BOTH dialect dirs. Every other command
+	// reads the migrations embedded in the binary (rooted at the dialect
+	// subdir via fs.Sub), so it works regardless of the working directory.
 	dir := "."
 	if cmd == "create" {
-		dir = "migrations"
+		dir = "migrations/" + migrations.Dir(cfg.Database.Driver)
 	} else {
-		goose.SetBaseFS(migrations.FS)
+		sub, err := fs.Sub(migrations.FS, migrations.Dir(cfg.Database.Driver))
+		if err != nil {
+			log.Fatal(err)
+		}
+		goose.SetBaseFS(sub)
 	}
 
 	if err := goose.Run(cmd, sqlDB, dir, args...); err != nil {

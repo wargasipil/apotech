@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	posifacev1 "github.com/apotech/backend/gen/pos_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -151,7 +150,7 @@ func (s *Sales) applySaleFilters(
 			Joins("LEFT JOIN customers c ON c.id = s.customer_id").
 			Joins("LEFT JOIN sale_items si ON si.sale_id = s.id").
 			Joins("LEFT JOIN medicines m ON m.id = si.medicine_id").
-			Where("s.sale_no ILIKE ? OR c.name ILIKE ? OR m.name ILIKE ?", pattern, pattern, pattern)
+			Where(fmt.Sprintf("s.sale_no %[1]s ? OR c.name %[1]s ? OR m.name %[1]s ?", likeKeyword(s.db)), pattern, pattern, pattern)
 		q = q.Where("id IN (?)", sub)
 	}
 	return q
@@ -740,7 +739,7 @@ func (s *Sales) VoidSale(
 ) (*connect.Response[posifacev1.VoidSaleResponse], error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var sale model.Sale
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := applyForUpdate(tx).
 			Where("id = ?", req.Msg.SaleId).First(&sale).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
@@ -772,7 +771,7 @@ func (s *Sales) DiscardSale(
 ) (*connect.Response[posifacev1.DiscardSaleResponse], error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var sale model.Sale
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := applyForUpdate(tx).
 			Where("id = ?", req.Msg.SaleId).First(&sale).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
@@ -874,7 +873,7 @@ func (s *Sales) GetTodaySnapshot(
 
 	var lastSaleUnix int64
 	if err := applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}), "").
-		Select("COALESCE(EXTRACT(EPOCH FROM MAX(completed_at))::bigint, 0)").
+		Select("COALESCE(" + epochExpr(s.db, "MAX(completed_at)") + ", 0)").
 		Scan(&lastSaleUnix).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -1003,7 +1002,7 @@ func (s *Sales) draftForUpdate(tx *gorm.DB, id string) (*model.Sale, error) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sale_id required"))
 	}
 	var sale model.Sale
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&sale).Error
+	err := applyForUpdate(tx).Where("id = ?", id).First(&sale).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
 	}
@@ -1079,9 +1078,8 @@ func assignSaleNo(tx *gorm.DB, now time.Time) (string, error) {
 
 	// Atomic increment using SQL expression to keep concurrent CompleteSale
 	// calls correct under row-lock.
-	if err := tx.Model(&model.SaleNoCounter{}).
-		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	if err := applyForUpdate(tx.Model(&model.SaleNoCounter{}).
+		Where("year = ?", year)).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

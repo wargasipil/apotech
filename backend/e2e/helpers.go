@@ -25,6 +25,7 @@ import (
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/db"
+	"github.com/apotech/backend/internal/dbmigrate"
 	"github.com/apotech/backend/internal/service"
 )
 
@@ -99,17 +100,30 @@ func SetupEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
+	// On SQLite the backend is a fresh file (APOTECH_DB_PATH), so apply the
+	// embedded migrations here — the Postgres dev DB is migrated out-of-band via
+	// `make migrate-up`, so we leave it untouched.
+	if cfg.Database.IsSQLite() {
+		if sqlDB, derr := gormDB.DB(); derr == nil {
+			if merr := dbmigrate.Run(sqlDB, cfg.Database.Driver); merr != nil {
+				t.Fatalf("migrate sqlite: %v", merr)
+			}
+		}
+	}
 	// Close this test's connection pool when the test ends — otherwise each
 	// SetupEnv leaks a pool and the suite accumulates connections until Postgres
 	// max_connections is exhausted (flaky "can't get a connection" failures on
 	// random tests under load). Registered before the srv cleanup below so it
-	// runs after it (t.Cleanup is LIFO: stop serving, then close the DB). Bound
-	// the pool too as cheap insurance against momentary overlap with the dev
-	// backend / make web; tests are sequential + unary, so 10 is ample.
+	// runs after it (t.Cleanup is LIFO: stop serving, then close the DB). On
+	// SQLite db.Open already pinned MaxOpenConns(1) for write-serialization;
+	// don't widen it. Postgres bounds the pool as cheap insurance against
+	// momentary overlap with the dev backend / make web.
 	if sqlDB, derr := gormDB.DB(); derr == nil {
-		sqlDB.SetMaxOpenConns(10)
-		sqlDB.SetMaxIdleConns(2)
-		sqlDB.SetConnMaxLifetime(time.Minute)
+		if !cfg.Database.IsSQLite() {
+			sqlDB.SetMaxOpenConns(10)
+			sqlDB.SetMaxIdleConns(2)
+			sqlDB.SetConnMaxLifetime(time.Minute)
+		}
 		t.Cleanup(func() { _ = sqlDB.Close() })
 	}
 

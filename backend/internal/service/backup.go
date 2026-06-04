@@ -75,8 +75,9 @@ func NewBackupsWithDir(db *gorm.DB, cfg *config.Config, directory string) *Backu
 var backupNameRe = regexp.MustCompile(`^backup_\d{4}-\d{2}-\d{2}_\d{6}$`)
 
 const (
-	dumpFileName     = "database.sql.gz"
-	manifestFileName = "manifest.txt"
+	dumpFileName       = "database.sql.gz" // Postgres pg_dump output
+	sqliteDumpFileName = "database.db"      // SQLite VACUUM INTO snapshot
+	manifestFileName   = "manifest.txt"
 )
 
 // CreateBackup runs pg_dump (compressed) into a fresh backup_<ts>/ directory.
@@ -104,35 +105,45 @@ func (s *Backups) CreateBackup(
 		}
 	}()
 
-	// Resolve pg_dump: PATH → bundled-next-to-apotech-binary → cached download →
-	// (Windows + autoFetch) auto-download EDB binaries → friendly error.
-	pgDumpPath, err := resolvePgDump(ctx, s.pgToolsDir, s.autoFetchPgDump)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-	}
-
-	dumpPath := filepath.Join(dir, dumpFileName)
-	db := s.cfg.Database
-	cmd := exec.CommandContext(ctx, pgDumpPath,
-		"--host="+db.Host,
-		"--port="+strconv.Itoa(db.Port),
-		"--username="+db.User,
-		"--dbname="+db.Name,
-		"--no-password",
-		"--clean",
-		"--if-exists",
-		"--compress=6",
-		"--file="+dumpPath,
-	)
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
-	stderr := &strings.Builder{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
+	var dumpPath string
+	if isSQLite(s.db) {
+		// SQLite: VACUUM INTO writes a consistent snapshot of the live database
+		// to a new file — no subprocess, no pg_dump. The target must not exist
+		// yet; the backup dir was just created, so it won't.
+		dumpPath = filepath.Join(dir, sqliteDumpFileName)
+		if err := s.db.WithContext(ctx).Exec("VACUUM INTO ?", dumpPath).Error; err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("sqlite backup: %w", err))
 		}
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("pg_dump: %s", msg))
+	} else {
+		// Postgres: resolve pg_dump (PATH → bundled-next-to-binary → cached
+		// download → Windows auto-download → friendly error) and dump compressed.
+		pgDumpPath, err := resolvePgDump(ctx, s.pgToolsDir, s.autoFetchPgDump)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		dumpPath = filepath.Join(dir, dumpFileName)
+		db := s.cfg.Database
+		cmd := exec.CommandContext(ctx, pgDumpPath,
+			"--host="+db.Host,
+			"--port="+strconv.Itoa(db.Port),
+			"--username="+db.User,
+			"--dbname="+db.Name,
+			"--no-password",
+			"--clean",
+			"--if-exists",
+			"--compress=6",
+			"--file="+dumpPath,
+		)
+		cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
+		stderr := &strings.Builder{}
+		cmd.Stderr = stderr
+		if err := cmd.Run(); err != nil {
+			msg := strings.TrimSpace(stderr.String())
+			if msg == "" {
+				msg = err.Error()
+			}
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("pg_dump: %s", msg))
+		}
 	}
 
 	info, err := os.Stat(dumpPath)
@@ -186,11 +197,7 @@ func (s *Backups) ListBackups(
 			continue
 		}
 		dir := filepath.Join(s.directory, e.Name())
-		info, err := os.Stat(filepath.Join(dir, dumpFileName))
-		var size int64
-		if err == nil {
-			size = info.Size()
-		}
+		size := backupDumpSize(dir)
 		// Parse the timestamp out of the name; fall back to dir mtime so a
 		// listing never silently drops a real backup.
 		var created int64
@@ -261,11 +268,27 @@ func (s *Backups) readSchemaVersion(ctx context.Context) int32 {
 }
 
 func (s *Backups) readDBVersion(ctx context.Context) string {
+	q := `SELECT version()`
+	if isSQLite(s.db) {
+		q = `SELECT 'SQLite ' || sqlite_version()`
+	}
 	var v string
-	if err := s.db.WithContext(ctx).Raw(`SELECT version()`).Scan(&v).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw(q).Scan(&v).Error; err != nil {
 		return ""
 	}
 	return v
+}
+
+// backupDumpSize returns the size of a backup's dump file, trying the Postgres
+// (.sql.gz) then the SQLite (.db) name so a listing works regardless of which
+// backend produced the backup. Returns 0 if neither is present.
+func backupDumpSize(dir string) int64 {
+	for _, name := range []string{dumpFileName, sqliteDumpFileName} {
+		if info, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return info.Size()
+		}
+	}
+	return 0
 }
 
 // manifest is the on-disk shape of manifest.txt. Plain key=value lines so

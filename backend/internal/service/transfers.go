@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	warehouseifacev1 "github.com/apotech/backend/gen/warehouse_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -161,7 +160,7 @@ func (s *Transfers) ListTransfers(
 		q = q.Where("from_warehouse_id = ? OR to_warehouse_id = ?", wh, wh)
 		if query := strings.TrimSpace(req.Msg.Query); query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("transfer_no ILIKE ? OR note ILIKE ?", pattern, pattern)
+			q = q.Where(fmt.Sprintf("transfer_no %[1]s ? OR note %[1]s ?", likeKeyword(s.db)), pattern, pattern)
 		}
 		if req.Msg.FromUnix > 0 {
 			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
@@ -263,11 +262,11 @@ func (s *Transfers) hydrateTransfer(
 	var rows []lineRow
 	err := s.db.WithContext(ctx).
 		Table("stock_movements AS m").
-		Select(`m.batch_id, m.qty,
+		Select(fmt.Sprintf(`m.batch_id, m.qty,
 		        b.medicine_id AS medicine_id,
 		        med.name AS medicine_name,
 		        b.batch_number AS batch_number,
-		        TO_CHAR(b.expiry_date, 'YYYY-MM-DD') AS expiry_date`).
+		        %s AS expiry_date`, dateText(s.db, "b.expiry_date"))).
 		Joins("JOIN batches AS b ON b.id = m.batch_id").
 		Joins("JOIN medicines AS med ON med.id = b.medicine_id").
 		Where("m.transfer_id = ? AND m.type = ?", row.ID, movementTransferIn).
@@ -301,9 +300,8 @@ func assignTransferNo(tx *gorm.DB, now time.Time) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
-	if err := tx.Model(&model.TransferCounter{}).
-		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	if err := applyForUpdate(tx.Model(&model.TransferCounter{}).
+		Where("year = ?", year)).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -31,7 +32,7 @@ func (w *Warehouses) ListWarehouses(
 		}
 		if query != "" {
 			like := "%" + query + "%"
-			q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
+			q = q.Where(fmt.Sprintf("code %[1]s ? OR name %[1]s ?", likeKeyword(w.db)), like, like)
 		}
 		return q
 	}
@@ -280,7 +281,7 @@ func (w *Warehouses) ListUserWarehouses(
 	q := w.db.WithContext(ctx).Where("id IN ? AND active = ?", ids, true)
 	if query := strings.TrimSpace(req.Msg.Query); query != "" {
 		like := "%" + query + "%"
-		q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
+		q = q.Where(fmt.Sprintf("code %[1]s ? OR name %[1]s ?", likeKeyword(w.db)), like, like)
 	}
 	if err := q.Order("code ASC").Find(&whs).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

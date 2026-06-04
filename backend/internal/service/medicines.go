@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -52,22 +51,22 @@ func (m *Medicines) ListMedicines(
 		}
 		if query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+			q = q.Where(fmt.Sprintf("name %[1]s ? OR sku %[1]s ?", likeKeyword(m.db)), pattern, pattern)
 		}
 		if opnameBefore != "" {
 			// "Last opname < before OR never counted" = "no completed opname
 			// session with completed_at >= before touched this medicine in the
 			// active warehouse". Inverted EXISTS keeps both branches.
-			q = q.Where(`NOT EXISTS (
+			q = q.Where(fmt.Sprintf(`NOT EXISTS (
 				SELECT 1 FROM stocktake_sessions ss
 				JOIN stocktake_lines sl ON sl.session_id = ss.id
 				JOIN batches b ON b.id = sl.batch_id
 				WHERE ss.warehouse_id = ?
 				  AND ss.status = 'COMPLETED'
-				  AND ss.completed_at >= ?::date
+				  AND ss.completed_at >= ?%s
 				  AND sl.counted_qty IS NOT NULL
 				  AND b.medicine_id = medicines.id
-			)`, warehouseID, opnameBefore)
+			)`, dateCast(m.db)), warehouseID, opnameBefore)
 		}
 		return q
 	}
@@ -187,13 +186,16 @@ func (m *Medicines) enrichLastStocktake(
 		return err
 	}
 	type opnameRow struct {
-		MedicineID  string    `gorm:"column:medicine_id"`
-		CompletedAt time.Time `gorm:"column:completed_at"`
+		MedicineID  string `gorm:"column:medicine_id"`
+		CompletedAt string `gorm:"column:completed_at"` // 'YYYY-MM-DD' (only the date is shown)
 	}
 	var rows []opnameRow
 	if err := m.db.WithContext(ctx).
 		Table("stocktake_sessions AS ss").
-		Select("b.medicine_id AS medicine_id, MAX(ss.completed_at) AS completed_at").
+		// Select the date as text (the only thing rendered): aggregating a
+		// timestamp and scanning it back into a time.Time fails on SQLite, where
+		// MAX() over a DATETIME yields a bare string with no type affinity.
+		Select(fmt.Sprintf("b.medicine_id AS medicine_id, %s AS completed_at", dateText(m.db, "MAX(ss.completed_at)"))).
 		Joins("JOIN stocktake_lines sl ON sl.session_id = ss.id").
 		Joins("JOIN batches b ON b.id = sl.batch_id").
 		Where("ss.warehouse_id = ? AND ss.status = ? AND sl.counted_qty IS NOT NULL AND b.medicine_id IN ?",
@@ -202,13 +204,13 @@ func (m *Medicines) enrichLastStocktake(
 		Scan(&rows).Error; err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
-	byID := make(map[string]time.Time, len(rows))
+	byID := make(map[string]string, len(rows))
 	for _, r := range rows {
 		byID[r.MedicineID] = r.CompletedAt
 	}
 	for _, md := range meds {
-		if t, ok := byID[md.Id]; ok && !t.IsZero() {
-			md.LastStocktakeDate = t.Format(dateLayout)
+		if d, ok := byID[md.Id]; ok && d != "" {
+			md.LastStocktakeDate = d
 		}
 	}
 	return nil
@@ -414,7 +416,7 @@ func (m *Medicines) UpdateMedicine(
 		// close-open-row + insert-new-open-row price-version sequence (here and in
 		// syncMedicineUnits/recordUnitPrice) can collide on the *_open_idx partial
 		// unique index and fail spuriously.
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := applyForUpdate(tx).
 			Where("id = ?", med.ID).First(&model.Medicine{}).Error; err != nil {
 			return err
 		}
@@ -508,7 +510,7 @@ func (m *Medicines) SearchMedicines(
 	}
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		q = q.Where(fmt.Sprintf("name %[1]s ? OR sku %[1]s ?", likeKeyword(m.db)), pattern, pattern)
 	}
 	var rows []model.Medicine
 	if err := q.Find(&rows).Error; err != nil {

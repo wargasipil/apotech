@@ -55,7 +55,7 @@ func (s *Stock) ListMovements(
 				s.db.Table("batches b").
 					Select("b.id").
 					Joins("JOIN medicines m ON m.id = b.medicine_id").
-					Where("b.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern))
+					Where(fmt.Sprintf("b.batch_number %[1]s ? OR m.name %[1]s ? OR m.sku %[1]s ?", likeKeyword(s.db)), pattern, pattern, pattern))
 		}
 		if req.Msg.FromUnix > 0 {
 			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
@@ -171,10 +171,10 @@ func (s *Stock) GetStockLevels(
 	// lives in the JOIN so batches with no stock there still appear (qty 0).
 	q := s.db.WithContext(ctx).
 		Table("batches b").
-		Select(`b.id AS batch_id,
+		Select(fmt.Sprintf(`b.id AS batch_id,
 		        b.medicine_id,
-		        TO_CHAR(b.expiry_date, 'YYYY-MM-DD') AS expiry_date,
-		        COALESCE(SUM(m.qty), 0) AS current_quantity`).
+		        %s AS expiry_date,
+		        COALESCE(SUM(m.qty), 0) AS current_quantity`, dateText(s.db, "b.expiry_date"))).
 		Joins("LEFT JOIN stock_movements m ON m.batch_id = b.id AND m.warehouse_id = ?", warehouseID).
 		Group("b.id").
 		Order("b.expiry_date ASC")

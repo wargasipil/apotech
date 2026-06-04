@@ -1,0 +1,44 @@
+server:
+  # host: interface to bind.
+  #   0.0.0.0   = all interfaces — reachable from the LAN / inside Docker
+  #   127.0.0.1 = this machine only — single-PC install (recommended for SQLite)
+  host: 127.0.0.1
+  port: 8080
+
+database:
+  # driver: "sqlite" (single self-contained file, no DB server) or "postgres".
+  driver: sqlite
+  # path: the SQLite database file. Created on first boot; auto-migrated.
+  # Override with APOTECH_DB_PATH. ":memory:" is also accepted (tests).
+  path: ./apotech.db
+  # auto_migrate: run goose migrations on server boot. Default true (turnkey).
+  auto_migrate: true
+
+auth:
+  jwt_secret: change-me-to-a-long-random-string
+  access_token_ttl: 1h
+  refresh_token_ttl: 720h   # 30 days
+
+bootstrap:
+  owner_email: owner@apotech.local
+  owner_password: change-me-on-first-login
+
+# Optional: ESC/POS thermal printer (same as the Postgres flavor).
+printer:
+  enabled: false
+  address: 192.168.1.100:9100
+  width: 32
+  timeout: 5s
+  open_drawer: false
+  header:
+    - "APOTECH PHARMACY"
+    - "Jl. Example No. 123"
+    - "Bandung"
+  footer:
+    - "Thank you!"
+
+# Where BackupService writes per-timestamp backup directories. For SQLite each
+# backup is backup_YYYY-mm-dd_HHMMSS/{database.db,manifest.txt} (a VACUUM INTO
+# snapshot — no pg_dump). Empty => "./backups". Override with APOTECH_BACKUP_DIR.
+backup:
+  directory: ./backups

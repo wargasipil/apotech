@@ -195,7 +195,7 @@ func (u *Users) SearchUsers(
 	tx := u.db.WithContext(ctx).Model(&model.User{}).Select("id, name, email")
 	if q != "" {
 		like := "%" + q + "%"
-		tx = tx.Where("email ILIKE ? OR name ILIKE ?", like, like)
+		tx = tx.Where(fmt.Sprintf("email %[1]s ? OR name %[1]s ?", likeKeyword(u.db)), like, like)
 	}
 	var rows []row
 	if err := tx.Order("email ASC").Limit(limit).Scan(&rows).Error; err != nil {

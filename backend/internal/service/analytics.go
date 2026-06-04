@@ -291,13 +291,16 @@ func (a *Analytics) DailyMetric(
 
 func (a *Analytics) dailyOrderMetric(ctx context.Context, from, to time.Time, gran, warehouseID string) (map[string]*analyticsifacev1.OrderItem, error) {
 	type row struct {
-		Bucket  time.Time `gorm:"column:bucket"`
+		Bucket  string `gorm:"column:bucket"`
 		Terjual int64
 		Hpp     int64
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
-		SELECT DATE_TRUNC(?, s.completed_at) AS bucket,
+	// The bucket is produced as a 'YYYY-MM-DD' boundary-date string (day/week-
+	// Monday/month-1st) by dateBucketExpr, then parsed back into a time.Time so
+	// dayBucketKey can format the response key identically across dialects.
+	q := fmt.Sprintf(`
+		SELECT %s AS bucket,
 		       COALESCE(SUM(si.line_total), 0) AS terjual,
 		       COALESCE(SUM(c.cogs), 0)        AS hpp
 		FROM sales s
@@ -312,13 +315,18 @@ func (a *Analytics) dailyOrderMetric(ctx context.Context, from, to time.Time, gr
 		WHERE s.status = ? AND s.warehouse_id = ?
 		  AND s.completed_at >= ? AND s.completed_at < ?
 		GROUP BY bucket
-	`, gran, saleStatusCompleted, warehouseID, from, to).Scan(&rows).Error
+	`, dateBucketExpr(a.db, gran, "s.completed_at"))
+	err := a.db.WithContext(ctx).Raw(q, saleStatusCompleted, warehouseID, from, to).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
 	out := map[string]*analyticsifacev1.OrderItem{}
 	for _, r := range rows {
-		out[dayBucketKey(r.Bucket, gran)] = &analyticsifacev1.OrderItem{
+		bucket, perr := time.Parse("2006-01-02", r.Bucket)
+		if perr != nil {
+			continue
+		}
+		out[dayBucketKey(bucket, gran)] = &analyticsifacev1.OrderItem{
 			Terjual: r.Terjual,
 			Hpp:     r.Hpp,
 			Profit:  r.Terjual - r.Hpp,
@@ -565,13 +573,15 @@ func (a *Analytics) productPageIDs(
 
 	// Combined CTE — compute every metric the sort might reference so the
 	// ORDER BY can name them by alias. Total = COUNT(*) over the inner CTE.
-	combined := `
+	// The three %s are dialect-specific (last_order_unix epoch, last_restock_unix
+	// epoch, the 30-day expiry upper bound), injected via the dialect helpers.
+	combined := fmt.Sprintf(`
 		WITH order_agg AS (
 		  SELECT si.medicine_id,
 		         SUM(si.line_total) AS terjual,
 		         COALESCE(SUM(c.cogs), 0) AS hpp,
 		         COALESCE(SUM(si.base_qty), 0) AS base_qty,
-		         COALESCE(EXTRACT(EPOCH FROM MAX(s.completed_at))::bigint, 0) AS last_order_unix
+		         COALESCE(%s, 0) AS last_order_unix
 		  FROM sale_items si
 		  JOIN sales s ON s.id = si.sale_id
 		  LEFT JOIN (
@@ -601,7 +611,7 @@ func (a *Analytics) productPageIDs(
 		),
 		restock_agg AS (
 		  SELECT b.medicine_id,
-		         EXTRACT(EPOCH FROM MAX(b.received_at))::bigint AS last_restock_unix
+		         %s AS last_restock_unix
 		  FROM batches b
 		  JOIN stock_movements sm ON sm.batch_id = b.id
 		  WHERE sm.warehouse_id = ? AND sm.qty > 0
@@ -613,7 +623,7 @@ func (a *Analytics) productPageIDs(
 		  FROM batches b
 		  JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 		  WHERE b.expiry_date >= CURRENT_DATE
-		    AND b.expiry_date < (CURRENT_DATE + INTERVAL '30 days')
+		    AND b.expiry_date < %s
 		  GROUP BY b.medicine_id
 		),
 		combined AS (
@@ -636,7 +646,11 @@ func (a *Analytics) productPageIDs(
 		  LEFT JOIN expiring_agg e ON e.medicine_id = m.id
 		  WHERE m.active = true
 		)
-	`
+	`,
+		epochExpr(a.db, "MAX(s.completed_at)"),
+		epochExpr(a.db, "MAX(b.received_at)"),
+		dateAddDaysExpr(a.db, "CURRENT_DATE", 30),
+	)
 
 	// avg_sold = base_qty / days_in_range; min 1 day.
 	days := int64(to.Sub(from) / (24 * time.Hour))
@@ -685,12 +699,12 @@ func (a *Analytics) productOrderForIDs(ctx context.Context, from, to time.Time, 
 		LastOrderUnix int64 `gorm:"column:last_order_unix"`
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
+	err := a.db.WithContext(ctx).Raw(fmt.Sprintf(`
 		SELECT si.medicine_id,
 		       COALESCE(SUM(si.line_total), 0) AS terjual,
 		       COALESCE(SUM(c.cogs), 0) AS hpp,
 		       COALESCE(SUM(si.base_qty), 0) AS base_qty,
-		       COALESCE(EXTRACT(EPOCH FROM MAX(s.completed_at))::bigint, 0) AS last_order_unix
+		       COALESCE(%s, 0) AS last_order_unix
 		FROM sale_items si
 		JOIN sales s ON s.id = si.sale_id
 		LEFT JOIN (
@@ -704,7 +718,7 @@ func (a *Analytics) productOrderForIDs(ctx context.Context, from, to time.Time, 
 		  AND s.completed_at >= ? AND s.completed_at < ?
 		  AND si.medicine_id IN ?
 		GROUP BY si.medicine_id
-	`, saleStatusCompleted, warehouseID, from, to, ids).Scan(&rows).Error
+	`, epochExpr(a.db, "MAX(s.completed_at)")), saleStatusCompleted, warehouseID, from, to, ids).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
@@ -735,7 +749,7 @@ func (a *Analytics) productStockForIDs(ctx context.Context, warehouseID string, 
 		Expiring        int64
 	}
 	var rows []row
-	err := a.db.WithContext(ctx).Raw(`
+	err := a.db.WithContext(ctx).Raw(fmt.Sprintf(`
 		SELECT m.id AS medicine_id,
 		       COALESCE(s.ready, 0)   AS ready,
 		       COALESCE(g.ongoing, 0) AS ongoing,
@@ -757,7 +771,7 @@ func (a *Analytics) productStockForIDs(ctx context.Context, warehouseID string, 
 		) g ON g.medicine_id = m.id
 		LEFT JOIN (
 		  SELECT b.medicine_id,
-		         EXTRACT(EPOCH FROM MAX(b.received_at))::bigint AS last_restock_unix
+		         %s AS last_restock_unix
 		  FROM batches b
 		  JOIN stock_movements sm ON sm.batch_id = b.id
 		  WHERE sm.warehouse_id = ? AND sm.qty > 0
@@ -768,11 +782,11 @@ func (a *Analytics) productStockForIDs(ctx context.Context, warehouseID string, 
 		  FROM batches b
 		  JOIN stock_movements sm ON sm.batch_id = b.id AND sm.warehouse_id = ?
 		  WHERE b.expiry_date >= CURRENT_DATE
-		    AND b.expiry_date < (CURRENT_DATE + INTERVAL '30 days')
+		    AND b.expiry_date < %s
 		  GROUP BY b.medicine_id
 		) e ON e.medicine_id = m.id
 		WHERE m.id IN ?
-	`, warehouseID, warehouseID, warehouseID, ids).Scan(&rows).Error
+	`, epochExpr(a.db, "MAX(b.received_at)"), dateAddDaysExpr(a.db, "CURRENT_DATE", 30)), warehouseID, warehouseID, warehouseID, ids).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}

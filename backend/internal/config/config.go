@@ -15,18 +15,34 @@ type Server struct {
 	Port int    `yaml:"port"`
 }
 
+// DriverPostgres / DriverSQLite are the two supported database backends.
+// Driver selects which one db.Open and the migration runner use.
+const (
+	DriverPostgres = "postgres"
+	DriverSQLite   = "sqlite"
+)
+
 type Database struct {
+	// Driver selects the backend: "postgres" (default) or "sqlite". Postgres
+	// uses Host/Port/User/Password/Name/SSLMode; sqlite uses Path.
+	Driver   string `yaml:"driver"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 	Name     string `yaml:"name"`
 	SSLMode  string `yaml:"sslmode"`
+	// Path is the SQLite database file (only used when Driver == "sqlite").
+	// Defaults to ./apotech.db. ":memory:" is also accepted.
+	Path string `yaml:"path"`
 	// AutoMigrate runs goose migrations on server boot. Pointer so an unset
 	// value defaults to true (turnkey deploys); set `auto_migrate: false` to
 	// run migrations explicitly via `cmd/migrate`. Read via ShouldAutoMigrate.
 	AutoMigrate *bool `yaml:"auto_migrate"`
 }
+
+// IsSQLite reports whether the configured backend is SQLite.
+func (d Database) IsSQLite() bool { return d.Driver == DriverSQLite }
 
 // ShouldAutoMigrate reports whether the server should run migrations on boot.
 // Defaults to true when unset.
@@ -80,10 +96,36 @@ type Config struct {
 	Backup    Backup    `yaml:"backup"`
 }
 
+// DSN returns the PostgreSQL libpq connection string. Only meaningful when
+// Driver == "postgres".
 func (d Database) DSN() string {
 	return fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		d.Host, d.Port, d.User, d.Password, d.Name, d.SSLMode,
+	)
+}
+
+// SQLiteDSN returns the SQLite connection string (a modernc/glebarez file URI)
+// with the pragmas that make single-PC operation correct:
+//   - foreign_keys(1): SQLite disables FK enforcement by default.
+//   - busy_timeout(5000): wait (not error) when the DB is briefly locked.
+//   - journal_mode(WAL): concurrent readers alongside the single writer.
+//   - _txlock=immediate: every tx begins BEGIN IMMEDIATE, taking the write lock
+//     up front so the read-check-insert oversell guard serializes correctly
+//     without SELECT ... FOR UPDATE (which SQLite lacks).
+//
+// ":memory:" is passed through verbatim (used by some tests).
+func (d Database) SQLiteDSN() string {
+	path := d.Path
+	if path == "" {
+		path = "./apotech.db"
+	}
+	if path == ":memory:" {
+		return path
+	}
+	return fmt.Sprintf(
+		"file:%s?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_txlock=immediate",
+		path,
 	)
 }
 
@@ -117,6 +159,12 @@ func applyEnvOverrides(c *Config) {
 	if v := os.Getenv("APOTECH_JWT_SECRET"); v != "" {
 		c.Auth.JWTSecret = v
 	}
+	if v := os.Getenv("APOTECH_DB_DRIVER"); v != "" {
+		c.Database.Driver = v
+	}
+	if v := os.Getenv("APOTECH_DB_PATH"); v != "" {
+		c.Database.Path = v
+	}
 	if v := os.Getenv("APOTECH_DB_HOST"); v != "" {
 		c.Database.Host = v
 	}
@@ -141,6 +189,12 @@ func applyEnvOverrides(c *Config) {
 // rely on. Bind to all interfaces by default so a container is reachable from
 // the host; single-PC installs override this to 127.0.0.1.
 func applyDefaults(c *Config) {
+	if c.Database.Driver == "" {
+		c.Database.Driver = DriverPostgres
+	}
+	if c.Database.IsSQLite() && c.Database.Path == "" {
+		c.Database.Path = "./apotech.db"
+	}
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
 	}

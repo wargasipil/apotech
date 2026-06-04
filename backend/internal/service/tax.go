@@ -270,9 +270,8 @@ func AssignTaxInvoiceForSaleTx(tx *gorm.DB, sale *model.Sale) error {
 	}
 
 	var nsfp model.NsfpEntry
-	err := tx.Where("fiscal_year = ? AND used_at IS NULL", year).
-		Order("code ASC").
-		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+	err := applyForUpdateSkipLocked(tx.Where("fiscal_year = ? AND used_at IS NULL", year).
+		Order("code ASC")).
 		First(&nsfp).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return connect.NewError(connect.CodeFailedPrecondition,

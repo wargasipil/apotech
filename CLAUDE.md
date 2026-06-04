@@ -33,8 +33,8 @@ Each phase's full scope, schema, RPC list, and verification plan lives in the pe
 | Area | Choice |
 |------|--------|
 | Backend language | Go (1.25+) |
-| ORM | GORM (`gorm.io/gorm`, `gorm.io/driver/postgres`) |
-| DB | PostgreSQL (`postgres:latest` via docker-compose) |
+| ORM | GORM (`gorm.io/gorm`; drivers `gorm.io/driver/postgres` + `glebarez/sqlite`) |
+| DB | PostgreSQL (`postgres:latest` via docker-compose) **or** SQLite (`glebarez/sqlite`, pure-Go) — selected by `database.driver`; see "Database backends" |
 | API | ConnectRPC (`connectrpc.com/connect`) over HTTP/1.1 + h2c |
 | Codegen | Buf (`buf.yaml` v2, `buf.gen.yaml` v2) |
 | Migrations | goose (`github.com/pressly/goose/v3`) |
@@ -87,7 +87,7 @@ apotech/
 │   │   ├── web/            # embeds frontend dist (//go:embed) + SPA handler; dist/.gitkeep stub
 │   │   └── service/        # ConnectRPC service implementations (Auth, Users, Health)
 │   ├── gen/                # GENERATED — do not hand-edit
-│   ├── migrations/         # goose .sql files + embed.go (//go:embed *.sql)
+│   ├── migrations/         # goose .sql files in postgres/ + sqlite/ subtrees + embed.go (//go:embed postgres/*.sql sqlite/*.sql)
 │   └── e2e/                # integration tests (in-process httptest + real dev DB)
 ├── frontend/               # React app
 │   └── src/
@@ -145,13 +145,16 @@ apotech/
 ├── .dockerignore
 ├── docker-compose.yml      # DEV: postgres:latest only (bind-mounted data/)
 ├── docker-compose.prod.yml # PROD: app image + pinned postgres:18 (named volume, healthcheck)
-├── config.example.yaml     # template; copy to config.yaml (gitignored)
+├── config.example.yaml     # Postgres template; copy to config.yaml (gitignored)
+├── config.sqlite.example.yaml # SQLite template (driver: sqlite + path); also used by `make test-e2e-sqlite`
 ├── config.docker.yaml      # baked into the image; secrets via env overrides
 ├── config.yaml             # local runtime config (gitignored, lives at root)
 ├── .env.example            # secrets for docker-compose.prod.yml (copy to .env, gitignored)
 ├── packaging/windows/      # Windows installer: apotech.iss (Inno Setup), setup/uninstall.ps1,
 │                           #   WinSW service template, build-windows.ps1, backup .bat, README
-├── dist/                   # gitignored; build outputs (apotech, apotech.exe, ApotechSetup-*.exe)
+├── packaging/portable/     # Portable flavor (SQLite, zero-install): Apotech.bat + launch.ps1
+│                           #   (first-run owner prompt + start + browser), build-portable.ps1, README.txt
+├── dist/                   # gitignored; build outputs (apotech, apotech.exe, ApotechSetup-*.exe, ApotechPortable-win64.zip)
 ├── backups/                # gitignored; populated by `make backup`
 ├── DEPLOYMENT.md           # deployment runbook (Docker + Windows flavors)
 └── README.md
@@ -167,11 +170,23 @@ apotech/
 - **TS plugins are pinned to v1** in `buf.gen.yaml` (`bufbuild/es:v1.10.0`, `connectrpc/es:v1.6.1`). Reason: the v2 plugins for Connect-ES are not published as remote buf plugins yet; mixing v1+v2 plugins causes type mismatches. Frontend deps (`@bufbuild/protobuf`, `@connectrpc/connect*`) must stay on `^1.x` until the v2 remote plugin lands.
 
 ## Database
-- **goose owns the schema.** Migration files live in `backend/migrations/` and are **embedded** into the binary via `backend/migrations/embed.go` (`//go:embed *.sql`).
-- **GORM is query-only.** Do NOT use `AutoMigrate` — it causes drift with goose.
-- DSN is built from `config.yaml` (`database.{host,port,user,password,name,sslmode}`).
-- **Auto-migrate on boot**: the server runs the embedded migrations on startup via `internal/dbmigrate` unless `database.auto_migrate: false`. This is what makes the packaged binary turnkey (no separate migrate step in Docker / Windows). `internal/db` must NOT call `AutoMigrate`; that's GORM's, not goose's.
+- **goose owns the schema.** Migration files live in `backend/migrations/{postgres,sqlite}/` (one subtree per dialect) and are **embedded** into the binary via `backend/migrations/embed.go` (`//go:embed postgres/*.sql sqlite/*.sql`). `migrations.Dir(driver)` selects the subtree; `dbmigrate.Run`/`cmd/migrate` `fs.Sub` it and run goose with the matching dialect (`postgres` / `sqlite3`).
+- **GORM is query-only.** Do NOT use `AutoMigrate` — it causes drift with goose. (This is also why the model `default:gen_random_uuid()`/`type:uuid` tags are inert at query time and work unchanged on SQLite.)
+- The connection string is built from `config.yaml`: Postgres uses `database.{host,port,user,password,name,sslmode}` (`DSN()`); SQLite uses `database.path` (`SQLiteDSN()`).
+- **Auto-migrate on boot**: the server runs the embedded migrations for the active driver on startup via `internal/dbmigrate` unless `database.auto_migrate: false`. This is what makes the packaged binary turnkey (no separate migrate step in Docker / Windows). `internal/db` must NOT call `AutoMigrate`; that's GORM's, not goose's.
 - Make targets `migrate-up` / `migrate-down` still drive goose explicitly; `cmd/migrate` reads the embedded FS for all commands except `create` (which writes a new `.sql` to disk).
+
+## Database backends (Postgres + SQLite)
+The app supports **two interchangeable backends, selected by `database.driver`** (`postgres` default, or `sqlite`). Postgres is for Docker / multi-user; SQLite is the zero-server single-file option (ideal for the single-PC / Windows turnkey deploy — no DB server to install or run). Both build from the same code.
+- **Driver**: pure-Go **`glebarez/sqlite`** (wraps `modernc.org/sqlite` — no cgo, so `make dist-windows` cross-compilation still works). [db.Open](backend/internal/db/db.go) branches on `cfg.Database.IsSQLite()`.
+- **Config**: `database.driver` + `database.path` (SQLite file, default `./apotech.db`, `:memory:` for tests). Env overrides `APOTECH_DB_DRIVER` / `APOTECH_DB_PATH`. Example: [config.sqlite.example.yaml](config.sqlite.example.yaml).
+- **SQLite DSN pragmas** ([config.SQLiteDSN](backend/internal/config/config.go)): `foreign_keys(1)` (FKs off by default in SQLite), `busy_timeout(5000)`, `journal_mode(WAL)`, and **`_txlock=immediate`** (every tx is `BEGIN IMMEDIATE`, taking the write lock up front). [db.Open](backend/internal/db/db.go) also sets **`SetMaxOpenConns(1)`** for SQLite — together these serialize all writers, so the insert-only-ledger read-check-insert oversell guard is correct **without** `SELECT … FOR UPDATE` (which SQLite lacks).
+- **UUIDs are generated Go-side** for both dialects via a global `BeforeCreate` callback ([db.registerUUIDCallback](backend/internal/db/db.go)) that fills an empty string `ID` PK with `uuid.NewString()` — replacing Postgres's DB-side `gen_random_uuid()` default (which SQLite has no function for). Skips int-autoincrement (`audit_log`) + composite/non-`ID` PKs.
+- **Dialect-aware SQL** lives in [service/dialect.go](backend/internal/service/dialect.go): `likeKeyword` (ILIKE↔LIKE), `epochExpr` (`EXTRACT(EPOCH…)↔strftime`), `dateText` (`TO_CHAR↔strftime`), `dateBucketExpr` (`DATE_TRUNC↔strftime`, ISO-Monday week), `dateAddDaysExpr` (`+ INTERVAL↔date(…,'+N days')`), and `applyForUpdate` / `applyForUpdateSkipLocked` (Postgres locks; **no-op on SQLite**). `DISTINCT ON` was rewritten once to a portable `ROW_NUMBER()` window. `clause.OnConflict`, partial unique indexes, CHECK constraints, `FILTER (WHERE …)`, and `NULLS LAST` work on both (modern SQLite).
+- **Migrations are translated 1:1** into `migrations/sqlite/` (same 00001–30 version numbers). Type swaps (`UUID→TEXT`, `CITEXT→TEXT COLLATE NOCASE`, `TIMESTAMPTZ→DATETIME`, `BIGINT→INTEGER`, `BIGSERIAL→INTEGER PRIMARY KEY`, `now()→CURRENT_TIMESTAMP`, drop `gen_random_uuid()`); multi-column `ALTER ADD` split per statement; `UPDATE…FROM`→correlated subquery; `LPAD`→`printf`. SQLite can't `ALTER … SET NOT NULL` / `ADD/DROP CONSTRAINT`, so those are documented no-ops (the column is added nullable; the app enforces it) **except** the `stock_movements` type CHECK (semantically required), which is **baked widened into the SQLite `00007` CREATE**. The MAIN warehouse/branch seeds carry explicit fixed UUIDs (TEXT PKs have no DB default). **HARD RULE: author every new migration in BOTH `migrations/postgres/` and `migrations/sqlite/`.**
+- **Backup** ([service/backup.go](backend/internal/service/backup.go)): SQLite uses `VACUUM INTO` (a consistent snapshot → `backup_<ts>/database.db`, no `pg_dump`); Postgres keeps the `pg_dump` path. Same `manifest.txt` layout; `db_version` reads `sqlite_version()`.
+- **Tests**: `make test-e2e-sqlite` runs the full e2e suite against an isolated `:memory:` SQLite DB (no Postgres/docker); `make test-e2e` still runs it against the dev Postgres. The SQLite path also has `internal/db` (time-storage + UUID callback) and `internal/dbmigrate` (full migration apply) unit tests.
+- **Time storage gotcha**: glebarez stores `time.Time` as RFC3339 text (with offset); `strftime('%s', …)` + lexical range comparisons work on it (verified — [TestSqliteTimeStorage](backend/internal/db/sqlite_time_test.go)). But **aggregating a timestamp and scanning it back into `time.Time` fails** on SQLite (`MAX(ts)` has no type affinity → bare string). When you need the value of an aggregated timestamp, select it via `epochExpr` (→int64) or `dateText` (→string), not into a `time.Time` field.
 
 ## Config
 - Default file: `./config.yaml` (relative to the binary's CWD). Repo-canonical location: `config.yaml` at the repo root (copy from `config.example.yaml`).
@@ -191,12 +206,15 @@ make migrate-up      # apply goose migrations
 make migrate-down    # rollback one migration
 make migrate-status  # show migration state
 make migrate-create name=add_medicines_table   # new migration file
-make run             # API server on :8080
-make test-e2e        # run Go integration tests against the dev DB
+make run             # API server on :8080 (Postgres, per config.yaml)
+make run-sqlite      # API server on :8080 backed by a local SQLite file (../apotech.db); no DB server
+make test-e2e        # run Go integration tests against the dev Postgres DB
+make test-e2e-sqlite # run the same Go integration suite against an isolated :memory: SQLite DB (no Postgres/docker)
 make web-install     # npm install (frontend)
 make web             # Vite dev server on :5173
 make build           # single self-contained binary -> dist/apotech (SPA + migrations embedded)
 make dist-windows    # cross-compile dist/apotech.exe (input to the Windows installer)
+make dist-portable-windows # zip the exe + launcher -> dist/ApotechPortable-win64.zip (SQLite, zero-install)
 make docker-build    # docker build -t apotech:latest .
 make docker-up       # docker compose -f docker-compose.prod.yml up -d --build
 make docker-down     # tear down the prod stack
@@ -217,12 +235,13 @@ make installer       # build dist-windows + assemble the Windows installer (need
 - **Postgres volume mount**: dev `docker-compose.yml` uses a **named volume** (`apotech_devel_data` mounted at `/var/lib/postgresql`, NOT `/var/lib/postgresql/data`). The named volume enables `make reset-devel-data` to wipe + recreate the dev cluster portably (`docker compose down -v` → `up -d --wait`) from cmd.exe, PowerShell, or bash. The unusual mount target (`/var/lib/postgresql` rather than `/data`) is still required for `postgres:18+`, which stores data in a version-suffixed subdirectory and refuses to start if you mount directly at `/data`. The compose's `healthcheck` (`pg_isready`) is what `--wait` polls. Prod `docker-compose.prod.yml` uses a separate named volume.
 
 ## Packaging & distribution
-The app ships as **one self-contained binary** that serves the SPA + `/api` on a single port and auto-migrates on boot. Both flavors build from this binary. Full ops in [DEPLOYMENT.md](DEPLOYMENT.md); Windows specifics in [packaging/windows/README.md](packaging/windows/README.md).
+The app ships as **one self-contained binary** that serves the SPA + `/api` on a single port and auto-migrates on boot. Three flavors build from this binary (Docker, Windows installer, portable). Full ops in [DEPLOYMENT.md](DEPLOYMENT.md); Windows specifics in [packaging/windows/README.md](packaging/windows/README.md).
 - **Single binary anatomy**: `internal/web` embeds `frontend/dist` (`//go:embed all:dist`) and serves it with SPA fallback; Connect handlers mount under `/api`; migrations embed via `backend/migrations/embed.go` and run on boot; `server.host` (config) controls the bind interface (`0.0.0.0` default; `127.0.0.1` single-PC). A `/healthz` route answers liveness probes outside `/api`. `time/tzdata` is imported so `TZ` works on minimal base images (the "today" boundary uses `time.Local`).
 - **Embed compile dependency (gotcha)**: `//go:embed all:dist` needs at least one file present, so `backend/internal/web/dist/.gitkeep` is committed and the rest is gitignored. A plain `go build` on a fresh checkout works but serves a "frontend not built" stub; `make build` copies the real `frontend/dist` in first. Never delete the stub.
 - **Config for packaging**: secrets can come from env (`APOTECH_JWT_SECRET`, `APOTECH_DB_PASSWORD`, `APOTECH_DB_HOST`, `APOTECH_OWNER_EMAIL`, `APOTECH_OWNER_PASSWORD`, `APOTECH_BACKUP_DIR`) overriding the YAML — so the Docker image bakes only non-secret defaults (`config.docker.yaml`).
 - **Docker**: `Dockerfile` (node build → go build with embed → **`debian:bookworm-slim` + `postgresql-client`** — switched from distroless so `BackupService` can subprocess `pg_dump`; ~80 MB heavier, runs as a non-root `apotech` UID/GID) + `docker-compose.prod.yml` (app + pinned `postgres:18`, named volumes for pgdata + `/var/lib/apotech/backups`, healthcheck, `.env` secrets). Dev `docker-compose.yml` (Postgres-only) is unchanged.
 - **Windows**: `packaging/windows/` — Inno Setup (`apotech.iss`) bundles `apotech.exe` + PostgreSQL Windows binaries + WinSW; `setup.ps1` inits the DB, writes `config.yaml`, registers `apotech-postgres` (native `pg_ctl register`, NetworkService) + `apotech-server` (WinSW) services, optional firewall rule, shortcut. Built via `build-windows.ps1` (`make installer`). **Scripts must stay ASCII** — Windows PowerShell 5.1 reads `-File` as Windows-1252, so non-ASCII (em dashes, curly quotes) corrupts parsing.
+- **Portable (SQLite, zero-install)**: `packaging/portable/` — `make dist-portable-windows` zips the **same `apotech.exe`** + a launcher into `dist/ApotechPortable-win64.zip` (~20–30 MB; no Postgres, no installer, no service, no admin — vs the ~90 MB installer). The user unzips anywhere (incl. USB) and runs `Apotech.bat` → `launch.ps1`: it keeps all data under `.\data\` (config.yaml + `apotech.db` + `backups\`, relative paths so the folder is movable), and on **first run prompts** for the owner email/password + generates a per-copy `jwt_secret` (`New-Secret` CSPRNG, mirrored from `setup.ps1`). Because `EnsureBootstrapOwner` re-applies `bootstrap.owner_password` on **every** boot (and a portable copy restarts each launch), `launch.ps1` **blanks `owner_email`/`owner_password` in config after the first successful bootstrap** (gated on `apotech.db` existing, so a failed first launch retries) — so in-app password changes then persist. The server runs in the foreground (close the window to stop); the launcher polls `/healthz` then opens the browser. Backups use the SQLite `VACUUM INTO` path (no `pg_dump`). Reset = delete `data\`. Same **ASCII-only** PowerShell rule as the installer. Uses the SQLite backend (`database.driver: sqlite`); see "Database backends".
 
 ## Testing
 

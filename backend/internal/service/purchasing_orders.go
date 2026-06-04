@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	purchasingifacev1 "github.com/apotech/backend/gen/purchasing_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -93,7 +92,7 @@ func (p *PurchaseOrders) ListPurchaseOrders(
 				Joins("JOIN suppliers s ON s.id = po.supplier_id").
 				Joins("LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id").
 				Joins("LEFT JOIN medicines m ON m.id = poi.medicine_id").
-				Where("po.po_no ILIKE ? OR s.name ILIKE ? OR s.code ILIKE ? OR m.name ILIKE ?",
+				Where(fmt.Sprintf("po.po_no %[1]s ? OR s.name %[1]s ? OR s.code %[1]s ? OR m.name %[1]s ?", likeKeyword(p.db)),
 					pattern, pattern, pattern, pattern)
 			q = q.Where("id IN (?)", sub)
 		}
@@ -199,11 +198,13 @@ func (p *PurchaseOrders) enrichList(ctx context.Context, orders []*purchasingifa
 	}
 	var rcvs []rcvRow
 	if err := p.db.WithContext(ctx).
-		Raw(`SELECT DISTINCT ON (purchase_order_id)
-		        purchase_order_id, received_at, invoice_no
-		     FROM purchase_receipts
-		     WHERE purchase_order_id IN ?
-		     ORDER BY purchase_order_id, received_at DESC, created_at DESC`, poIDs).
+		Raw(`SELECT purchase_order_id, received_at, invoice_no FROM (
+		        SELECT purchase_order_id, received_at, invoice_no,
+		               ROW_NUMBER() OVER (PARTITION BY purchase_order_id
+		                                  ORDER BY received_at DESC, created_at DESC) AS rn
+		        FROM purchase_receipts
+		        WHERE purchase_order_id IN ?
+		     ) t WHERE rn = 1`, poIDs).
 		Scan(&rcvs).Error; err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
@@ -525,7 +526,7 @@ func (p *PurchaseOrders) lockByID(tx *gorm.DB, id string) (*model.PurchaseOrder,
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id required"))
 	}
 	var po model.PurchaseOrder
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&po).Error
+	err := applyForUpdate(tx).Where("id = ?", id).First(&po).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("purchase order not found"))
 	}
@@ -574,9 +575,8 @@ func assignPONo(tx *gorm.DB, now time.Time) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
-	if err := tx.Model(&model.POCounter{}).
-		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	if err := applyForUpdate(tx.Model(&model.POCounter{}).
+		Where("year = ?", year)).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}
@@ -598,9 +598,8 @@ func assignReceiptNo(tx *gorm.DB, now time.Time) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
-	if err := tx.Model(&model.RcvCounter{}).
-		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+	if err := applyForUpdate(tx.Model(&model.RcvCounter{}).
+		Where("year = ?", year)).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

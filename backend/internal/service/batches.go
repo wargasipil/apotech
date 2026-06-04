@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/auth"
@@ -60,7 +59,7 @@ func (b *Batches) ListBatches(
 			sub := b.db.Table("batches AS b2").
 				Select("b2.id").
 				Joins("JOIN medicines m ON m.id = b2.medicine_id").
-				Where("b2.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern)
+				Where(fmt.Sprintf("b2.batch_number %[1]s ? OR m.name %[1]s ? OR m.sku %[1]s ?", likeKeyword(b.db)), pattern, pattern, pattern)
 			q = q.Where("b.id IN (?)", sub)
 		}
 		if req.Msg.FromUnix > 0 || req.Msg.ToUnix > 0 {
@@ -308,7 +307,7 @@ func (b *Batches) SearchBatches(
 	}
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("b.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern)
+		q = q.Where(fmt.Sprintf("b.batch_number %[1]s ? OR m.name %[1]s ? OR m.sku %[1]s ?", likeKeyword(b.db)), pattern, pattern, pattern)
 	}
 	var rows []model.Batch
 	if err := q.Find(&rows).Error; err != nil {
@@ -405,7 +404,7 @@ func lockBatchesByID(tx *gorm.DB, ids []string) error {
 		return nil
 	}
 	var dump []model.Batch
-	return tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+	return applyForUpdate(tx).
 		Where("id IN ?", ids).
 		Order("id").
 		Find(&dump).Error
@@ -419,7 +418,7 @@ func lockBatchesByMedicine(tx *gorm.DB, medicineIDs []string) error {
 		return nil
 	}
 	var dump []model.Batch
-	return tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+	return applyForUpdate(tx).
 		Where("medicine_id IN ?", medicineIDs).
 		Order("id").
 		Find(&dump).Error

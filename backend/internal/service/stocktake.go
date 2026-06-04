@@ -527,12 +527,12 @@ func (s *Stocktakes) GetStocktake(
 	var rows []lineRow
 	err = s.db.WithContext(ctx).
 		Table("stocktake_lines AS l").
-		Select(`l.*,
+		Select(fmt.Sprintf(`l.*,
 		        b.medicine_id AS medicine_id,
 		        m.name AS medicine_name,
 		        m.sku AS medicine_sku,
 		        b.batch_number AS batch_number,
-		        TO_CHAR(b.expiry_date, 'YYYY-MM-DD') AS expiry_date`).
+		        %s AS expiry_date`, dateText(s.db, "b.expiry_date"))).
 		Joins("JOIN batches AS b ON b.id = l.batch_id").
 		Joins("JOIN medicines AS m ON m.id = b.medicine_id").
 		Where("l.session_id = ?", session.ID).
@@ -558,7 +558,7 @@ func lockDraftSession(tx *gorm.DB, id string) (*model.StocktakeSession, error) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id required"))
 	}
 	var sess model.StocktakeSession
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&sess).Error
+	err := applyForUpdate(tx).Where("id = ?", id).First(&sess).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("stocktake not found"))
 	}
@@ -584,12 +584,12 @@ func (s *Stocktakes) loadLine(ctx context.Context, id string) (*stocktakeifacev1
 	var r lineRow
 	err := s.db.WithContext(ctx).
 		Table("stocktake_lines AS l").
-		Select(`l.*,
+		Select(fmt.Sprintf(`l.*,
 		        b.medicine_id AS medicine_id,
 		        m.name AS medicine_name,
 		        m.sku AS medicine_sku,
 		        b.batch_number AS batch_number,
-		        TO_CHAR(b.expiry_date, 'YYYY-MM-DD') AS expiry_date`).
+		        %s AS expiry_date`, dateText(s.db, "b.expiry_date"))).
 		Joins("JOIN batches AS b ON b.id = l.batch_id").
 		Joins("JOIN medicines AS m ON m.id = b.medicine_id").
 		Where("l.id = ?", id).

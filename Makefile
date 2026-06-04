@@ -1,7 +1,7 @@
-.PHONY: up down reset-devel-data generate tidy run test-e2e test-browser test-all \
+.PHONY: up down reset-devel-data generate tidy run run-sqlite test-e2e test-e2e-sqlite test-browser test-all \
         migrate-up migrate-down migrate-status migrate-create \
         web-install web \
-        embed-web build dist-windows docker-build docker-up docker-down installer \
+        embed-web build dist-windows dist-portable-windows docker-build docker-up docker-down installer \
         backup
 
 # `go -C backend run ...` runs the binary with CWD = backend/, so we point
@@ -37,6 +37,15 @@ tidy:
 	go -C backend mod tidy
 
 run:
+	$(GO_BACKEND) run ./cmd/server
+
+# Run the server backed by a local SQLite file instead of Postgres — no DB
+# server, no docker. Reuses config.yaml for secrets (jwt/owner/printer) and
+# overrides only the DB driver + path (../apotech.db = repo root). The file is
+# created + auto-migrated on first boot.
+run-sqlite: export APOTECH_DB_DRIVER := sqlite
+run-sqlite: export APOTECH_DB_PATH := ../apotech.db
+run-sqlite:
 	$(GO_BACKEND) run ./cmd/server
 
 # --- Packaging (single self-contained binary) --------------------------------
@@ -75,12 +84,28 @@ docker-down:
 installer: dist-windows
 	powershell -ExecutionPolicy Bypass -File packaging/windows/build-windows.ps1
 
+# --- Portable flavor (SQLite, zero-install) ----------------------------------
+# Zips the self-contained exe + a launcher into dist/ApotechPortable-win64.zip.
+# No Postgres, no installer, no admin: unzip + run Apotech.bat. See
+# packaging/portable/. Requires PowerShell (Compress-Archive).
+dist-portable-windows: dist-windows
+	powershell -ExecutionPolicy Bypass -File packaging/portable/build-portable.ps1
+
 # End-to-end / integration tests (in-process httptest server + real dev Postgres).
 # Test binaries run with CWD = backend/e2e/, so the APOTECH_CONFIG path needs
 # two `..` to reach the repo-root config.yaml.
 # `-count=1` disables Go's test-result caching.
 test-e2e: export APOTECH_CONFIG := ../../config.yaml
 test-e2e:
+	$(GO_BACKEND) test ./e2e/... -v -count=1
+
+# Cross-dialect e2e: run the same suite against an isolated in-memory SQLite DB.
+# Self-contained — uses the committed config.sqlite.example.yaml (no dev
+# config.yaml, no Postgres, no docker). Each test gets a fresh, auto-migrated DB.
+test-e2e-sqlite: export APOTECH_CONFIG := ../../config.sqlite.example.yaml
+test-e2e-sqlite: export APOTECH_DB_DRIVER := sqlite
+test-e2e-sqlite: export APOTECH_DB_PATH := :memory:
+test-e2e-sqlite:
 	$(GO_BACKEND) test ./e2e/... -v -count=1
 
 migrate-up:
