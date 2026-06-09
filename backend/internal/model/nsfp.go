@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type NsfpEntry struct {
-	ID         string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID         string     `gorm:"primaryKey;type:uuid"`
 	Code       string     `gorm:"uniqueIndex;not null"`
 	FiscalYear int        `gorm:"not null;column:fiscal_year"`
 	ImportedBy string     `gorm:"not null;type:uuid;column:imported_by"`

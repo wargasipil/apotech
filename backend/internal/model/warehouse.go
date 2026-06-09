@@ -1,11 +1,11 @@
-package model
+﻿package model
 
 import "time"
 
-// Warehouse (gudang) — the stock location concept that replaces Branch.
+// Warehouse (gudang) â€” the stock location concept that replaces Branch.
 // Stock is partitioned per warehouse via stock_movements.warehouse_id.
 type Warehouse struct {
-	ID        string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID        string `gorm:"primaryKey;type:uuid"`
 	Code      string `gorm:"uniqueIndex;not null"`
 	Name      string `gorm:"not null"`
 	Address   string `gorm:"not null;default:''"`

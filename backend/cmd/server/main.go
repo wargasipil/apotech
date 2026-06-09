@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"time"
 	// Embed the IANA timezone DB so `TZ=Asia/Jakarta` resolves even on a minimal
 	// base image (distroless has no /usr/share/zoneinfo). The "today" boundary in
@@ -14,6 +17,9 @@ import (
 	_ "time/tzdata"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
+
+	backupifacev1 "github.com/apotech/backend/gen/backup_iface/v1"
 
 	"github.com/apotech/backend/gen/analytics_iface/v1/analyticsifacev1connect"
 	"github.com/apotech/backend/gen/backup_iface/v1/backupifacev1connect"
@@ -40,11 +46,21 @@ import (
 )
 
 func main() {
+	backupOnly := flag.Bool("backup", false, "Run one CreateBackup via the in-process service and exit (used by the portable backup .bat).")
+	flag.Parse()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
 	cfg := config.MustLoad()
 	gormDB := db.MustOpen(cfg)
+
+	// --backup short-circuit: bring schema up to date, run one CreateBackup,
+	// print the resulting path, exit. No HTTP listener.
+	if *backupOnly {
+		runBackupCLI(cfg, gormDB)
+		return
+	}
 
 	// Auto-migrate on boot (default on) so a freshly deployed binary brings its
 	// own schema up to date — no separate migrate step in Docker / Windows.
@@ -157,7 +173,55 @@ func main() {
 	}
 
 	slog.Info("apotech listening", "addr", addr)
+	if cfg.Server.OpenBrowserOnStart {
+		// Best-effort: don't block startup if the open command fails.
+		go openBrowser(fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port))
+	}
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// runBackupCLI runs schema migrations + one CreateBackup and exits. Used by
+// the portable backup .bat (and by anyone who wants `apotech-portable.exe
+// --backup` from Task Scheduler).
+func runBackupCLI(cfg *config.Config, gormDB *gorm.DB) {
+	if cfg.Database.ShouldAutoMigrate() {
+		sqlDB, err := gormDB.DB()
+		if err != nil {
+			log.Fatalf("get sql.DB for migrate: %v", err)
+		}
+		if err := dbmigrate.Run(sqlDB); err != nil {
+			log.Fatalf("auto-migrate: %v", err)
+		}
+	}
+	svc := service.NewBackups(gormDB, cfg)
+	res, err := svc.CreateBackup(context.Background(),
+		connect.NewRequest(&backupifacev1.CreateBackupRequest{}))
+	if err != nil {
+		log.Fatalf("backup: %v", err)
+	}
+	fmt.Printf("backup created: %s (%d bytes, schema_version=%d)\n",
+		res.Msg.Backup.Name, res.Msg.Backup.SizeBytes, res.Msg.Backup.SchemaVersion)
+}
+
+// openBrowser launches the user's default browser at url. Best-effort: any
+// failure is logged at debug level and swallowed (the server still serves the
+// page; the user can navigate there manually).
+func openBrowser(url string) {
+	// Tiny grace so the listener is accepting connections before the browser
+	// hits it. Avoids a "site can't be reached" race on slow machines.
+	time.Sleep(500 * time.Millisecond)
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	if err := cmd.Start(); err != nil {
+		slog.Debug("open browser failed", "url", url, "err", err.Error())
 	}
 }

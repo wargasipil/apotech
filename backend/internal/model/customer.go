@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Customer struct {
-	ID        string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID        string `gorm:"primaryKey;type:uuid"`
 	Name      string `gorm:"not null"`
 	Phone     string `gorm:"not null;default:''"`
 	BPJSNo    string `gorm:"not null;default:'';column:bpjs_no"`

@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Batch struct {
-	ID          string  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID          string  `gorm:"primaryKey;type:uuid"`
 	MedicineID  string  `gorm:"not null;type:uuid;column:medicine_id"`
 	SupplierID  *string `gorm:"type:uuid;column:supplier_id"`
 	BatchNumber string  `gorm:"not null;default:'';column:batch_number"`

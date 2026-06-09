@@ -11,6 +11,7 @@ import (
 	warehouseifacev1 "github.com/apotech/backend/gen/warehouse_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 type Warehouses struct {
@@ -31,7 +32,7 @@ func (w *Warehouses) ListWarehouses(
 		}
 		if query != "" {
 			like := "%" + query + "%"
-			q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
+			q = q.Where(sqldialect.ILikeAny("code", "name"), like, like)
 		}
 		return q
 	}
@@ -280,7 +281,7 @@ func (w *Warehouses) ListUserWarehouses(
 	q := w.db.WithContext(ctx).Where("id IN ? AND active = ?", ids, true)
 	if query := strings.TrimSpace(req.Msg.Query); query != "" {
 		like := "%" + query + "%"
-		q = q.Where("code ILIKE ? OR name ILIKE ?", like, like)
+		q = q.Where(sqldialect.ILikeAny("code", "name"), like, like)
 	}
 	if err := q.Order("code ASC").Find(&whs).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

@@ -14,6 +14,7 @@ import (
 	stocktakeifacev1 "github.com/apotech/backend/gen/stocktake_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const (
@@ -558,7 +559,7 @@ func lockDraftSession(tx *gorm.DB, id string) (*model.StocktakeSession, error) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session_id required"))
 	}
 	var sess model.StocktakeSession
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&sess).Error
+	err := tx.Clauses(sqldialect.LockForUpdate()).Where("id = ?", id).First(&sess).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("stocktake not found"))
 	}

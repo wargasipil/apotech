@@ -119,6 +119,18 @@ func (u *Units) ArchiveUnitBase(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	// Delete-guard: refuse if any active medicine references this base unit by
+	// name. Catalog is a preset library (no FK), so the linkage is name-based
+	// on `medicines.unit`. Owner can rename/archive the medicines first.
+	var used int64
+	if err := u.db.WithContext(ctx).Model(&model.Medicine{}).
+		Where("active AND unit = ?", row.Name).Count(&used).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if used > 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			fmt.Errorf("base unit %q is still used by %d active medicine(s)", row.Name, used))
+	}
 	if err := u.db.WithContext(ctx).Model(&row).Update("active", false).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -210,6 +222,11 @@ func (u *Units) ArchiveUnitDerivative(
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	// No delete-guard on derivatives: catalog is a preset library — medicines
+	// hold INDEPENDENT copies in `medicine_units` rows with their own factors,
+	// so removing a catalog derivative doesn't break any medicine. The
+	// base-unit guard (see ArchiveUnitBase) is the meaningful one since
+	// `medicines.unit` is a single-name denorm tied to identity.
 	if err := u.db.WithContext(ctx).Model(&row).Update("active", false).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

@@ -13,9 +13,21 @@ type Server struct {
 	// "127.0.0.1" = this machine only. Empty defaults to "0.0.0.0" (see Load).
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
+	// OpenBrowserOnStart triggers a default-browser open at the bound URL
+	// right after the listener is ready. Off by default; the portable Windows
+	// installer's config sets it true so the EXE doubles as a launcher.
+	OpenBrowserOnStart bool `yaml:"open_browser_on_start"`
 }
 
 type Database struct {
+	// Driver selects which backend powers the app. "postgres" (default) drives
+	// the production / docker-compose deployment; "sqlite" drives the portable
+	// single-PC Windows flavor. Two separate binaries are produced via Go build
+	// tags — IsSQLite reports the configured intent.
+	Driver string `yaml:"driver"`
+	// Path is the SQLite file path. Ignored when Driver == "postgres". Empty
+	// defaults to "./data/apotech.db" (CWD-relative).
+	Path     string `yaml:"path"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
 	User     string `yaml:"user"`
@@ -32,6 +44,12 @@ type Database struct {
 // Defaults to true when unset.
 func (d Database) ShouldAutoMigrate() bool {
 	return d.AutoMigrate == nil || *d.AutoMigrate
+}
+
+// IsSQLite reports whether the configured driver is SQLite. The Postgres build
+// tag rejects this at boot (driver mismatch); the SQLite build tag requires it.
+func (d Database) IsSQLite() bool {
+	return d.Driver == "sqlite"
 }
 
 type Auth struct {
@@ -117,6 +135,12 @@ func applyEnvOverrides(c *Config) {
 	if v := os.Getenv("APOTECH_JWT_SECRET"); v != "" {
 		c.Auth.JWTSecret = v
 	}
+	if v := os.Getenv("APOTECH_DB_DRIVER"); v != "" {
+		c.Database.Driver = v
+	}
+	if v := os.Getenv("APOTECH_DB_PATH"); v != "" {
+		c.Database.Path = v
+	}
 	if v := os.Getenv("APOTECH_DB_HOST"); v != "" {
 		c.Database.Host = v
 	}
@@ -143,6 +167,12 @@ func applyEnvOverrides(c *Config) {
 func applyDefaults(c *Config) {
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
+	}
+	if c.Database.Driver == "" {
+		c.Database.Driver = "postgres"
+	}
+	if c.Database.IsSQLite() && c.Database.Path == "" {
+		c.Database.Path = "./data/apotech.db"
 	}
 	if c.Backup.Directory == "" {
 		c.Backup.Directory = "./backups"

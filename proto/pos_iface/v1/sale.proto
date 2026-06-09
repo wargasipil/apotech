@@ -39,6 +39,7 @@ message Sale {
   string prescription_id = 16;
   string warehouse_id = 17;
   string customer_name = 18;   // denormalized for the order-history list
+  int64 cancelled_at = 19;     // when a COMPLETED sale was cancelled; 0 / null when not cancelled
 }
 
 message SaleItem {

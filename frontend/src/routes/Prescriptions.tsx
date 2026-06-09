@@ -17,6 +17,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import DatePickerField from "../components/DatePicker";
 import EntityDrawer from "../components/EntityDrawer";
 import EnumSelect from "../components/EnumSelect";
@@ -70,6 +71,7 @@ export default function Prescriptions() {
   const [customerFilter, setCustomerFilter] = useState<string>("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Prescription | null>(null);
+  const [voidConfirmId, setVoidConfirmId] = useState<string | null>(null);
 
   const { page, setPage, pageSize, setPageSize } = usePageState(
     `${statusFilter}|${customerFilter}`,
@@ -188,11 +190,7 @@ export default function Prescriptions() {
                         <Button
                           size="xs"
                           variant="ghost"
-                          onClick={() => {
-                            if (window.confirm(t("prescriptions.confirmVoid"))) {
-                              voidMut.mutate(rx.id);
-                            }
-                          }}
+                          onClick={() => setVoidConfirmId(rx.id)}
                         >
                           <X size={14} />
                           {t("prescriptions.void")}
@@ -235,6 +233,24 @@ export default function Prescriptions() {
         open={!!editing}
         editing={editing}
         onClose={() => setEditing(null)}
+      />
+      <ConfirmDialog
+        open={voidConfirmId !== null}
+        title={t("prescriptions.confirmVoidTitle")}
+        body={t("prescriptions.confirmVoid")}
+        confirmLabel={t("prescriptions.void")}
+        destructive
+        loading={voidMut.isPending}
+        onConfirm={async () => {
+          if (!voidConfirmId) return;
+          try {
+            await voidMut.mutateAsync(voidConfirmId);
+            setVoidConfirmId(null);
+          } catch {
+            /* */
+          }
+        }}
+        onClose={() => setVoidConfirmId(null)}
       />
     </Box>
   );

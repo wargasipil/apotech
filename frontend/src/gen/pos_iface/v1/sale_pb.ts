@@ -166,6 +166,13 @@ export class Sale extends Message<Sale> {
    */
   customerName = "";
 
+  /**
+   * when a COMPLETED sale was cancelled; 0 / null when not cancelled
+   *
+   * @generated from field: int64 cancelled_at = 19;
+   */
+  cancelledAt = protoInt64.zero;
+
   constructor(data?: PartialMessage<Sale>) {
     super();
     proto3.util.initPartial(data, this);
@@ -192,6 +199,7 @@ export class Sale extends Message<Sale> {
     { no: 16, name: "prescription_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 17, name: "warehouse_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 18, name: "customer_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 19, name: "cancelled_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Sale {

@@ -141,3 +141,62 @@ func TestListMedicines_PopulatesLastStocktake(t *testing.T) {
 	require.Contains(t, byID, medB)
 	require.Equal(t, "", byID[medB].LastStocktakeDate, "B never counted → list row carries empty")
 }
+
+// TestArchiveAndUnarchiveMedicine covers the new Unarchive RPC + the
+// only_inactive filter on ListMedicines.
+func TestArchiveAndUnarchiveMedicine(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+
+	uniq := time.Now().UnixNano()
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("arc-%d", uniq), Name: fmt.Sprintf("Archive Med %d", uniq),
+			Unit: "tab", UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+	t.Cleanup(func() {
+		// Best-effort archive (idempotent) in case the test left it active.
+		_, _ = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+			&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	})
+
+	prefix := fmt.Sprintf("Archive Med %d", uniq)
+
+	inList := func(req *inventoryifacev1.ListMedicinesRequest) bool {
+		req.Query = prefix
+		req.Limit = 100
+		res, err := env.Medicines.ListMedicines(ctx, authReq(env, t, req))
+		require.NoError(t, err)
+		for _, m := range res.Msg.Medicines {
+			if m.Id == medID {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Default (active): present.
+	require.True(t, inList(&inventoryifacev1.ListMedicinesRequest{}), "active before archive")
+
+	_, err = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	require.NoError(t, err)
+
+	require.False(t, inList(&inventoryifacev1.ListMedicinesRequest{}),
+		"default list excludes archived")
+	require.True(t, inList(&inventoryifacev1.ListMedicinesRequest{IncludeInactive: true}),
+		"include_inactive includes archived")
+	require.True(t, inList(&inventoryifacev1.ListMedicinesRequest{OnlyInactive: true}),
+		"only_inactive returns ONLY archived")
+
+	// Unarchive → reappears in the default list.
+	_, err = env.Medicines.UnarchiveMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.UnarchiveMedicineRequest{Id: medID}))
+	require.NoError(t, err)
+	require.True(t, inList(&inventoryifacev1.ListMedicinesRequest{}),
+		"default list includes unarchived")
+	require.False(t, inList(&inventoryifacev1.ListMedicinesRequest{OnlyInactive: true}),
+		"only_inactive excludes the now-active row")
+}

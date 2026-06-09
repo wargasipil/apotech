@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
 import BackButton from "../components/BackButton";
+import ConfirmDialog from "../components/ConfirmDialog";
 import PageHeader from "../components/PageHeader";
 import SearchableSelect from "../components/SearchableSelect";
 import WarehouseDrawer from "../components/WarehouseDrawer";
@@ -45,6 +46,7 @@ export default function WarehouseDetail() {
   const { id = "" } = useParams();
   const [editing, setEditing] = useState(false);
   const [revoking, setRevoking] = useState<WarehouseUser | null>(null);
+  const [confirmKind, setConfirmKind] = useState<"archive" | "promote" | null>(null);
 
   const whQ = useWarehouseQuery(id);
   const usersQ = useWarehouseUsersQuery(id);
@@ -86,22 +88,23 @@ export default function WarehouseDetail() {
     );
   }
 
-  const onArchive = async () => {
-    if (!confirm(t("warehouses.confirmArchive", { name: w.name }))) return;
+  const onArchive = () => setConfirmKind("archive");
+  const onPromote = () => setConfirmKind("promote");
+  const onConfirmArchive = async () => {
     try {
       await archive.mutateAsync(w.id);
       toast.success(t("common.archive") + " ✓");
+      setConfirmKind(null);
       navigate("/warehouses");
     } catch {
       /* toast handled globally */
     }
   };
-
-  const onPromote = async () => {
-    if (!confirm(t("warehouses.confirmSetDefault", { name: w.name }))) return;
+  const onConfirmPromote = async () => {
     try {
       await setGlobalDefault.mutateAsync(w.id);
       toast.success(t("warehouses.setAsDefault") + " ✓");
+      setConfirmKind(null);
     } catch {
       /* toast handled globally */
     }
@@ -347,6 +350,26 @@ export default function WarehouseDetail() {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+
+      <ConfirmDialog
+        open={confirmKind === "archive"}
+        title={t("warehouses.confirmArchiveTitle")}
+        body={t("warehouses.confirmArchive", { name: w.name })}
+        confirmLabel={t("common.archive")}
+        destructive
+        loading={archive.isPending}
+        onConfirm={onConfirmArchive}
+        onClose={() => setConfirmKind(null)}
+      />
+      <ConfirmDialog
+        open={confirmKind === "promote"}
+        title={t("warehouses.confirmSetDefaultTitle")}
+        body={t("warehouses.confirmSetDefault", { name: w.name })}
+        confirmLabel={t("warehouses.setAsDefault")}
+        loading={setGlobalDefault.isPending}
+        onConfirm={onConfirmPromote}
+        onClose={() => setConfirmKind(null)}
+      />
     </Box>
   );
 }

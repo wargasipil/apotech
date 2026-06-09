@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type PurchaseOrder struct {
-	ID           string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID           string     `gorm:"primaryKey;type:uuid"`
 	PoNo         *string    `gorm:"uniqueIndex;column:po_no"`
 	SupplierID   string     `gorm:"not null;type:uuid;column:supplier_id"`
 	Status       string     `gorm:"not null;default:'DRAFT'"`
@@ -16,7 +16,7 @@ type PurchaseOrder struct {
 	PpnEnabled   bool       `gorm:"not null;default:false;column:ppn_enabled"`
 	PpnRate      int32      `gorm:"not null;default:11;column:ppn_rate"` // percent (0-100); ignored when PpnEnabled=false
 	PpnAmount    int64      `gorm:"not null;default:0;column:ppn_amount"`
-	OrderedTotal int64      `gorm:"not null;default:0;column:ordered_total"` // = Subtotal − CartDiscount + PpnAmount
+	OrderedTotal int64      `gorm:"not null;default:0;column:ordered_total"` // = Subtotal âˆ’ CartDiscount + PpnAmount
 	PaidAmount   int64      `gorm:"not null;default:0;column:paid_amount"`
 	CreatedBy    string     `gorm:"not null;type:uuid;column:created_by"`
 	BranchID     *string    `gorm:"type:uuid;column:branch_id"`
@@ -32,7 +32,7 @@ type PurchaseOrder struct {
 func (PurchaseOrder) TableName() string { return "purchase_orders" }
 
 type PurchaseOrderItem struct {
-	ID              string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID              string `gorm:"primaryKey;type:uuid"`
 	PurchaseOrderID string `gorm:"not null;type:uuid;column:purchase_order_id"`
 	MedicineID      string `gorm:"not null;type:uuid;column:medicine_id"`
 	OrderedQty      int32  `gorm:"not null;column:ordered_qty"`  // BASE units
@@ -48,7 +48,7 @@ type PurchaseOrderItem struct {
 func (PurchaseOrderItem) TableName() string { return "purchase_order_items" }
 
 type PurchaseReceipt struct {
-	ID              string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID              string    `gorm:"primaryKey;type:uuid"`
 	ReceiptNo       *string   `gorm:"uniqueIndex;column:receipt_no"`
 	PurchaseOrderID string    `gorm:"not null;type:uuid;column:purchase_order_id"`
 	ReceivedAt      time.Time `gorm:"not null;type:date;column:received_at"`
@@ -63,7 +63,7 @@ type PurchaseReceipt struct {
 func (PurchaseReceipt) TableName() string { return "purchase_receipts" }
 
 type PurchaseReceiptItem struct {
-	ID                  string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID                  string    `gorm:"primaryKey;type:uuid"`
 	PurchaseReceiptID   string    `gorm:"not null;type:uuid;column:purchase_receipt_id"`
 	PurchaseOrderItemID string    `gorm:"not null;type:uuid;column:purchase_order_item_id"`
 	MedicineID          string    `gorm:"not null;type:uuid;column:medicine_id"`

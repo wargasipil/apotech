@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type MedicinePrice struct {
-	ID            string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID            string     `gorm:"primaryKey;type:uuid"`
 	MedicineID    string     `gorm:"not null;type:uuid;column:medicine_id"`
 	UnitPrice     int64      `gorm:"not null;column:unit_price"`
 	EffectiveFrom time.Time  `gorm:"not null;column:effective_from"`

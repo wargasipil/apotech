@@ -25,6 +25,7 @@ import (
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/db"
+	"github.com/apotech/backend/internal/dbmigrate"
 	"github.com/apotech/backend/internal/service"
 )
 
@@ -95,6 +96,11 @@ func SetupEnv(t *testing.T) *Env {
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
+	// applyTestDBOverride is a no-op under the default (Postgres) build and
+	// rewrites Database.Driver/Path to a fresh per-test SQLite file under
+	// `-tags sqlite`.
+	applyTestDBOverride(t, cfg)
+
 	gormDB, err := db.Open(cfg)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
@@ -111,6 +117,14 @@ func SetupEnv(t *testing.T) *Env {
 		sqlDB.SetMaxIdleConns(2)
 		sqlDB.SetConnMaxLifetime(time.Minute)
 		t.Cleanup(func() { _ = sqlDB.Close() })
+
+		// SQLite tests start from an empty file → run migrations here.
+		// Postgres tests use the pre-migrated dev DB → skip (no-op).
+		if runMigrationsOnSetup {
+			if err := dbmigrate.Run(sqlDB); err != nil {
+				t.Fatalf("dbmigrate: %v", err)
+			}
+		}
 	}
 
 	issuer := &auth.Issuer{

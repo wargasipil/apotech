@@ -144,6 +144,27 @@ test.describe("POS checkout", () => {
       // Detail page renders the medicine in the items table + the total card.
       await expect(page.getByText(s.name).first()).toBeVisible();
       await expect(page.getByText(/5[.,]000/).first()).toBeVisible();
+
+      // Spec (Order history): cancel sold + stock restored. Click "Cancel
+      // order" → ConfirmDialog appears → confirm → status flips to Voided +
+      // ready stock back to initial.
+      await page.getByRole("button", { name: /Cancel order|Batalkan order/i }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await dialog
+        .getByRole("button", { name: /Cancel order|Batalkan order/i })
+        .click();
+      await expect(dialog).toBeHidden();
+      // Status badge flips to Voided.
+      await expect(page.getByText(/^Voided$|^Batal$/).first()).toBeVisible();
+
+      // Stock back to initial via the API.
+      const restored = (await api<{ medicine: { readyStock: string } }>(
+        page,
+        "inventory_iface.v1.MedicineService/GetMedicine",
+        { id: s.medicineId },
+      )).medicine;
+      expect(Number(restored.readyStock)).toBe(initialQty);
     } finally {
       await archive(page, s);
     }

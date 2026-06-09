@@ -5,6 +5,7 @@ import { medicineClient } from "../lib/clients";
 import type {
   ArchiveMedicineRequest,
   CreateMedicineRequest,
+  UnarchiveMedicineRequest,
   UpdateMedicineRequest,
 } from "../gen/inventory_iface/v1/medicine_pb";
 
@@ -12,6 +13,7 @@ import { ALL_LIMIT, DEFAULT_PAGE_SIZE } from "../lib/pagination";
 
 export type MedicinesQueryOpts = {
   includeInactive?: boolean;
+  onlyInactive?: boolean; // when true: ONLY archived rows (overrides includeInactive)
   query?: string;
   opnameBefore?: string; // YYYY-MM-DD; filter to medicines counted before this date OR never counted
   page?: number;
@@ -67,16 +69,18 @@ export function useMedicineQuery(id: string, enabled = true) {
 export function useMedicinesQuery(opts: MedicinesQueryOpts = {}) {
   const {
     includeInactive = false,
+    onlyInactive = false,
     query = "",
     opnameBefore = "",
     page = 0,
     pageSize = DEFAULT_PAGE_SIZE,
   } = opts;
   const q = useQuery({
-    queryKey: medicineKeys.list({ includeInactive, query, opnameBefore, page, pageSize }),
+    queryKey: medicineKeys.list({ includeInactive, onlyInactive, query, opnameBefore, page, pageSize }),
     queryFn: async () => {
       const res = await medicineClient.listMedicines({
         includeInactive,
+        onlyInactive,
         query,
         opnameBefore,
         limit: pageSize,
@@ -161,6 +165,15 @@ export function useArchiveMedicineMutation() {
   return useMutation({
     mutationFn: (req: PartialMessage<ArchiveMedicineRequest>) =>
       medicineClient.archiveMedicine(req),
+    onSuccess: () => qc.invalidateQueries({ queryKey: medicineKeys.all }),
+  });
+}
+
+export function useUnarchiveMedicineMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: PartialMessage<UnarchiveMedicineRequest>) =>
+      medicineClient.unarchiveMedicine(req),
     onSuccess: () => qc.invalidateQueries({ queryKey: medicineKeys.all }),
   });
 }

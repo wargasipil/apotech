@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type User struct {
-	ID           string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID           string `gorm:"primaryKey;type:uuid"`
 	Email        string `gorm:"uniqueIndex;not null"`
 	Name         string `gorm:"not null;default:''"`
 	PasswordHash string `gorm:"not null;column:password_hash"`

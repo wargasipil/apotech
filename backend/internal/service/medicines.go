@@ -9,11 +9,11 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 type Medicines struct {
@@ -47,12 +47,17 @@ func (m *Medicines) ListMedicines(
 	}
 
 	applyFilters := func(q *gorm.DB) *gorm.DB {
-		if !req.Msg.IncludeInactive {
+		// only_inactive wins over include_inactive when both are set: ONLY archived
+		// rows are returned. Default (neither set): active = TRUE.
+		switch {
+		case req.Msg.OnlyInactive:
+			q = q.Where("active = ?", false)
+		case !req.Msg.IncludeInactive:
 			q = q.Where("active = ?", true)
 		}
 		if query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+			q = q.Where(sqldialect.ILikeAny("name", "sku"), pattern, pattern)
 		}
 		if opnameBefore != "" {
 			// "Last opname < before OR never counted" = "no completed opname
@@ -64,7 +69,7 @@ func (m *Medicines) ListMedicines(
 				JOIN batches b ON b.id = sl.batch_id
 				WHERE ss.warehouse_id = ?
 				  AND ss.status = 'COMPLETED'
-				  AND ss.completed_at >= ?::date
+				  AND ss.completed_at >= ?
 				  AND sl.counted_qty IS NOT NULL
 				  AND b.medicine_id = medicines.id
 			)`, warehouseID, opnameBefore)
@@ -414,7 +419,7 @@ func (m *Medicines) UpdateMedicine(
 		// close-open-row + insert-new-open-row price-version sequence (here and in
 		// syncMedicineUnits/recordUnitPrice) can collide on the *_open_idx partial
 		// unique index and fail spuriously.
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(sqldialect.LockForUpdate()).
 			Where("id = ?", med.ID).First(&model.Medicine{}).Error; err != nil {
 			return err
 		}
@@ -493,6 +498,21 @@ func (m *Medicines) ArchiveMedicine(
 	return connect.NewResponse(&inventoryifacev1.ArchiveMedicineResponse{Medicine: medicineToProto(med)}), nil
 }
 
+func (m *Medicines) UnarchiveMedicine(
+	ctx context.Context,
+	req *connect.Request[inventoryifacev1.UnarchiveMedicineRequest],
+) (*connect.Response[inventoryifacev1.UnarchiveMedicineResponse], error) {
+	med, err := m.load(ctx, req.Msg.Id)
+	if err != nil {
+		return nil, err
+	}
+	if err := m.db.WithContext(ctx).Model(med).Update("active", true).Error; err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	med.Active = true
+	return connect.NewResponse(&inventoryifacev1.UnarchiveMedicineResponse{Medicine: medicineToProto(med)}), nil
+}
+
 func (m *Medicines) SearchMedicines(
 	ctx context.Context,
 	req *connect.Request[inventoryifacev1.SearchMedicinesRequest],
@@ -508,7 +528,7 @@ func (m *Medicines) SearchMedicines(
 	}
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR sku ILIKE ?", pattern, pattern)
+		q = q.Where(sqldialect.ILikeAny("name", "sku"), pattern, pattern)
 	}
 	var rows []model.Medicine
 	if err := q.Find(&rows).Error; err != nil {

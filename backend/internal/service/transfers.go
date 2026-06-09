@@ -9,11 +9,11 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	warehouseifacev1 "github.com/apotech/backend/gen/warehouse_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const (
@@ -161,7 +161,7 @@ func (s *Transfers) ListTransfers(
 		q = q.Where("from_warehouse_id = ? OR to_warehouse_id = ?", wh, wh)
 		if query := strings.TrimSpace(req.Msg.Query); query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("transfer_no ILIKE ? OR note ILIKE ?", pattern, pattern)
+			q = q.Where(sqldialect.ILikeAny("transfer_no", "note"), pattern, pattern)
 		}
 		if req.Msg.FromUnix > 0 {
 			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))
@@ -303,7 +303,7 @@ func assignTransferNo(tx *gorm.DB, now time.Time) (string, error) {
 	}
 	if err := tx.Model(&model.TransferCounter{}).
 		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Clauses(sqldialect.LockForUpdate()).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

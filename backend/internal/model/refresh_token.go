@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type RefreshToken struct {
-	ID         string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID         string     `gorm:"primaryKey;type:uuid"`
 	UserID     string     `gorm:"not null;type:uuid;column:user_id"`
 	TokenHash  string     `gorm:"uniqueIndex;not null;column:token_hash"`
 	FamilyID   string     `gorm:"not null;type:uuid;column:family_id"`

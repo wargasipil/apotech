@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import EntityDialog from "../../components/EntityDialog";
+import EnumSelect from "../../components/EnumSelect";
 import FormField from "../../components/FormField";
 import MoneyInput from "../../components/MoneyInput";
 import type { Medicine, MedicineUnitInput } from "../../gen/inventory_iface/v1/medicine_pb";
@@ -14,6 +15,7 @@ import { formatMoney } from "../../lib/format";
 import { marginPct, priceFromMarkup } from "../../lib/pricing";
 import { toast } from "../../lib/toaster";
 import { useCreateMedicineMutation, useUpdateMedicineMutation } from "../../queries/medicines";
+import { useUnitBasesQuery } from "../../queries/units";
 
 const Schema = z.object({
   sku: z.string().min(1),
@@ -112,6 +114,28 @@ function MedicineForm({
   const baseName = form.watch("unit");
   const [baseMarkup, setBaseMarkup] = useState("");
   const hasCost = referenceCost > 0n;
+  const basesQ = useUnitBasesQuery();
+  const catalog = basesQ.data ?? [];
+  const baseInCatalog = catalog.some((b) => b.name === baseName);
+  // Picking a base from the catalog overwrites the free-text input AND
+  // prefills the derivatives editor with the catalog's derivatives. The user
+  // can still tweak / add custom rows afterwards.
+  const onPickCatalogBase = (name: string) => {
+    form.setValue("unit", name);
+    const b = catalog.find((x) => x.name === name);
+    if (b) {
+      const derivs: UnitDraft[] = b.derivatives
+        .filter((d) => d.active)
+        .map((d) => ({
+          id: "", // new per-medicine rows on save
+          name: d.name,
+          factor: d.factor.toString(),
+          sellPrice: "",
+          markup: "",
+        }));
+      setUnits(derivs);
+    }
+  };
   return (
     <Stack gap={4}>
       <FormField
@@ -122,12 +146,35 @@ function MedicineForm({
         autoFocus={isCreate}
       />
       <FormField control={form.control} name="name" label={t("inventory.medicines.name")} required />
-      <FormField
-        control={form.control}
-        name="unit"
-        label={t("inventory.medicines.baseUnit")}
-        required
-      />
+      <Stack gap={1}>
+        <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+          {t("inventory.medicines.baseUnit")} *
+        </Text>
+        <HStack gap={2} align="stretch">
+          {catalog.length > 0 ? (
+            <EnumSelect
+              size="sm"
+              width="170px"
+              value={baseInCatalog ? baseName : ""}
+              onChange={(v) => onPickCatalogBase(v)}
+              items={[
+                { value: "", label: t("inventory.medicines.customUnit") },
+                ...catalog
+                  .filter((b) => b.active)
+                  .map((b) => ({ value: b.name, label: b.name })),
+              ]}
+              itemToString={(o) => o.label}
+              itemToValue={(o) => o.value}
+            />
+          ) : null}
+          <Input
+            size="sm"
+            value={baseName}
+            onChange={(e) => form.setValue("unit", e.target.value)}
+            placeholder={t("inventory.medicines.baseUnit")}
+          />
+        </HStack>
+      </Stack>
       <Stack gap={1}>
         <FormField
           control={form.control}

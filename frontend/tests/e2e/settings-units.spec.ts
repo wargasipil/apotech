@@ -84,4 +84,45 @@ test.describe("settings — unit catalog", () => {
       if (baseId) await archiveBase(page, baseId);
     }
   });
+
+  // Spec: ensure can create, edit and delete unit catalog entries.
+  test("owner edits a base unit name via the pencil affordance", async ({ page }) => {
+    const m = String(Date.now());
+    const origName = `edt-${m}`;
+    const newName = `edt-${m}-renamed`;
+    let baseId: string | undefined;
+    try {
+      await page.goto("/settings/units");
+      const baseInput = page.getByPlaceholder(/e\.g\. tablet|mis\. tablet/i);
+      await baseInput.fill(origName);
+      await page.getByRole("button", { name: /Add base|Tambah dasar/i }).click();
+      const baseHeading = page.getByRole("heading", { name: origName });
+      await expect(baseHeading).toBeVisible();
+      // Click the Edit pencil scoped via the heading's ancestor.
+      const editBtn = baseHeading
+        .locator("xpath=ancestor::div[1]")
+        .getByRole("button", { name: /^Edit$|^Ubah$/i })
+        .first();
+      await editBtn.click();
+      // After click, the heading is replaced by an Input wrapped in the same
+      // HStack as the Save button. Locate via the Save button's parent.
+      const saveBtn = page.getByRole("button", { name: /^Save$|^Simpan$/i }).first();
+      await expect(saveBtn).toBeVisible();
+      const editInput = saveBtn.locator("xpath=ancestor::div[1]").getByRole("textbox").first();
+      await editInput.fill(newName);
+      await saveBtn.click();
+      await expect(page.getByRole("heading", { name: newName })).toBeVisible();
+
+      const list = await api<{ bases: Array<{ id: string; name: string }> }>(
+        page,
+        "unit_iface.v1.UnitService/ListUnitBases",
+        {},
+      );
+      const created = list.bases.find((b) => b.name === newName);
+      expect(created).toBeDefined();
+      baseId = created!.id;
+    } finally {
+      if (baseId) await archiveBase(page, baseId);
+    }
+  });
 });

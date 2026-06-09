@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type StocktakeSession struct {
-	ID          string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID          string     `gorm:"primaryKey;type:uuid"`
 	Name        string     `gorm:"not null;default:''"`
 	Status      string     `gorm:"not null;default:'DRAFT'"`
 	BranchID    *string    `gorm:"type:uuid;column:branch_id"` // deprecated; superseded by warehouse_id
@@ -19,7 +19,7 @@ type StocktakeSession struct {
 func (StocktakeSession) TableName() string { return "stocktake_sessions" }
 
 type StocktakeLine struct {
-	ID              string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID              string     `gorm:"primaryKey;type:uuid"`
 	SessionID       string     `gorm:"not null;type:uuid;column:session_id"`
 	BatchID         string     `gorm:"not null;type:uuid;column:batch_id"`
 	ExpectedQty     int32      `gorm:"not null;column:expected_qty"`

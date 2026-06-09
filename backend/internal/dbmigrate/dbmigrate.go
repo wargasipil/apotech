@@ -16,7 +16,7 @@ import (
 // fully-migrated DB is a no-op.
 func Run(sqlDB *sql.DB) error {
 	goose.SetBaseFS(migrations.FS)
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect(migrations.Dialect); err != nil {
 		return fmt.Errorf("goose dialect: %w", err)
 	}
 	// "." is the root of the embedded FS (migrations live at the top level).

@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
 
+	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	unitifacev1 "github.com/apotech/backend/gen/unit_iface/v1"
 )
 
@@ -153,4 +154,101 @@ func TestUnitCatalog_DuplicateDerivative(t *testing.T) {
 	var cerr *connect.Error
 	require.True(t, errors.As(err, &cerr))
 	require.Equal(t, connect.CodeAlreadyExists, cerr.Code())
+}
+
+// TestUnitCatalog_Update covers UpdateUnitBase + UpdateUnitDerivative: name
+// + factor changes round-trip through ListUnitBases.
+func TestUnitCatalog_Update(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+	origName := fmt.Sprintf("upd-%d", uniq%1000000)
+	created, err := env.Units.CreateUnitBase(ctx, authReq(env, t,
+		&unitifacev1.CreateUnitBaseRequest{Name: origName}))
+	require.NoError(t, err)
+	baseID := created.Msg.Base.Id
+	t.Cleanup(func() {
+		_, _ = env.Units.ArchiveUnitBase(ctx, authReq(env, t,
+			&unitifacev1.ArchiveUnitBaseRequest{Id: baseID}))
+	})
+
+	newName := origName + "-renamed"
+	upd, err := env.Units.UpdateUnitBase(ctx, authReq(env, t,
+		&unitifacev1.UpdateUnitBaseRequest{Id: baseID, Name: newName}))
+	require.NoError(t, err)
+	require.Equal(t, newName, upd.Msg.Base.Name)
+
+	// Add a derivative and update its factor.
+	d, err := env.Units.CreateUnitDerivative(ctx, authReq(env, t,
+		&unitifacev1.CreateUnitDerivativeRequest{
+			BaseUnitId: baseID, Name: "strip", Factor: 5,
+		}))
+	require.NoError(t, err)
+	dID := d.Msg.Derivative.Id
+
+	updD, err := env.Units.UpdateUnitDerivative(ctx, authReq(env, t,
+		&unitifacev1.UpdateUnitDerivativeRequest{
+			Id: dID, Name: "strip", Factor: 12, SortOrder: 0,
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int64(12), updD.Msg.Derivative.Factor)
+
+	// Round-trip via List.
+	list, err := env.Units.ListUnitBases(ctx, authReq(env, t,
+		&unitifacev1.ListUnitBasesRequest{}))
+	require.NoError(t, err)
+	var got *unitifacev1.UnitBase
+	for _, b := range list.Msg.Bases {
+		if b.Id == baseID {
+			got = b
+			break
+		}
+	}
+	require.NotNil(t, got)
+	require.Equal(t, newName, got.Name)
+	require.Len(t, got.Derivatives, 1)
+	require.Equal(t, int64(12), got.Derivatives[0].Factor)
+}
+
+// TestUnitCatalog_DeleteGuard refuses to archive a base unit that is still
+// referenced (by name) by an active medicine. After the medicine is archived,
+// the base can be archived too.
+func TestUnitCatalog_DeleteGuard(t *testing.T) {
+	env := SetupEnv(t)
+	ctx := context.Background()
+	uniq := time.Now().UnixNano()
+	baseName := fmt.Sprintf("guard-tab-%d", uniq%1000000)
+	created, err := env.Units.CreateUnitBase(ctx, authReq(env, t,
+		&unitifacev1.CreateUnitBaseRequest{Name: baseName}))
+	require.NoError(t, err)
+	baseID := created.Msg.Base.Id
+	t.Cleanup(func() {
+		_, _ = env.Units.ArchiveUnitBase(ctx, authReq(env, t,
+			&unitifacev1.ArchiveUnitBaseRequest{Id: baseID}))
+	})
+
+	// Create a medicine that uses this base unit name.
+	med, err := env.Medicines.CreateMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.CreateMedicineRequest{
+			Sku: fmt.Sprintf("guard-%d", uniq), Name: fmt.Sprintf("Guard Med %d", uniq),
+			Unit: baseName, UnitPrice: 1000,
+		}))
+	require.NoError(t, err)
+	medID := med.Msg.Medicine.Id
+
+	// Archive must be refused while medicine is active.
+	_, err = env.Units.ArchiveUnitBase(ctx, authReq(env, t,
+		&unitifacev1.ArchiveUnitBaseRequest{Id: baseID}))
+	require.Error(t, err)
+	var cerr *connect.Error
+	require.True(t, errors.As(err, &cerr))
+	require.Equal(t, connect.CodeFailedPrecondition, cerr.Code())
+
+	// Archive the medicine → the base can now be archived.
+	_, err = env.Medicines.ArchiveMedicine(ctx, authReq(env, t,
+		&inventoryifacev1.ArchiveMedicineRequest{Id: medID}))
+	require.NoError(t, err)
+	_, err = env.Units.ArchiveUnitBase(ctx, authReq(env, t,
+		&unitifacev1.ArchiveUnitBaseRequest{Id: baseID}))
+	require.NoError(t, err)
 }

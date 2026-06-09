@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
 	"github.com/apotech/backend/internal/config"
@@ -24,13 +23,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sqlDB, err := sql.Open("pgx", cfg.Database.DSN())
+	driver, dsn, err := openSQLDriver(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sqlDB, err := sql.Open(driver, dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer sqlDB.Close()
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect(migrations.Dialect); err != nil {
 		log.Fatal(err)
 	}
 
@@ -40,7 +43,11 @@ func main() {
 	// works regardless of the working directory.
 	dir := "."
 	if cmd == "create" {
-		dir = "migrations"
+		if migrations.Dialect == "sqlite3" {
+			dir = "migrations/sqlite"
+		} else {
+			dir = "migrations"
+		}
 	} else {
 		goose.SetBaseFS(migrations.FS)
 	}

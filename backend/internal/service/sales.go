@@ -9,13 +9,13 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	posifacev1 "github.com/apotech/backend/gen/pos_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/model"
 	"github.com/apotech/backend/internal/printer"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const (
@@ -151,7 +151,7 @@ func (s *Sales) applySaleFilters(
 			Joins("LEFT JOIN customers c ON c.id = s.customer_id").
 			Joins("LEFT JOIN sale_items si ON si.sale_id = s.id").
 			Joins("LEFT JOIN medicines m ON m.id = si.medicine_id").
-			Where("s.sale_no ILIKE ? OR c.name ILIKE ? OR m.name ILIKE ?", pattern, pattern, pattern)
+			Where(sqldialect.ILikeAny("s.sale_no", "c.name", "m.name"), pattern, pattern, pattern)
 		q = q.Where("id IN (?)", sub)
 	}
 	return q
@@ -738,20 +738,80 @@ func (s *Sales) VoidSale(
 	ctx context.Context,
 	req *connect.Request[posifacev1.VoidSaleRequest],
 ) (*connect.Response[posifacev1.VoidSaleResponse], error) {
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	caller, err := auth.MustPrincipal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var sale model.Sale
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(sqldialect.LockForUpdate()).
 			Where("id = ?", req.Msg.SaleId).First(&sale).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
 			}
 			return connect.NewError(connect.CodeInternal, err)
 		}
-		if sale.Status != saleStatusDraft {
+		switch sale.Status {
+		case saleStatusDraft:
+			// Flip status; no movements / NSFP to undo.
+			return tx.Model(&sale).Update("status", saleStatusVoided).Error
+		case saleStatusCompleted:
+			// Reverse each SALE stock_movements row linked to this sale's items by
+			// inserting an opposing ADJUSTMENT row (positive qty since the SALE row
+			// was negative). sale_item_id stays linked so the audit chain resolves
+			// both directions. NSFP is intentionally NOT released — per Indonesian
+			// DJP rules an issued e-Faktur cannot be reused; correct handling is a
+			// credit-note (faktur pengganti) issued separately.
+			var saleItems []model.SaleItem
+			if err := tx.Where("sale_id = ?", sale.ID).Find(&saleItems).Error; err != nil {
+				return connect.NewError(connect.CodeInternal, err)
+			}
+			itemIDs := make([]string, 0, len(saleItems))
+			for _, it := range saleItems {
+				itemIDs = append(itemIDs, it.ID)
+			}
+			var saleMoves []model.StockMovement
+			if len(itemIDs) > 0 {
+				if err := tx.Where("sale_item_id IN ? AND type = ?", itemIDs, movementTypeSale).
+					Find(&saleMoves).Error; err != nil {
+					return connect.NewError(connect.CodeInternal, err)
+				}
+			}
+			saleNoLabel := ""
+			if sale.SaleNo != nil {
+				saleNoLabel = *sale.SaleNo
+			} else {
+				saleNoLabel = sale.ID
+			}
+			for _, m := range saleMoves {
+				saleItemID := ""
+				if m.SaleItemID != nil {
+					saleItemID = *m.SaleItemID
+				}
+				rev := model.StockMovement{
+					BatchID:     m.BatchID,
+					Qty:         -m.Qty, // SALE was negative; ADJUSTMENT is positive
+					Type:        "ADJUSTMENT",
+					Reason:      fmt.Sprintf("Sale cancelled: %s", saleNoLabel),
+					UserID:      caller.UserID,
+					WarehouseID: m.WarehouseID,
+				}
+				if saleItemID != "" {
+					rev.SaleItemID = &saleItemID
+				}
+				if err := tx.Create(&rev).Error; err != nil {
+					return connect.NewError(connect.CodeInternal, err)
+				}
+			}
+			now := time.Now()
+			return tx.Model(&sale).Updates(map[string]any{
+				"status":       saleStatusVoided,
+				"cancelled_at": now,
+			}).Error
+		default: // VOIDED
 			return connect.NewError(connect.CodeFailedPrecondition,
-				fmt.Errorf("only draft sales can be voided; this one is %s", sale.Status))
+				fmt.Errorf("sale is already %s", sale.Status))
 		}
-		return tx.Model(&sale).Update("status", saleStatusVoided).Error
 	})
 	if err != nil {
 		return nil, asConnectErr(err)
@@ -772,7 +832,7 @@ func (s *Sales) DiscardSale(
 ) (*connect.Response[posifacev1.DiscardSaleResponse], error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var sale model.Sale
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		if err := tx.Clauses(sqldialect.LockForUpdate()).
 			Where("id = ?", req.Msg.SaleId).First(&sale).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
@@ -874,7 +934,7 @@ func (s *Sales) GetTodaySnapshot(
 
 	var lastSaleUnix int64
 	if err := applySaleFilters(s.db.WithContext(ctx).Model(&model.Sale{}), "").
-		Select("COALESCE(EXTRACT(EPOCH FROM MAX(completed_at))::bigint, 0)").
+		Select("COALESCE(" + sqldialect.UnixEpoch("MAX(completed_at)") + ", 0)").
 		Scan(&lastSaleUnix).Error; err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -1003,7 +1063,7 @@ func (s *Sales) draftForUpdate(tx *gorm.DB, id string) (*model.Sale, error) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sale_id required"))
 	}
 	var sale model.Sale
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&sale).Error
+	err := tx.Clauses(sqldialect.LockForUpdate()).Where("id = ?", id).First(&sale).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("sale not found"))
 	}
@@ -1081,7 +1141,7 @@ func assignSaleNo(tx *gorm.DB, now time.Time) (string, error) {
 	// calls correct under row-lock.
 	if err := tx.Model(&model.SaleNoCounter{}).
 		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Clauses(sqldialect.LockForUpdate()).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}
@@ -1223,6 +1283,9 @@ func saleToProto(s *model.Sale) *posifacev1.Sale {
 	}
 	if s.CompletedAt != nil {
 		out.CompletedAt = s.CompletedAt.Unix()
+	}
+	if s.CancelledAt != nil {
+		out.CancelledAt = s.CancelledAt.Unix()
 	}
 	for i := range s.Items {
 		out.Items = append(out.Items, saleItemToProto(&s.Items[i]))

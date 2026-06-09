@@ -11,6 +11,7 @@ import (
 
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 type Suppliers struct {
@@ -31,7 +32,7 @@ func (s *Suppliers) ListSuppliers(
 		}
 		if query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("name ILIKE ? OR code ILIKE ?", pattern, pattern)
+			q = q.Where(sqldialect.ILikeAny("name", "code"), pattern, pattern)
 		}
 		return q
 	}
@@ -122,7 +123,7 @@ func (s *Suppliers) SearchSuppliers(
 	q := s.db.WithContext(ctx).Where("active = ?", true).Order("name").Limit(limit)
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR code ILIKE ? OR contact_email ILIKE ? OR phone ILIKE ?",
+		q = q.Where(sqldialect.ILikeAny("name", "code", "contact_email", "phone"),
 			pattern, pattern, pattern, pattern)
 	}
 	var rows []model.Supplier

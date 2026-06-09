@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type UnitDerivative struct {
-	ID         string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID         string    `gorm:"primaryKey;type:uuid"`
 	BaseUnitID string    `gorm:"not null;type:uuid;column:base_unit_id;index"`
 	Name       string    `gorm:"not null"`
 	Factor     int64     `gorm:"not null"` // base units per 1 of this derivative; CHECK factor > 1

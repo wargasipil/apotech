@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button, HStack, Input, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { Badge, Box, Button, HStack, Input, Spinner, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 import { Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,7 @@ export default function Medicines() {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [opnameBefore, setOpnameBefore] = useState("");
+  const [tab, setTab] = useState<"active" | "all" | "archived">("active");
 
   // Debounce the search box (250ms) into the query that drives the request.
   useEffect(() => {
@@ -33,9 +34,18 @@ export default function Medicines() {
   }, [searchInput]);
 
   const { page, setPage, pageSize, setPageSize } = usePageState(
-    `${query}|${opnameBefore}`,
+    `${query}|${opnameBefore}|${tab}`,
   );
-  const medicinesQ = useMedicinesQuery({ query, opnameBefore, page, pageSize });
+  const includeInactive = tab === "all";
+  const onlyInactive = tab === "archived";
+  const medicinesQ = useMedicinesQuery({
+    query,
+    opnameBefore,
+    includeInactive,
+    onlyInactive,
+    page,
+    pageSize,
+  });
   const stockUnitsByBase = usePreferencesStore((s) => s.medicineStockUnitsByBase);
   const setStockUnitByBase = usePreferencesStore((s) => s.setMedicineStockUnitByBase);
   const unitsQ = useUnitBasesQuery();
@@ -75,6 +85,16 @@ export default function Medicines() {
     <Box>
       <PageHeader breadcrumbs={[{ label: t("nav.medicines") }]} title={t("nav.medicines")} />
       <Stack gap={4}>
+        <Tabs.Root
+          value={tab}
+          onValueChange={(d) => setTab(d.value as "active" | "all" | "archived")}
+        >
+          <Tabs.List>
+            <Tabs.Trigger value="active">{t("inventory.medicines.tabs.active")}</Tabs.Trigger>
+            <Tabs.Trigger value="all">{t("inventory.medicines.tabs.all")}</Tabs.Trigger>
+            <Tabs.Trigger value="archived">{t("inventory.medicines.tabs.archived")}</Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
         <HStack justify="space-between" wrap="wrap" gap={2}>
           <Box position="relative">
             <Box position="absolute" left={2} top="50%" transform="translateY(-50%)" color="fg.muted">
@@ -140,7 +160,16 @@ export default function Medicines() {
                   onClick={() => navigate(`/medicines/${m.id}`)}
                 >
                   <Table.Cell fontFamily="mono">{m.sku}</Table.Cell>
-                  <Table.Cell>{m.name}</Table.Cell>
+                  <Table.Cell>
+                    <HStack gap={2}>
+                      <Text>{m.name}</Text>
+                      {!m.active && (
+                        <Badge size="sm" colorPalette="gray">
+                          {t("inventory.medicines.archivedBadge")}
+                        </Badge>
+                      )}
+                    </HStack>
+                  </Table.Cell>
                   <Table.Cell>{m.unit}</Table.Cell>
                   <Table.Cell>{formatMoney(m.unitPrice)}</Table.Cell>
                   <Table.Cell textAlign="end">

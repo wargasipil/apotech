@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Medicine struct {
-	ID                   string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID                   string `gorm:"primaryKey;type:uuid"`
 	SKU                  string `gorm:"uniqueIndex;not null;column:sku"`
 	Name                 string `gorm:"not null"`
 	Unit                 string `gorm:"not null"`

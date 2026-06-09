@@ -48,6 +48,9 @@ const (
 	// MedicineServiceArchiveMedicineProcedure is the fully-qualified name of the MedicineService's
 	// ArchiveMedicine RPC.
 	MedicineServiceArchiveMedicineProcedure = "/inventory_iface.v1.MedicineService/ArchiveMedicine"
+	// MedicineServiceUnarchiveMedicineProcedure is the fully-qualified name of the MedicineService's
+	// UnarchiveMedicine RPC.
+	MedicineServiceUnarchiveMedicineProcedure = "/inventory_iface.v1.MedicineService/UnarchiveMedicine"
 	// MedicineServiceListMedicinePricesProcedure is the fully-qualified name of the MedicineService's
 	// ListMedicinePrices RPC.
 	MedicineServiceListMedicinePricesProcedure = "/inventory_iface.v1.MedicineService/ListMedicinePrices"
@@ -72,6 +75,7 @@ type MedicineServiceClient interface {
 	CreateMedicine(context.Context, *connect.Request[v1.CreateMedicineRequest]) (*connect.Response[v1.CreateMedicineResponse], error)
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
+	UnarchiveMedicine(context.Context, *connect.Request[v1.UnarchiveMedicineRequest]) (*connect.Response[v1.UnarchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
 	ListMedicineUnitPrices(context.Context, *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error)
 	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
@@ -125,6 +129,12 @@ func NewMedicineServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(medicineServiceMethods.ByName("ArchiveMedicine")),
 			connect.WithClientOptions(opts...),
 		),
+		unarchiveMedicine: connect.NewClient[v1.UnarchiveMedicineRequest, v1.UnarchiveMedicineResponse](
+			httpClient,
+			baseURL+MedicineServiceUnarchiveMedicineProcedure,
+			connect.WithSchema(medicineServiceMethods.ByName("UnarchiveMedicine")),
+			connect.WithClientOptions(opts...),
+		),
 		listMedicinePrices: connect.NewClient[v1.ListMedicinePricesRequest, v1.ListMedicinePricesResponse](
 			httpClient,
 			baseURL+MedicineServiceListMedicinePricesProcedure,
@@ -165,6 +175,7 @@ type medicineServiceClient struct {
 	createMedicine         *connect.Client[v1.CreateMedicineRequest, v1.CreateMedicineResponse]
 	updateMedicine         *connect.Client[v1.UpdateMedicineRequest, v1.UpdateMedicineResponse]
 	archiveMedicine        *connect.Client[v1.ArchiveMedicineRequest, v1.ArchiveMedicineResponse]
+	unarchiveMedicine      *connect.Client[v1.UnarchiveMedicineRequest, v1.UnarchiveMedicineResponse]
 	listMedicinePrices     *connect.Client[v1.ListMedicinePricesRequest, v1.ListMedicinePricesResponse]
 	listMedicineUnitPrices *connect.Client[v1.ListMedicineUnitPricesRequest, v1.ListMedicineUnitPricesResponse]
 	searchMedicines        *connect.Client[v1.SearchMedicinesRequest, v1.SearchMedicinesResponse]
@@ -195,6 +206,11 @@ func (c *medicineServiceClient) UpdateMedicine(ctx context.Context, req *connect
 // ArchiveMedicine calls inventory_iface.v1.MedicineService.ArchiveMedicine.
 func (c *medicineServiceClient) ArchiveMedicine(ctx context.Context, req *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error) {
 	return c.archiveMedicine.CallUnary(ctx, req)
+}
+
+// UnarchiveMedicine calls inventory_iface.v1.MedicineService.UnarchiveMedicine.
+func (c *medicineServiceClient) UnarchiveMedicine(ctx context.Context, req *connect.Request[v1.UnarchiveMedicineRequest]) (*connect.Response[v1.UnarchiveMedicineResponse], error) {
+	return c.unarchiveMedicine.CallUnary(ctx, req)
 }
 
 // ListMedicinePrices calls inventory_iface.v1.MedicineService.ListMedicinePrices.
@@ -229,6 +245,7 @@ type MedicineServiceHandler interface {
 	CreateMedicine(context.Context, *connect.Request[v1.CreateMedicineRequest]) (*connect.Response[v1.CreateMedicineResponse], error)
 	UpdateMedicine(context.Context, *connect.Request[v1.UpdateMedicineRequest]) (*connect.Response[v1.UpdateMedicineResponse], error)
 	ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error)
+	UnarchiveMedicine(context.Context, *connect.Request[v1.UnarchiveMedicineRequest]) (*connect.Response[v1.UnarchiveMedicineResponse], error)
 	ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error)
 	ListMedicineUnitPrices(context.Context, *connect.Request[v1.ListMedicineUnitPricesRequest]) (*connect.Response[v1.ListMedicineUnitPricesResponse], error)
 	SearchMedicines(context.Context, *connect.Request[v1.SearchMedicinesRequest]) (*connect.Response[v1.SearchMedicinesResponse], error)
@@ -278,6 +295,12 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 		connect.WithSchema(medicineServiceMethods.ByName("ArchiveMedicine")),
 		connect.WithHandlerOptions(opts...),
 	)
+	medicineServiceUnarchiveMedicineHandler := connect.NewUnaryHandler(
+		MedicineServiceUnarchiveMedicineProcedure,
+		svc.UnarchiveMedicine,
+		connect.WithSchema(medicineServiceMethods.ByName("UnarchiveMedicine")),
+		connect.WithHandlerOptions(opts...),
+	)
 	medicineServiceListMedicinePricesHandler := connect.NewUnaryHandler(
 		MedicineServiceListMedicinePricesProcedure,
 		svc.ListMedicinePrices,
@@ -320,6 +343,8 @@ func NewMedicineServiceHandler(svc MedicineServiceHandler, opts ...connect.Handl
 			medicineServiceUpdateMedicineHandler.ServeHTTP(w, r)
 		case MedicineServiceArchiveMedicineProcedure:
 			medicineServiceArchiveMedicineHandler.ServeHTTP(w, r)
+		case MedicineServiceUnarchiveMedicineProcedure:
+			medicineServiceUnarchiveMedicineHandler.ServeHTTP(w, r)
 		case MedicineServiceListMedicinePricesProcedure:
 			medicineServiceListMedicinePricesHandler.ServeHTTP(w, r)
 		case MedicineServiceListMedicineUnitPricesProcedure:
@@ -357,6 +382,10 @@ func (UnimplementedMedicineServiceHandler) UpdateMedicine(context.Context, *conn
 
 func (UnimplementedMedicineServiceHandler) ArchiveMedicine(context.Context, *connect.Request[v1.ArchiveMedicineRequest]) (*connect.Response[v1.ArchiveMedicineResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.ArchiveMedicine is not implemented"))
+}
+
+func (UnimplementedMedicineServiceHandler) UnarchiveMedicine(context.Context, *connect.Request[v1.UnarchiveMedicineRequest]) (*connect.Response[v1.UnarchiveMedicineResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("inventory_iface.v1.MedicineService.UnarchiveMedicine is not implemented"))
 }
 
 func (UnimplementedMedicineServiceHandler) ListMedicinePrices(context.Context, *connect.Request[v1.ListMedicinePricesRequest]) (*connect.Response[v1.ListMedicinePricesResponse], error) {

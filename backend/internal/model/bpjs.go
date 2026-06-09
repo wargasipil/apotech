@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type BpjsClaim struct {
-	ID          string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID          string     `gorm:"primaryKey;type:uuid"`
 	SaleID      string     `gorm:"not null;type:uuid;column:sale_id"`
 	CustomerID  string     `gorm:"not null;type:uuid;column:customer_id"`
 	BPJSNo      string     `gorm:"not null;column:bpjs_no"`

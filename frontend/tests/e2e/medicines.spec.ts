@@ -383,4 +383,66 @@ test.describe("medicines", () => {
       if (medId) await archiveMedicine(page, medId);
     }
   });
+
+  // Spec: ensure medicine can archive and unarchive. Drive the new tabs.
+  test("Active / Archived tabs filter rows + unarchive restores", async ({ page }) => {
+    const m = String(Date.now());
+    const sku = `MED-AR-${m}`;
+    let medId: string | undefined;
+    try {
+      await page.goto("/");
+      const med = (await api<{ medicine: { id: string } }>(
+        page,
+        "inventory_iface.v1.MedicineService/CreateMedicine",
+        { sku, name: `Archive Med ${m}`, unit: "tab", unitPrice: "1000" },
+      )).medicine;
+      medId = med.id;
+
+      await page.goto("/medicines");
+      // Default tab "Active" — our active medicine appears.
+      await page.getByPlaceholder(/Search name or SKU|Cari/i).fill(sku);
+      await page.waitForTimeout(400);
+      await expect(page.getByRole("cell", { name: sku })).toBeVisible();
+
+      // Archive it from the detail page; uses the new ConfirmDialog.
+      await page.getByRole("cell", { name: sku }).click();
+      await page.waitForURL(/\/medicines\/[0-9a-f-]{36}$/);
+      await page.getByRole("button", { name: /Archive|Arsipkan/i }).first().click();
+      const archiveDialog = page.getByRole("dialog");
+      await expect(archiveDialog).toBeVisible();
+      await archiveDialog
+        .getByRole("button", { name: /^Archive$|^Arsipkan$/ })
+        .click();
+      await expect(archiveDialog).toBeHidden();
+      // The archive navigation lands on /medicines; the Active tab no longer shows it.
+      await page.waitForURL(/\/medicines$/);
+      await page.getByPlaceholder(/Search name or SKU|Cari/i).fill(sku);
+      await page.waitForTimeout(400);
+      await expect(page.getByRole("cell", { name: sku })).toBeHidden();
+
+      // Archived tab → the row reappears.
+      await page.getByRole("tab", { name: /^Archived$|^Arsip$/ }).click();
+      await page.waitForTimeout(400);
+      await expect(page.getByRole("cell", { name: sku })).toBeVisible();
+
+      // Click the row → MedicineDetail shows Unarchive instead of Archive.
+      await page.getByRole("cell", { name: sku }).click();
+      await page.waitForURL(/\/medicines\/[0-9a-f-]{36}$/);
+      await page.getByRole("button", { name: /Unarchive|Kembalikan/i }).click();
+      const unDialog = page.getByRole("dialog");
+      await expect(unDialog).toBeVisible();
+      await unDialog
+        .getByRole("button", { name: /^Unarchive$|^Kembalikan$/ })
+        .click();
+      await expect(unDialog).toBeHidden();
+
+      // Back to /medicines, Active tab again contains the row.
+      await page.goto("/medicines");
+      await page.getByPlaceholder(/Search name or SKU|Cari/i).fill(sku);
+      await page.waitForTimeout(400);
+      await expect(page.getByRole("cell", { name: sku })).toBeVisible();
+    } finally {
+      if (medId) await archiveMedicine(page, medId);
+    }
+  });
 });

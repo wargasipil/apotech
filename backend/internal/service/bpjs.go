@@ -9,11 +9,11 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	bpjsifacev1 "github.com/apotech/backend/gen/bpjs_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const (
@@ -132,7 +132,7 @@ func (b *BpjsClaims) SubmitClaim(
 ) (*connect.Response[bpjsifacev1.SubmitClaimResponse], error) {
 	err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var claim model.BpjsClaim
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.Clauses(sqldialect.LockForUpdate()).
 			Where("id = ?", req.Msg.Id).First(&claim).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return connect.NewError(connect.CodeNotFound, errors.New("claim not found"))
@@ -172,7 +172,7 @@ func (b *BpjsClaims) ResolveClaim(
 	}
 	err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var claim model.BpjsClaim
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.Clauses(sqldialect.LockForUpdate()).
 			Where("id = ?", req.Msg.Id).First(&claim).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return connect.NewError(connect.CodeNotFound, errors.New("claim not found"))

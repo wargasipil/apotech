@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListLowStockRequest, ListLowStockResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, ListMedicineUnitPricesRequest, ListMedicineUnitPricesResponse, ResolveMedicinesRequest, ResolveMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
+import { ArchiveMedicineRequest, ArchiveMedicineResponse, CreateMedicineRequest, CreateMedicineResponse, GetMedicineRequest, GetMedicineResponse, ListLowStockRequest, ListLowStockResponse, ListMedicinePricesRequest, ListMedicinePricesResponse, ListMedicinesRequest, ListMedicinesResponse, ListMedicineUnitPricesRequest, ListMedicineUnitPricesResponse, ResolveMedicinesRequest, ResolveMedicinesResponse, SearchMedicinesRequest, SearchMedicinesResponse, UnarchiveMedicineRequest, UnarchiveMedicineResponse, UpdateMedicineRequest, UpdateMedicineResponse } from "./medicine_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,15 @@ export const MedicineService = {
       name: "ArchiveMedicine",
       I: ArchiveMedicineRequest,
       O: ArchiveMedicineResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc inventory_iface.v1.MedicineService.UnarchiveMedicine
+     */
+    unarchiveMedicine: {
+      name: "UnarchiveMedicine",
+      I: UnarchiveMedicineRequest,
+      O: UnarchiveMedicineResponse,
       kind: MethodKind.Unary,
     },
     /**

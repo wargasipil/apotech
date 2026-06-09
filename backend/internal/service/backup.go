@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -74,12 +73,14 @@ func NewBackupsWithDir(db *gorm.DB, cfg *config.Config, directory string) *Backu
 // validates Delete's `name` arg, refusing `..`, slashes, anything else.
 var backupNameRe = regexp.MustCompile(`^backup_\d{4}-\d{2}-\d{2}_\d{6}$`)
 
-const (
-	dumpFileName     = "database.sql.gz"
-	manifestFileName = "manifest.txt"
-)
+const manifestFileName = "manifest.txt"
 
-// CreateBackup runs pg_dump (compressed) into a fresh backup_<ts>/ directory.
+// CreateBackup writes a fresh backup_<ts>/ directory using the dump strategy
+// selected at compile time by build tag:
+//
+//   - default (postgres): shells out to pg_dump, producing database.sql.gz
+//   - `-tags sqlite`:      runs VACUUM INTO, producing database.db
+//
 // On any failure the partial directory is removed so the listing never shows
 // a half-baked backup.
 func (s *Backups) CreateBackup(
@@ -104,42 +105,10 @@ func (s *Backups) CreateBackup(
 		}
 	}()
 
-	// Resolve pg_dump: PATH → bundled-next-to-apotech-binary → cached download →
-	// (Windows + autoFetch) auto-download EDB binaries → friendly error.
-	pgDumpPath, err := resolvePgDump(ctx, s.pgToolsDir, s.autoFetchPgDump)
+	size, err := s.performDump(ctx, dir)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		return nil, err
 	}
-
-	dumpPath := filepath.Join(dir, dumpFileName)
-	db := s.cfg.Database
-	cmd := exec.CommandContext(ctx, pgDumpPath,
-		"--host="+db.Host,
-		"--port="+strconv.Itoa(db.Port),
-		"--username="+db.User,
-		"--dbname="+db.Name,
-		"--no-password",
-		"--clean",
-		"--if-exists",
-		"--compress=6",
-		"--file="+dumpPath,
-	)
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+db.Password)
-	stderr := &strings.Builder{}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("pg_dump: %s", msg))
-	}
-
-	info, err := os.Stat(dumpPath)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("stat dump: %w", err))
-	}
-	size := info.Size()
 
 	schemaVersion := s.readSchemaVersion(ctx)
 	dbVersion := s.readDBVersion(ctx)
@@ -260,13 +229,9 @@ func (s *Backups) readSchemaVersion(ctx context.Context) int32 {
 	return int32(v)
 }
 
-func (s *Backups) readDBVersion(ctx context.Context) string {
-	var v string
-	if err := s.db.WithContext(ctx).Raw(`SELECT version()`).Scan(&v).Error; err != nil {
-		return ""
-	}
-	return v
-}
+// readDBVersion is build-tag-split between backup_postgres.go and
+// backup_sqlite.go because Postgres uses `SELECT version()` and SQLite uses
+// `SELECT sqlite_version()`.
 
 // manifest is the on-disk shape of manifest.txt. Plain key=value lines so
 // `cat manifest.txt` works without any tooling.

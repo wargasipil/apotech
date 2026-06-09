@@ -1,4 +1,4 @@
-package model
+﻿package model
 
 import "time"
 
@@ -6,7 +6,7 @@ import "time"
 // but keyed by a medicine_unit. Exactly one open row (EffectiveTo == nil) per
 // unit. ChangedBy is nullable so the migration backfill can seed a baseline.
 type MedicineUnitPrice struct {
-	ID             string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID             string     `gorm:"primaryKey;type:uuid"`
 	MedicineUnitID string     `gorm:"not null;type:uuid;column:medicine_unit_id"`
 	UnitSellPrice  int64      `gorm:"not null;column:unit_sell_price"`
 	EffectiveFrom  time.Time  `gorm:"not null;column:effective_from"`

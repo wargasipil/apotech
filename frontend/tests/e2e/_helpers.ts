@@ -28,6 +28,7 @@ const ALLOWED_CONSOLE_NOISE = [
   // the resource-load level. Tests for *expected* failures (wrong password,
   // FailedPrecondition) would otherwise trip the fixture on this noise.
   "401 (Unauthorized)",
+  "403 (Forbidden)",
   "412 (Precondition Failed)",
   "429 (Too Many Requests)",
 ];

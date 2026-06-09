@@ -14,6 +14,7 @@
 - ensure can search sku, medicine name
 - ensure can filter last stock opname date
 - ensure in medicine list have last opname date
+- ensure medicine can archive and unarchive
 
 # Pos Cashier
 - ensure warehouse scope properly
@@ -22,6 +23,10 @@
     - ensure after checkout is exist in order history, and check data is correct
 - ensure stock decrease properly, and pricing properly
 - ensure no race condition when checkout
+
+# Order history
+- ensure order can canceled
+- ensure stock correct when canceled
 
 # Inventory
 
@@ -47,3 +52,6 @@
 - can create warehouse
 - can edit warehouse properly
 - can search code and name properly
+
+# Cashier Role
+- ensure cashier can open order history without error

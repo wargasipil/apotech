@@ -12,11 +12,12 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Archive, Pencil } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
 import BackButton from "../../components/BackButton";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import ExpiryBadge from "../../components/ExpiryBadge";
 import PageHeader from "../../components/PageHeader";
 import { MovementType } from "../../gen/inventory_iface/v1/stock_pb";
@@ -29,6 +30,7 @@ import {
   useArchiveMedicineMutation,
   useMedicineUnitPricesQuery,
   useMedicineQuery,
+  useUnarchiveMedicineMutation,
 } from "../../queries/medicines";
 import { useSupplierRefs } from "../../queries/refs";
 import { useMovementsQuery } from "../../queries/stock";
@@ -59,9 +61,11 @@ export default function MedicineDetail() {
   const navigate = useNavigate();
   const { id = "" } = useParams();
   const [editing, setEditing] = useState(false);
+  const [confirmKind, setConfirmKind] = useState<"archive" | "unarchive" | null>(null);
 
   const medQ = useMedicineQuery(id);
   const archive = useArchiveMedicineMutation();
+  const unarchive = useUnarchiveMedicineMutation();
   const unitPricesQ = useMedicineUnitPricesQuery(id, !!id);
   const batchesQ = useBatchesQuery({ medicineId: id, onlyInStock: true, pageSize: ALL_LIMIT });
   const batchSupplierRefs = useSupplierRefs(
@@ -95,12 +99,21 @@ export default function MedicineDetail() {
     );
   }
 
-  const onArchive = async () => {
-    if (!window.confirm(t("inventory.medicines.confirmArchive"))) return;
+  const onConfirmArchive = async () => {
     try {
       await archive.mutateAsync({ id: med.id });
       toast.success(t("common.archive") + " ✓");
+      setConfirmKind(null);
       navigate("/medicines");
+    } catch {
+      /* toast handled globally */
+    }
+  };
+  const onConfirmUnarchive = async () => {
+    try {
+      await unarchive.mutateAsync({ id: med.id });
+      toast.success(t("common.unarchive") + " ✓");
+      setConfirmKind(null);
     } catch {
       /* toast handled globally */
     }
@@ -118,14 +131,48 @@ export default function MedicineDetail() {
               <Pencil size={14} />
               {t("common.edit")}
             </Button>
-            {med.active && (
-              <Button size="sm" variant="outline" colorPalette="red" onClick={onArchive}>
+            {med.active ? (
+              <Button
+                size="sm"
+                variant="outline"
+                colorPalette="red"
+                onClick={() => setConfirmKind("archive")}
+              >
                 <Archive size={14} />
                 {t("common.archive")}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                colorPalette="blue"
+                onClick={() => setConfirmKind("unarchive")}
+              >
+                <ArchiveRestore size={14} />
+                {t("common.unarchive")}
               </Button>
             )}
           </HStack>
         }
+      />
+      <ConfirmDialog
+        open={confirmKind === "archive"}
+        title={t("inventory.medicines.confirmArchiveTitle")}
+        body={t("inventory.medicines.confirmArchive")}
+        confirmLabel={t("common.archive")}
+        destructive
+        loading={archive.isPending}
+        onConfirm={onConfirmArchive}
+        onClose={() => setConfirmKind(null)}
+      />
+      <ConfirmDialog
+        open={confirmKind === "unarchive"}
+        title={t("inventory.medicines.confirmUnarchiveTitle")}
+        body={t("inventory.medicines.confirmUnarchive")}
+        confirmLabel={t("common.unarchive")}
+        loading={unarchive.isPending}
+        onConfirm={onConfirmUnarchive}
+        onClose={() => setConfirmKind(null)}
       />
 
       <Stack gap={6}>

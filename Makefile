@@ -1,7 +1,8 @@
-.PHONY: up down reset-devel-data generate tidy run test-e2e test-browser test-all \
+.PHONY: up down reset-devel-data generate tidy run test-e2e test-e2e-sqlite test-browser test-all \
         migrate-up migrate-down migrate-status migrate-create \
         web-install web \
-        embed-web build dist-windows docker-build docker-up docker-down installer \
+        embed-web build build-portable dist-windows dist-windows-portable \
+        docker-build docker-up docker-down installer installer-portable zip-portable \
         backup
 
 # `go -C backend run ...` runs the binary with CWD = backend/, so we point
@@ -41,23 +42,59 @@ run:
 
 # --- Packaging (single self-contained binary) --------------------------------
 # embed-web builds the SPA and copies it into the Go embed dir. `build` and
+# Shell-portable filesystem helpers (work the same under cmd.exe, PowerShell,
+# and POSIX sh). Node is already a build prerequisite, so we lean on it
+# instead of branching on $(OS). Double-quoted JS with single-quoted string
+# literals survives both shells without further escaping.
+RM_RF   = node -e "require('fs').rmSync(process.argv[1],{recursive:true,force:true})"
+CP_R    = node -e "require('fs').cpSync(process.argv[1],process.argv[2],{recursive:true,force:true})"
+MKDIR_P = node -e "require('fs').mkdirSync(process.argv[1],{recursive:true})"
+
 # `dist-windows` then compile a single binary with the UI + migrations embedded.
+# Uses `npm install` instead of `npm ci` for Windows-friendliness: `ci` first
+# deletes node_modules, which races with editor/IDE language servers holding
+# file handles (rollup .node bindings in particular) and EPERMs. `install`
+# keeps existing files and resolves only what the lockfile demands. Same
+# resulting tree, more tolerant of background processes.
 embed-web:
-	npm --prefix frontend ci
+	npm --prefix frontend install
 	npm --prefix frontend run build
-	rm -rf backend/internal/web/dist/assets
-	cp -r frontend/dist/. backend/internal/web/dist/
+	$(RM_RF) backend/internal/web/dist/assets
+	$(CP_R) frontend/dist backend/internal/web/dist
 
 # Native single binary -> dist/apotech (serves UI + /api + auto-migrates).
 build: embed-web
-	@mkdir -p dist
+	@$(MKDIR_P) dist
 	$(GO_BACKEND) build -ldflags "-s -w" -o ../dist/apotech ./cmd/server
 
 # Windows single binary -> dist/apotech.exe (input to the installer build).
 # Pure-Go deps mean no CGO, so this cross-compiles from any host.
+# Env-vars are set via target-specific assignment + `export` (above), so Make
+# pushes them into the shell's environment instead of relying on inline
+# `VAR=val cmd` syntax (POSIX-only — fails under cmd.exe).
+dist-windows: export GOOS = windows
+dist-windows: export GOARCH = amd64
+dist-windows: export CGO_ENABLED = 0
 dist-windows: embed-web
-	@mkdir -p dist
-	GOOS=windows GOARCH=amd64 $(GO_BACKEND) build -ldflags "-s -w" -o ../dist/apotech.exe ./cmd/server
+	@$(MKDIR_P) dist
+	$(GO_BACKEND) build -ldflags "-s -w" -o ../dist/apotech.exe ./cmd/server
+
+# --- Portable (SQLite) flavor ------------------------------------------------
+# Same source tree, `-tags sqlite` swaps the DB driver + migrations + backup
+# strategy. modernc.org/sqlite is pure-Go so cross-compilation needs no CGO.
+
+# Native single binary -> dist/apotech-portable (SQLite, single-file DB).
+build-portable: embed-web
+	@$(MKDIR_P) dist
+	$(GO_BACKEND) build -tags sqlite -ldflags "-s -w" -o ../dist/apotech-portable ./cmd/server
+
+# Windows single binary -> dist/apotech-portable.exe (input to the portable installer).
+dist-windows-portable: export GOOS = windows
+dist-windows-portable: export GOARCH = amd64
+dist-windows-portable: export CGO_ENABLED = 0
+dist-windows-portable: embed-web
+	@$(MKDIR_P) dist
+	$(GO_BACKEND) build -tags sqlite -ldflags "-s -w" -o ../dist/apotech-portable.exe ./cmd/server
 
 # --- Docker (production image + compose) --------------------------------------
 docker-build:
@@ -72,8 +109,19 @@ docker-down:
 # --- Windows installer -------------------------------------------------------
 # Assembles the payload (exe + bundled Postgres + WinSW) and runs Inno Setup.
 # Requires PowerShell + Inno Setup (ISCC) on PATH; see packaging/windows/.
+# -SkipExeBuild because dist-windows already produced the EXE.
 installer: dist-windows
-	powershell -ExecutionPolicy Bypass -File packaging/windows/build-windows.ps1
+	powershell -ExecutionPolicy Bypass -File packaging/windows/build-windows.ps1 -SkipExeBuild
+
+# Portable installer — no bundled Postgres, no services, no firewall rule.
+# Ships apotech-portable.exe + a SQLite-driven config.yaml + a backup .bat.
+installer-portable: dist-windows-portable
+	powershell -ExecutionPolicy Bypass -File packaging/windows/build-windows-portable.ps1 -SkipExeBuild
+
+# Portable ZIP — drop-anywhere, USB-friendly. Same EXE as the Inno installer.
+# Ships apotech-portable.exe + first-run.bat + bilingual README.txt.
+zip-portable: dist-windows-portable
+	powershell -ExecutionPolicy Bypass -File packaging/windows/build-zip-portable.ps1 -SkipExeBuild
 
 # End-to-end / integration tests (in-process httptest server + real dev Postgres).
 # Test binaries run with CWD = backend/e2e/, so the APOTECH_CONFIG path needs
@@ -82,6 +130,11 @@ installer: dist-windows
 test-e2e: export APOTECH_CONFIG := ../../config.yaml
 test-e2e:
 	$(GO_BACKEND) test ./e2e/... -v -count=1
+
+# SQLite test variant: same suites, per-test temp DB (helpers.go injects under
+# the sqlite tag). No config.yaml needed — the helper sets Driver/Path itself.
+test-e2e-sqlite:
+	$(GO_BACKEND) test -tags sqlite ./e2e/... -v -count=1
 
 migrate-up:
 	$(GO_BACKEND) run ./cmd/migrate up

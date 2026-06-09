@@ -146,6 +146,7 @@ type Sale struct {
 	PrescriptionId string                 `protobuf:"bytes,16,opt,name=prescription_id,json=prescriptionId,proto3" json:"prescription_id,omitempty"`
 	WarehouseId    string                 `protobuf:"bytes,17,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	CustomerName   string                 `protobuf:"bytes,18,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"` // denormalized for the order-history list
+	CancelledAt    int64                  `protobuf:"varint,19,opt,name=cancelled_at,json=cancelledAt,proto3" json:"cancelled_at,omitempty"`   // when a COMPLETED sale was cancelled; 0 / null when not cancelled
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -304,6 +305,13 @@ func (x *Sale) GetCustomerName() string {
 		return x.CustomerName
 	}
 	return ""
+}
+
+func (x *Sale) GetCancelledAt() int64 {
+	if x != nil {
+		return x.CancelledAt
+	}
+	return 0
 }
 
 type SaleItem struct {
@@ -1972,7 +1980,7 @@ var File_pos_iface_v1_sale_proto protoreflect.FileDescriptor
 
 const file_pos_iface_v1_sale_proto_rawDesc = "" +
 	"\n" +
-	"\x17pos_iface/v1/sale.proto\x12\fpos_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\x8a\x05\n" +
+	"\x17pos_iface/v1/sale.proto\x12\fpos_iface.v1\x1a\x1aauth_iface/v1/policy.proto\"\xad\x05\n" +
 	"\x04Sale\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\asale_no\x18\x02 \x01(\tR\x06saleNo\x12\x1f\n" +
@@ -1995,7 +2003,8 @@ const file_pos_iface_v1_sale_proto_rawDesc = "" +
 	"\x05items\x18\x0f \x03(\v2\x16.pos_iface.v1.SaleItemR\x05items\x12'\n" +
 	"\x0fprescription_id\x18\x10 \x01(\tR\x0eprescriptionId\x12!\n" +
 	"\fwarehouse_id\x18\x11 \x01(\tR\vwarehouseId\x12#\n" +
-	"\rcustomer_name\x18\x12 \x01(\tR\fcustomerName\"\x9d\x03\n" +
+	"\rcustomer_name\x18\x12 \x01(\tR\fcustomerName\x12!\n" +
+	"\fcancelled_at\x18\x13 \x01(\x03R\vcancelledAt\"\x9d\x03\n" +
 	"\bSaleItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\asale_id\x18\x02 \x01(\tR\x06saleId\x12\x1f\n" +

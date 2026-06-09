@@ -91,11 +91,12 @@ $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) {
   foreach ($p in @(
       "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-      "$env:ProgramFiles\Inno Setup 6\ISCC.exe")) {
+      "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+      "$env:USERPROFILE\scoop\apps\innosetup-np\current\ISCC.exe")) {
     if (Test-Path $p) { $iscc = $p; break }
   }
 }
-if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found. Install Inno Setup 6." }
+if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found. Install Inno Setup 6 (e.g. scoop install innosetup-np)." }
 
 Write-Host "Compiling installer with $iscc ..."
 & $iscc "/DAppVersion=$AppVersion" (Join-Path $here "apotech.iss")

@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Prescription struct {
-	ID          string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID          string    `gorm:"primaryKey;type:uuid"`
 	RxNo        *string   `gorm:"uniqueIndex;column:rx_no"`
 	CustomerID  string    `gorm:"not null;type:uuid;column:customer_id"`
 	IssuerName  string    `gorm:"not null;column:issuer_name"`
@@ -22,7 +22,7 @@ type Prescription struct {
 func (Prescription) TableName() string { return "prescriptions" }
 
 type PrescriptionItem struct {
-	ID                  string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID                  string `gorm:"primaryKey;type:uuid"`
 	PrescriptionID      string `gorm:"not null;type:uuid;column:prescription_id"`
 	MedicineID          string `gorm:"not null;type:uuid;column:medicine_id"`
 	PrescribedQty       int32  `gorm:"not null;column:prescribed_qty"`

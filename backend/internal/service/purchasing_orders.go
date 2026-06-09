@@ -9,11 +9,11 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	purchasingifacev1 "github.com/apotech/backend/gen/purchasing_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const (
@@ -93,7 +93,7 @@ func (p *PurchaseOrders) ListPurchaseOrders(
 				Joins("JOIN suppliers s ON s.id = po.supplier_id").
 				Joins("LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id").
 				Joins("LEFT JOIN medicines m ON m.id = poi.medicine_id").
-				Where("po.po_no ILIKE ? OR s.name ILIKE ? OR s.code ILIKE ? OR m.name ILIKE ?",
+				Where(sqldialect.ILikeAny("po.po_no", "s.name", "s.code", "m.name"),
 					pattern, pattern, pattern, pattern)
 			q = q.Where("id IN (?)", sub)
 		}
@@ -525,7 +525,7 @@ func (p *PurchaseOrders) lockByID(tx *gorm.DB, id string) (*model.PurchaseOrder,
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id required"))
 	}
 	var po model.PurchaseOrder
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&po).Error
+	err := tx.Clauses(sqldialect.LockForUpdate()).Where("id = ?", id).First(&po).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("purchase order not found"))
 	}
@@ -576,7 +576,7 @@ func assignPONo(tx *gorm.DB, now time.Time) (string, error) {
 	}
 	if err := tx.Model(&model.POCounter{}).
 		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Clauses(sqldialect.LockForUpdate()).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}
@@ -600,7 +600,7 @@ func assignReceiptNo(tx *gorm.DB, now time.Time) (string, error) {
 	}
 	if err := tx.Model(&model.RcvCounter{}).
 		Where("year = ?", year).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Clauses(sqldialect.LockForUpdate()).
 		Update("last_seq", gorm.Expr("last_seq + 1")).Error; err != nil {
 		return "", err
 	}

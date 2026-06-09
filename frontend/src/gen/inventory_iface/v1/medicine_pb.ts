@@ -531,6 +531,16 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
    */
   opnameBefore = "";
 
+  /**
+   * COMPLETED opname in the active warehouse is < this date OR
+   * who have never been counted there (overdue / never-counted).
+   *
+   * when true, return ONLY archived (active = false) medicines;
+   *
+   * @generated from field: bool only_inactive = 6;
+   */
+  onlyInactive = false;
+
   constructor(data?: PartialMessage<ListMedicinesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -544,6 +554,7 @@ export class ListMedicinesRequest extends Message<ListMedicinesRequest> {
     { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "opname_before", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "only_inactive", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMedicinesRequest {
@@ -967,6 +978,80 @@ export class ArchiveMedicineResponse extends Message<ArchiveMedicineResponse> {
 
   static equals(a: ArchiveMedicineResponse | PlainMessage<ArchiveMedicineResponse> | undefined, b: ArchiveMedicineResponse | PlainMessage<ArchiveMedicineResponse> | undefined): boolean {
     return proto3.util.equals(ArchiveMedicineResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.UnarchiveMedicineRequest
+ */
+export class UnarchiveMedicineRequest extends Message<UnarchiveMedicineRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<UnarchiveMedicineRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.UnarchiveMedicineRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnarchiveMedicineRequest {
+    return new UnarchiveMedicineRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnarchiveMedicineRequest {
+    return new UnarchiveMedicineRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnarchiveMedicineRequest {
+    return new UnarchiveMedicineRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnarchiveMedicineRequest | PlainMessage<UnarchiveMedicineRequest> | undefined, b: UnarchiveMedicineRequest | PlainMessage<UnarchiveMedicineRequest> | undefined): boolean {
+    return proto3.util.equals(UnarchiveMedicineRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message inventory_iface.v1.UnarchiveMedicineResponse
+ */
+export class UnarchiveMedicineResponse extends Message<UnarchiveMedicineResponse> {
+  /**
+   * @generated from field: inventory_iface.v1.Medicine medicine = 1;
+   */
+  medicine?: Medicine;
+
+  constructor(data?: PartialMessage<UnarchiveMedicineResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "inventory_iface.v1.UnarchiveMedicineResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "medicine", kind: "message", T: Medicine },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnarchiveMedicineResponse {
+    return new UnarchiveMedicineResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnarchiveMedicineResponse {
+    return new UnarchiveMedicineResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnarchiveMedicineResponse {
+    return new UnarchiveMedicineResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnarchiveMedicineResponse | PlainMessage<UnarchiveMedicineResponse> | undefined, b: UnarchiveMedicineResponse | PlainMessage<UnarchiveMedicineResponse> | undefined): boolean {
+    return proto3.util.equals(UnarchiveMedicineResponse, a, b);
   }
 }
 

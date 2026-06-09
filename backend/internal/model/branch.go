@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Branch struct {
-	ID        string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID        string `gorm:"primaryKey;type:uuid"`
 	Code      string `gorm:"uniqueIndex;not null"`
 	Name      string `gorm:"not null"`
 	Address   string `gorm:"not null;default:''"`

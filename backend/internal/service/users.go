@@ -18,6 +18,7 @@ import (
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/config"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 const passwordResetTTL = 24 * time.Hour
@@ -195,7 +196,7 @@ func (u *Users) SearchUsers(
 	tx := u.db.WithContext(ctx).Model(&model.User{}).Select("id, name, email")
 	if q != "" {
 		like := "%" + q + "%"
-		tx = tx.Where("email ILIKE ? OR name ILIKE ?", like, like)
+		tx = tx.Where(sqldialect.ILikeAny("email", "name"), like, like)
 	}
 	var rows []row
 	if err := tx.Order("email ASC").Limit(limit).Scan(&rows).Error; err != nil {

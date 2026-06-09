@@ -11,6 +11,7 @@ import (
 
 	customerifacev1 "github.com/apotech/backend/gen/customer_iface/v1"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 type Customers struct {
@@ -31,7 +32,7 @@ func (c *Customers) ListCustomers(
 		}
 		if query != "" {
 			pattern := "%" + query + "%"
-			q = q.Where("name ILIKE ? OR phone ILIKE ?", pattern, pattern)
+			q = q.Where(sqldialect.ILikeAny("name", "phone"), pattern, pattern)
 		}
 		return q
 	}
@@ -78,7 +79,7 @@ func (c *Customers) SearchCustomers(
 	q := c.db.WithContext(ctx).Where("active = ?", true).Order("name").Limit(limit)
 	if query != "" {
 		pattern := "%" + query + "%"
-		q = q.Where("name ILIKE ? OR phone ILIKE ? OR bpjs_no ILIKE ?", pattern, pattern, pattern)
+		q = q.Where(sqldialect.ILikeAny("name", "phone", "bpjs_no"), pattern, pattern, pattern)
 	}
 
 	var rows []model.Customer

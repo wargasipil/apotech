@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type Sale struct {
-	ID             string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID             string     `gorm:"primaryKey;type:uuid"`
 	SaleNo         *string    `gorm:"uniqueIndex;column:sale_no"`
 	CustomerID     *string    `gorm:"type:uuid;column:customer_id"`
 	CashierUserID  string     `gorm:"not null;type:uuid;column:cashier_user_id"`
@@ -24,6 +24,7 @@ type Sale struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	CompletedAt    *time.Time `gorm:"column:completed_at"`
+	CancelledAt    *time.Time `gorm:"column:cancelled_at"` // when a COMPLETED sale was cancelled via VoidSale
 
 	Items []SaleItem `gorm:"foreignKey:SaleID"`
 }
@@ -31,7 +32,7 @@ type Sale struct {
 func (Sale) TableName() string { return "sales" }
 
 type SaleItem struct {
-	ID                string  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID                string  `gorm:"primaryKey;type:uuid"`
 	SaleID            string  `gorm:"not null;type:uuid;column:sale_id"`
 	MedicineID        string  `gorm:"not null;type:uuid;column:medicine_id"`
 	BatchID           *string `gorm:"type:uuid;column:batch_id"`

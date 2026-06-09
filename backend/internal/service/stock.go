@@ -13,6 +13,7 @@ import (
 	inventoryifacev1 "github.com/apotech/backend/gen/inventory_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 type Stock struct {
@@ -55,7 +56,7 @@ func (s *Stock) ListMovements(
 				s.db.Table("batches b").
 					Select("b.id").
 					Joins("JOIN medicines m ON m.id = b.medicine_id").
-					Where("b.batch_number ILIKE ? OR m.name ILIKE ? OR m.sku ILIKE ?", pattern, pattern, pattern))
+					Where(sqldialect.ILikeAny("b.batch_number", "m.name", "m.sku"), pattern, pattern, pattern))
 		}
 		if req.Msg.FromUnix > 0 {
 			q = q.Where("created_at >= ?", time.Unix(req.Msg.FromUnix, 0))

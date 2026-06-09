@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import PageHeader from "../components/PageHeader";
 import Pagination from "../components/Pagination";
 import WarehouseDrawer from "../components/WarehouseDrawer";
@@ -30,6 +31,7 @@ export default function Warehouses() {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
+  const [defaultConfirm, setDefaultConfirm] = useState<Warehouse | null>(null);
   const archive = useArchiveWarehouseMutation();
   const setGlobalDefault = useSetGlobalDefaultWarehouseMutation();
   // Admin sees everything (incl. inactive); single filter, so the resetKey
@@ -44,11 +46,13 @@ export default function Warehouses() {
   const { page, setPage, pageSize, setPageSize } = usePageState(`${includeInactive}|${query}`);
   const warehousesQ = useWarehousesQuery({ includeInactive, page, pageSize, query });
 
-  const onSetDefault = async (w: Warehouse) => {
-    if (!confirm(t("warehouses.confirmSetDefault", { name: w.name }))) return;
+  const onSetDefault = (w: Warehouse) => setDefaultConfirm(w);
+  const onConfirmDefault = async () => {
+    if (!defaultConfirm) return;
     try {
-      await setGlobalDefault.mutateAsync(w.id);
+      await setGlobalDefault.mutateAsync(defaultConfirm.id);
       toast.success(t("warehouses.setAsDefault") + " ✓");
+      setDefaultConfirm(null);
     } catch {
       /* toast handled globally */
     }
@@ -178,6 +182,15 @@ export default function Warehouses() {
         open={!!editing}
         warehouse={editing}
         onClose={() => setEditing(null)}
+      />
+      <ConfirmDialog
+        open={defaultConfirm !== null}
+        title={t("warehouses.confirmSetDefaultTitle")}
+        body={t("warehouses.confirmSetDefault", { name: defaultConfirm?.name ?? "" })}
+        confirmLabel={t("warehouses.setAsDefault")}
+        loading={setGlobalDefault.isPending}
+        onConfirm={onConfirmDefault}
+        onClose={() => setDefaultConfirm(null)}
       />
     </Box>
   );

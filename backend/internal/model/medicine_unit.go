@@ -1,4 +1,4 @@
-package model
+﻿package model
 
 import "time"
 
@@ -6,7 +6,7 @@ import "time"
 // and how it converts to the medicine's base unit. Stock is stored in base
 // units; factor is the number of base units per 1 of this unit (base = 1).
 type MedicineUnit struct {
-	ID          string `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID          string `gorm:"primaryKey;type:uuid"`
 	MedicineID  string `gorm:"not null;type:uuid;column:medicine_id"`
 	Name        string `gorm:"not null"`
 	Factor      int64  `gorm:"not null"`

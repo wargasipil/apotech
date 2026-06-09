@@ -1,9 +1,9 @@
-package model
+﻿package model
 
 import "time"
 
 type StockMovement struct {
-	ID              string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID              string    `gorm:"primaryKey;type:uuid"`
 	BatchID         string    `gorm:"not null;type:uuid;column:batch_id"`
 	Qty             int32     `gorm:"not null"`
 	Type            string    `gorm:"not null"`

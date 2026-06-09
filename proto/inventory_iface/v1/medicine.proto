@@ -99,6 +99,10 @@ service MedicineService {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
   }
+  rpc UnarchiveMedicine(UnarchiveMedicineRequest) returns (UnarchiveMedicineResponse) {
+    option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
+    option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
+  }
   rpc ListMedicinePrices(ListMedicinePricesRequest) returns (ListMedicinePricesResponse) {
     option (auth_iface.v1.allowed_roles) = ROLE_OWNER;
     option (auth_iface.v1.allowed_roles) = ROLE_PHARMACIST;
@@ -136,6 +140,8 @@ message ListMedicinesRequest {
   string opname_before = 5;  // YYYY-MM-DD. When set, include only medicines whose latest
                              // COMPLETED opname in the active warehouse is < this date OR
                              // who have never been counted there (overdue / never-counted).
+  bool only_inactive = 6;    // when true, return ONLY archived (active = false) medicines;
+                             // overrides include_inactive.
 }
 message ListMedicinesResponse {
   repeated Medicine medicines = 1;
@@ -171,6 +177,9 @@ message UpdateMedicineResponse { Medicine medicine = 1; }
 
 message ArchiveMedicineRequest { string id = 1; }
 message ArchiveMedicineResponse { Medicine medicine = 1; }
+
+message UnarchiveMedicineRequest { string id = 1; }
+message UnarchiveMedicineResponse { Medicine medicine = 1; }
 
 message ListMedicinePricesRequest { string medicine_id = 1; }
 message ListMedicinePricesResponse {

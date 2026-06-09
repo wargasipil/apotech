@@ -15,6 +15,7 @@ import (
 	taxifacev1 "github.com/apotech/backend/gen/tax_iface/v1"
 	"github.com/apotech/backend/internal/auth"
 	"github.com/apotech/backend/internal/model"
+	"github.com/apotech/backend/internal/sqldialect"
 )
 
 // PPN (VAT) rate as of 2026 in Indonesia. Hard-coded because it changes
@@ -272,7 +273,7 @@ func AssignTaxInvoiceForSaleTx(tx *gorm.DB, sale *model.Sale) error {
 	var nsfp model.NsfpEntry
 	err := tx.Where("fiscal_year = ? AND used_at IS NULL", year).
 		Order("code ASC").
-		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+		Clauses(sqldialect.LockForUpdateSkipLocked()).
 		First(&nsfp).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return connect.NewError(connect.CodeFailedPrecondition,

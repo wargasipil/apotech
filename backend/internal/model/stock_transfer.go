@@ -1,4 +1,4 @@
-package model
+﻿package model
 
 import "time"
 
@@ -6,7 +6,7 @@ import "time"
 // Each transferred batch produces a TRANSFER_OUT (source, negative) and a
 // TRANSFER_IN (destination, positive) stock_movements row linked via transfer_id.
 type StockTransfer struct {
-	ID              string  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	ID              string  `gorm:"primaryKey;type:uuid"`
 	TransferNo      *string `gorm:"uniqueIndex;column:transfer_no"` // TRF-YYYY-NNNN
 	FromWarehouseID string  `gorm:"not null;type:uuid;column:from_warehouse_id"`
 	ToWarehouseID   string  `gorm:"not null;type:uuid;column:to_warehouse_id"`

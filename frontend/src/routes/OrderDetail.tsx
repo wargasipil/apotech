@@ -1,14 +1,17 @@
-import { Badge, Box, Grid, Heading, SimpleGrid, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { useMemo } from "react";
+import { Badge, Box, Button, Grid, HStack, Heading, SimpleGrid, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { Ban } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import BackButton from "../components/BackButton";
+import ConfirmDialog from "../components/ConfirmDialog";
 import PageHeader from "../components/PageHeader";
 import { SaleStatus } from "../gen/pos_iface/v1/sale_pb";
 import { formatMoney, formatUnix } from "../lib/format";
+import { toast } from "../lib/toaster";
 import { useCustomerRefs, useMedicineRefs, useUserRefs } from "../queries/refs";
-import { useSaleQuery } from "../queries/sales";
+import { useSaleQuery, useVoidSaleMutation } from "../queries/sales";
 
 const PAYMENT_KEY: Record<number, string> = {
   0: "unspecified",
@@ -41,6 +44,8 @@ export default function OrderDetail() {
   const { t } = useTranslation();
   const { id = "" } = useParams();
   const saleQ = useSaleQuery(id);
+  const voidSale = useVoidSaleMutation();
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const sale = saleQ.data;
   const customerIds = useMemo(() => (sale?.customerId ? [sale.customerId] : []), [sale]);
@@ -90,10 +95,41 @@ export default function OrderDetail() {
         ]}
         title={saleNo}
         actions={
-          <Badge colorPalette={STATUS_BADGE[sale.status] ?? "gray"} size="lg">
-            {t(`orders.states.${statusKey(sale.status)}`)}
-          </Badge>
+          <HStack gap={2}>
+            <Badge colorPalette={STATUS_BADGE[sale.status] ?? "gray"} size="lg">
+              {t(`orders.states.${statusKey(sale.status)}`)}
+            </Badge>
+            {sale.status === SaleStatus.COMPLETED && (
+              <Button
+                size="sm"
+                variant="outline"
+                colorPalette="red"
+                onClick={() => setConfirmCancel(true)}
+              >
+                <Ban size={14} />
+                {t("orders.cancelOrder")}
+              </Button>
+            )}
+          </HStack>
         }
+      />
+      <ConfirmDialog
+        open={confirmCancel}
+        title={t("orders.cancelConfirmTitle")}
+        body={t("orders.cancelConfirmBody")}
+        confirmLabel={t("orders.cancelOrder")}
+        destructive
+        loading={voidSale.isPending}
+        onConfirm={async () => {
+          try {
+            await voidSale.mutateAsync({ saleId: sale.id });
+            toast.success(t("orders.cancelledToast"));
+            setConfirmCancel(false);
+          } catch {
+            /* */
+          }
+        }}
+        onClose={() => setConfirmCancel(false)}
       />
 
       <Stack gap={6}>
